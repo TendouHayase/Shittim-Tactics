@@ -8,3 +8,6 @@ pub mod state;
 pub mod student;
 pub mod terrains;
 pub mod types;
+
+pub use std::default;
+pub use std::marker;

@@ -10,6 +10,7 @@ dependencies = [
  "error",
  "parsing-json",
  "serde",
+ "typed-builder",
 ]
 
 [[package]]
