@@ -1,4 +1,7 @@
-use core::{base::BaseStats, boss::BossSpec, state::State, terrains::Terrain, types::AttackType};
+use core::{
+    base::BaseStats, boss::BossSpec, skill::Skill, state::State, terrains::Terrain,
+    types::AttackType,
+};
 use std::{collections::HashMap, marker::PhantomData, str::FromStr, thread::Builder};
 
 use error::Error;
@@ -8,13 +11,15 @@ use typed_builder::TypedBuilder;
 use crate::{boss::Boss, difficulty::Difficulty};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize, TypedBuilder)]
-pub struct Binah<S> {
+pub struct Binah<St, Sk> {
     stats: BossSpec,
     difficulty: Difficulty,
     phase_switching_hp: [u64; 2],
 
     #[builder(default)]
-    _marker: PhantomData<S>,
+    _marker1: PhantomData<St>,
+    #[builder(default)]
+    _marker2: PhantomData<Sk>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -26,8 +31,9 @@ struct DifficultyWrapper {
     phase_switching_hp: [u64; 2],
 }
 
-impl<S: State + Sync + Send> Boss for Binah<S> {
-    type State = S;
+impl<St: State + Sync + Send, Sk: Skill + Send + Sync> Boss for Binah<St, Sk> {
+    type State = St;
+    type Skill = Sk;
     fn new(
         difficulty: Difficulty,
         attack_type: AttackType,
@@ -35,7 +41,7 @@ impl<S: State + Sync + Send> Boss for Binah<S> {
     ) -> Result<Self, Error> {
         // json 데이터 가져오기
         let data: HashMap<AttackType, HashMap<Difficulty, DifficultyWrapper>> =
-            parsing_json::parse_stats("./data/bosses/binah.json")?;
+            parsing_json::read_json("./data/bosses/binah.json")?;
 
         // 기초 스탯
         let base_stats = data
@@ -104,10 +110,7 @@ impl<S: State + Sync + Send> Boss for Binah<S> {
         Ok(result)
     }
 
-    fn step(
-        &self,
-        state: &Self::State,
-        action: core::actions::Action<impl core::skill::Skill>,
-    ) -> Self::State {
+    fn step(&self, state: &Self::State, action: core::actions::Action<Self::Skill>) -> Self::State {
+        todo!()
     }
 }

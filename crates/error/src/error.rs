@@ -1,7 +1,7 @@
-use std::{error::Error as StdError, fmt::Display, io};
+use std::{error::Error as StdError, fmt::Display, io, sync::MutexGuard};
 
 use crate::Error::{
-    ParsingDataError, ParsingEofError, ParsingIoError, ParsingSyntaxError, UnknownError,
+    MutexError, ParsingDataError, ParsingEofError, ParsingIoError, ParsingSyntaxError, UnknownError,
 };
 
 #[derive(Debug)]
@@ -12,6 +12,7 @@ pub enum Error {
     ParsingEofError(String),
     ParsingIoError(String),
     UnknownError(String),
+    MutexError(String),
 }
 
 impl StdError for Error {
@@ -53,5 +54,11 @@ impl From<serde_json::Error> for Error {
         } else {
             UnknownError(value.to_string())
         }
+    }
+}
+
+impl<T> From<std::sync::PoisonError<MutexGuard<'_, T>>> for Error {
+    fn from(value: std::sync::PoisonError<MutexGuard<'_, T>>) -> Self {
+        MutexError(value.to_string())
     }
 }

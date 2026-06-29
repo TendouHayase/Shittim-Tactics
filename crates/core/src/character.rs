@@ -1,12 +1,12 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, rc::Rc};
 
 use crate::skill::Skill;
 
-pub trait Character: Debug + Sync + Send {
+pub trait Character: Debug + Clone {
     fn status(&self) -> &Self
     where
         Self: Sized;
-    fn decrease_hp(&mut self, amount: i32);
+    fn decrease_hp(&mut self, amount: u64);
     fn walk(&mut self, x: f32, y: f32);
-    fn skill_list(&self) -> Vec<Box<dyn Skill>>;
+    fn skill_list(&self) -> &Vec<Rc<dyn Skill>>;
 }

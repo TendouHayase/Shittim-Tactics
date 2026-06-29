@@ -8,7 +8,9 @@ pub mod binah;
 
 pub trait Boss: Send + Sync {
     type State: State;
+    type Skill: Skill;
 
+    /// Generates bosses with stats tailored to the difficulty, attack type, and terrain.
     fn new(
         difficulty: Difficulty,
         attack_type: AttackType,
@@ -17,5 +19,6 @@ pub trait Boss: Send + Sync {
     where
         Self: Sized;
 
-    fn step(&self, state: &Self::State, action: Action<impl Skill>) -> Self::State;
+    /// Takes a state and an action and returns a state.
+    fn step(&self, state: &Self::State, action: Action<Self::Skill>) -> Self::State;
 }

@@ -1,0 +1,50 @@
+{
+    "heavy": {
+        "normal": {
+            "BaseStats": {
+                "level": 17,
+                "hp": 300000,
+                "atk": 1500,
+                "def": 1700,
+                "healing": 1700,
+                "accuracy": 1300,
+                "evasion": 100,
+                "crit": 200,
+                "crit_dmg": 200,
+                "crit_res": 20,
+                "stability": 300,
+                "normal_attack_range": 3000,
+                "sighting_range": 65535,
+                "cc_power": 100,
+                "cc_res": 100,
+                "recovery_boost": 10000,
+                "cost_recovery": 700,
+                "atk_speed": 10000,
+                "mov_speed": 500,
+                "block_ratge_bonus": 0,
+                "defense_piercing": 0,
+                "mag_count": 1,
+                "dmg_dealt": 10000,
+                "dmg_resist": 10000,
+                "ex_skill_dmg_dealt": 10000,
+                "ex_skill_dmg_resist": 10000,
+                "basics_proficiency": 10000,
+                "healing_boost": 10000,
+                "attack_type": "Normal",
+                "armor_type": "Heavy",
+                "explosive_effectiveness": 10000,
+                "piercing_effectiveness": 10000,
+                "mystic_effectiveness": 10000,
+                "sonic_effectiveness": 10000,
+                "buff_retention": 10000,
+                "debuff_retention": 10000
+            },
+            "groggy_gauge": 150000,
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                180000,
+                75000
+            ]
+        }
+    }
+}

@@ -1,13 +1,10 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::rc::Rc;
 
 use typed_builder::TypedBuilder;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    actions::Action::{self, Use},
-    base::BaseStats,
-};
+use crate::{base::BaseStats, character::Character, skill::Skill};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
 pub struct StudentSpec {
@@ -15,8 +12,8 @@ pub struct StudentSpec {
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct Student {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StudentStat {
     pub student_stats: StudentSpec,
     pub base_stats: BaseStats,
 
@@ -43,7 +40,37 @@ pub struct Student {
 }
 
 #[derive(Debug, Clone)]
-pub struct StudentStat {
-    stats: Arc<Student>,
+pub struct Student {
+    pub stats: StudentStat,
+
+    /// These are the student's coordinates.
     pub coordinate: (f32, f32),
+
+    /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
+    pub skills: Vec<Rc<dyn Skill>>,
+
+    /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
+    pub cooldowns: [f32; 4],
+}
+
+impl Character for Student {
+    fn status(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+
+    fn decrease_hp(&mut self, amount: u64) {
+        self.stats.base_stats.hp -= amount;
+    }
+
+    fn walk(&mut self, x: f32, y: f32) {
+        self.coordinate.0 = x;
+        self.coordinate.1 = y;
+    }
+
+    fn skill_list(&self) -> &Vec<Rc<dyn crate::skill::Skill>> {
+        &self.skills
+    }
 }
