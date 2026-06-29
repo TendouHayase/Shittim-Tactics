@@ -1,59 +1,24 @@
+use std::{marker::PhantomData, sync::Arc};
+
 use typed_builder::TypedBuilder;
 
 use serde::{Deserialize, Serialize};
 
-use crate::base::BaseStats;
+use crate::{
+    actions::Action::{self, Use},
+    base::BaseStats,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
 pub struct StudentSpec {
     pub id: u32,
     pub name: String,
-
-    #[builder(default = 2000)]
-    pub stability_rate: u16,
-
-    #[builder(default = 10000)]
-    pub recovery_boost: u32,
-
-    #[builder(default = 700)]
-    pub cost_recovery: u16,
-
-    #[builder(default = 10000)]
-    pub atk_speed: u32,
-
-    #[builder(default = 200)]
-    pub mov_spd: u16,
-
-    #[builder(default = 0)]
-    pub block_rate_bonus: i16,
-
-    pub mag_count: u8,
-
-    #[builder(default = 10000)]
-    pub dmg_dealt: u32,
-
-    #[builder(default = 10000)]
-    pub ex_skill_dmg_dealt: u32,
-
-    #[builder(default = 10000)]
-    pub ex_skill_dmg_resist: u32,
-
-    #[builder(default = 10000)]
-    pub basics_proficiency: u32,
-
-    #[builder(default = 10000)]
-    pub healing_boost: u32,
-
-    #[builder(default = 10000)]
-    pub buff_retention: u32,
-
-    #[builder(default = 10000)]
-    pub debuff_retention: u32,
 }
 
+#[derive(Debug, Clone)]
 pub struct Student {
-    pub student_stats: Box<StudentSpec>,
-    pub base_stats: Box<BaseStats>,
+    pub student_stats: StudentSpec,
+    pub base_stats: BaseStats,
 
     /// The elements in this array represent the levels of the following skills.
     /// Ex skill, Basic Skill, Enhanced Skill, Sub Skill
@@ -75,4 +40,10 @@ pub struct Student {
     /// Each element in this array represents the following.
     /// Max HP Talent level, ATK Talent Level, Healing Talent Level
     pub talent_levels: [u8; 3],
+}
+
+#[derive(Debug, Clone)]
+pub struct StudentStat {
+    stats: Arc<Student>,
+    pub coordinate: (f32, f32),
 }

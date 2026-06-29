@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{base::BaseStats, terrains::Terrain};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Boss {
+pub struct BossSpec {
     pub name: String,
     pub id: u32,
     pub base_stats: BaseStats,

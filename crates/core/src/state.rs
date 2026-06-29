@@ -1,27 +1,20 @@
-pub trait State: Clone {
-    type Action: Clone;
+use std::hash::Hash;
 
-    /// Returns whether the skill can be used.
-    fn available_action(&self) -> bool;
+use crate::{actions::Action, skill::Skill};
 
-    /// Returns the actions that can be taken at this time
-    fn actions(&self) -> Vec<Self::Action>;
+pub trait State: Clone + PartialEq + Eq + Hash {
+    /// List of valid actions that can be taken
+    fn legal_actions(&self) -> Vec<Action<impl Skill>>;
 
-    /// After applying the action, it returns a new state.
-    fn apply_actions(&self, action: &Self::Action) -> Self;
+    /// Returns the state resulting from applying action a
+    fn apply(&self, a: &Action<impl Skill>) -> Box<Self>;
 
     /// Returns whether the battle has ended.
-    fn is_terminal() -> bool;
+    fn is_terminal(&self) -> bool;
 
     /// Returns whether the boss has been defeated.
-    fn is_goal() -> bool;
+    fn is_goal(&self) -> bool;
 
     // Returns the cost from the root to the current point.
-    fn g_cost() -> u64;
-}
-
-pub trait StateHint {
-    type HintBundle;
-
-    fn h_inputs(&self) -> Self::HintBundle;
+    fn g_cost(&self) -> f32;
 }
