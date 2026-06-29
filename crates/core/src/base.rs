@@ -16,11 +16,14 @@ pub struct BaseStats {
     #[builder(default = 10000)]
     pub crit: u16,
 
+    #[builder(default = 5000)]
+    pub crit_res: i32,
+
     #[builder(default = 10000)]
     pub crit_dmg: u32,
 
     #[builder(default = 5000)]
-    pub crit_res: i32,
+    pub crit_dmg_res: u32,
 
     pub stability: u16,
 

@@ -6,8 +6,7 @@ use crate::{boss::Boss, difficulty::Difficulty};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct Binah {
-    base_stats: BaseStats,
-    boss_stats: BossSpec,
+    stats: BossSpec,
     difficulty: Difficulty,
     phase_switching_hp: [u32; 2],
 }
