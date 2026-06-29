@@ -40,7 +40,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 150000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                180000,
+                75000
+            ]
         },
         "hard": {
             "BaseStats": {
@@ -85,7 +89,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 300000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                480000,
+                200000
+            ]
         },
         "veryhard": {
             "BaseStats": {
@@ -130,7 +138,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 450000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                660000,
+                275000
+            ]
         },
         "hardcore": {
             "BaseStats": {
@@ -175,7 +187,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 800000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                1200000,
+                500000
+            ]
         },
         "extreme": {
             "BaseStats": {
@@ -219,7 +235,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 1500000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                2700000,
+                1125000
+            ]
         },
         "insane": {
             "BaseStats": {
@@ -263,7 +283,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 2310000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                4620000,
+                1925000
+            ]
         },
         "torment": {
             "BaseStats": {
@@ -307,7 +331,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 6500000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                13800000,
+                5750000
+            ]
         },
         "lunatic": {
             "BaseStats": {
@@ -351,7 +379,11 @@
                 "debuff_retention": 10000
             },
             "groggy_gauge": 10000000,
-            "groggy_duration": 10
+            "groggy_duration": 10,
+            "phase_switching_hp": [
+                30000000,
+                12500000
+            ]
         }
     }
 }

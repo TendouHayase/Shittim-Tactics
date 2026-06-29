@@ -1,14 +1,20 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use error::error::Error;
+use serde_json;
+use std::{fs::File, io::BufReader};
+
+pub fn parse_stats<'a, T: serde::de::DeserializeOwned>(path: &str) -> Result<T, Error> {
+    let file = File::open(path)?;
+
+    let reader = BufReader::new(file);
+
+    let data: T = serde_json::from_reader(reader)?;
+
+    Ok(data)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+    fn it_works() {}
 }

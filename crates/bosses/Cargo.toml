@@ -5,4 +5,6 @@ edition = "2024"
 
 [dependencies]
 core = {path = "../core"}
+parsing-json={path="../parsing-json"}
+error = {path="../error"}
 serde = {version="1.0", features=["derive"]}
