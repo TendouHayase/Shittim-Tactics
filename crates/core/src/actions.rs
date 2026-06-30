@@ -1,6 +1,9 @@
+use std::rc::Rc;
+
 use crate::skill::Skill;
 
-pub enum Action<T: Skill + Sized> {
+#[derive(Debug)]
+pub enum Action<T: Skill + ?Sized> {
     Wait,
-    Use(T),
+    Use(Rc<T>),
 }

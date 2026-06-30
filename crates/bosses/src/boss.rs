@@ -6,12 +6,9 @@ use crate::difficulty::Difficulty;
 
 pub mod binah;
 
-pub trait Boss: Send + Sync {
-    type State: State;
-    type Skill: Skill;
-
+pub trait Boss {
     /// Generates bosses with stats tailored to the difficulty, attack type, and terrain.
-    fn new(
+    fn from_file(
         difficulty: Difficulty,
         attack_type: AttackType,
         terrain: Terrain,
@@ -19,6 +16,9 @@ pub trait Boss: Send + Sync {
     where
         Self: Sized;
 
-    /// Takes a state and an action and returns a state.
-    fn step(&self, state: &Self::State, action: Action<Self::Skill>) -> Self::State;
+    fn hp(&self) -> u64;
+
+    fn status(&self) -> &Self;
+
+    fn mut_status(&mut self) -> &mut Self;
 }

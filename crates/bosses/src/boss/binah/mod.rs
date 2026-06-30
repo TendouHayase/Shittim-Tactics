@@ -1,25 +1,28 @@
 use core::{
-    base::BaseStats, boss::BossSpec, skill::Skill, state::State, terrains::Terrain,
+    base::BaseStats,
+    boss::BossSpec,
+    skill::{Effect, Skill},
+    state::State,
+    terrains::Terrain,
     types::AttackType,
 };
-use std::{collections::HashMap, marker::PhantomData, str::FromStr, thread::Builder};
+use std::{collections::HashMap, marker::PhantomData, rc::Rc, str::FromStr, thread::Builder};
 
 use error::Error;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
-use crate::{boss::Boss, difficulty::Difficulty};
+use crate::{boss::Boss, difficulty::Difficulty, state::CommonState};
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize, TypedBuilder)]
-pub struct Binah<St, Sk> {
+mod skills;
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct Binah {
     stats: BossSpec,
     difficulty: Difficulty,
     phase_switching_hp: [u64; 2],
-
-    #[builder(default)]
-    _marker1: PhantomData<St>,
-    #[builder(default)]
-    _marker2: PhantomData<Sk>,
+    skills: Vec<Rc<dyn Skill>>,
+    effects: Vec<Effect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -31,10 +34,8 @@ struct DifficultyWrapper {
     phase_switching_hp: [u64; 2],
 }
 
-impl<St: State + Sync + Send, Sk: Skill + Send + Sync> Boss for Binah<St, Sk> {
-    type State = St;
-    type Skill = Sk;
-    fn new(
+impl Boss for Binah {
+    fn from_file(
         difficulty: Difficulty,
         attack_type: AttackType,
         terrain: Terrain,
@@ -105,12 +106,20 @@ impl<St: State + Sync + Send, Sk: Skill + Send + Sync> Boss for Binah<St, Sk> {
             .stats(boss_spec)
             .difficulty(difficulty)
             .phase_switching_hp(phase_switching_hp)
+            .skills(skills)
             .build();
 
         Ok(result)
     }
 
-    fn step(&self, state: &Self::State, action: core::actions::Action<Self::Skill>) -> Self::State {
-        todo!()
+    fn hp(&self) -> u64 {
+        self.stats.base_stats.hp
+    }
+
+    fn status(&self) -> &Self {
+        self
+    }
+    fn mut_status(&mut self) -> &mut Self {
+        self
     }
 }

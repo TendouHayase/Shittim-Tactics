@@ -1,10 +1,16 @@
-use std::rc::Rc;
+use std::{hash::Hash, rc::Rc};
 
 use typed_builder::TypedBuilder;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{base::BaseStats, character::Character, skill::Skill};
+use crate::{
+    Position,
+    actions::Action,
+    base::BaseStats,
+    character::Character,
+    skill::{Effect, Skill},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
 pub struct StudentSpec {
@@ -37,20 +43,22 @@ pub struct StudentStat {
     /// Each element in this array represents the following.
     /// Max HP Talent level, ATK Talent Level, Healing Talent Level
     pub talent_levels: [u8; 3],
+
+    /// These are the student's coordinates.
+    pub coordinate: Position,
+
+    /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
+    pub cooldowns: [ordered_float::OrderedFloat<f32>; 4],
+
+    pub effects: Vec<Effect>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Student {
     pub stats: StudentStat,
 
-    /// These are the student's coordinates.
-    pub coordinate: (f32, f32),
-
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
     pub skills: Vec<Rc<dyn Skill>>,
-
-    /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
-    pub cooldowns: [f32; 4],
 }
 
 impl Character for Student {
@@ -66,11 +74,25 @@ impl Character for Student {
     }
 
     fn walk(&mut self, x: f32, y: f32) {
-        self.coordinate.0 = x;
-        self.coordinate.1 = y;
+        self.stats.coordinate.x = ordered_float::OrderedFloat(x);
+        self.stats.coordinate.y = ordered_float::OrderedFloat(y);
     }
 
-    fn skill_list(&self) -> &Vec<Rc<dyn crate::skill::Skill>> {
+    fn skill_list(&self) -> &[Rc<dyn Skill>] {
         &self.skills
     }
 }
+
+impl Hash for Student {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.stats.hash(state);
+    }
+}
+
+impl PartialEq for Student {
+    fn eq(&self, other: &Self) -> bool {
+        self.stats == other.stats
+    }
+}
+
+impl Eq for Student {}
