@@ -1,18 +1,19 @@
 use crate::{
     Position,
     base::BaseStats,
-    skill::{Effect, EffectKind},
+    skill::{Effect, EffectKind, SkillType},
 };
 
 pub struct CasterContext<'a> {
-    stats: &'a mut BaseStats,
-    effects: &'a mut Vec<Effect>,
+    pub stats: &'a mut BaseStats,
+    pub effects: &'a mut Vec<Effect>,
     pub position: &'a mut Position,
+    pub skill_type: SkillType,
 }
 
 pub struct TargetContext<'a> {
-    stats: &'a mut BaseStats,
-    effects: &'a mut Vec<Effect>,
+    pub stats: &'a mut BaseStats,
+    pub effects: &'a mut Vec<Effect>,
     pub position: &'a mut Position,
 }
 
@@ -32,7 +33,7 @@ impl<'a> CasterContext<'a> {
                 ty: t,
                 duration: d,
                 scale: s,
-                increase: i,
+                amount: i,
             } = &effect.kind
             {
                 match t {
@@ -67,7 +68,7 @@ impl<'a> TargetContext<'a> {
                 ty: t,
                 duration: d,
                 scale: s,
-                increase: i,
+                amount: i,
             } = &effect.kind
             {
                 match t {

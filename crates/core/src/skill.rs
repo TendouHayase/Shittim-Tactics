@@ -10,12 +10,21 @@ pub enum Buff {
     Crit,
     CritDmg,
     Effectiveness(AttackType),
+    BasicProficiency,
     ExSkillDmgDealt,
     DmgDealt,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Debuff {}
+pub enum Debuff {
+    Atk,
+    Crit,
+    CritDmg,
+    Effectiveness(AttackType),
+    ExSkillDmgDealt,
+    BasicProficiency,
+    DmgDealt,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EffectTiming {
@@ -34,13 +43,13 @@ pub enum EffectKind {
         ty: Buff,
         duration: u32,
         scale: u16,
-        increase: u32,
+        amount: u32,
     },
     Debuff {
         ty: Debuff,
         duration: u32,
         scale: u16,
-        decrease: u32,
+        amount: u32,
     },
     Move,
     DamageRegion {
@@ -62,6 +71,15 @@ pub struct Effect {
     pub kind: EffectKind,
     pub timing: EffectTiming,
     pub targets: Vec<EffectTarget>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SkillType {
+    Ex,
+    Basic,
+    Enhanced,
+    Sub,
+    NormalAttack,
 }
 
 pub trait Skill: Debug {
