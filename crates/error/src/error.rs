@@ -1,18 +1,20 @@
-use std::{error::Error as StdError, fmt::Display, io, sync::MutexGuard};
+use std::{alloc::LayoutError, error::Error as StdError, fmt::Display, io, sync::MutexGuard};
 
 use crate::Error::{
-    MutexError, ParsingDataError, ParsingEofError, ParsingIoError, ParsingSyntaxError, UnknownError,
+    InvalidData, InvalidSyntax, Io, MemoryAllocateFailed, Mutex, UnexpectedEof, Unknown,
 };
 
 #[derive(Debug)]
 pub enum Error {
-    ReadFileError(String),
-    ParsingSyntaxError(String),
-    ParsingDataError(String),
-    ParsingEofError(String),
-    ParsingIoError(String),
-    UnknownError(String),
-    MutexError(String),
+    ReadFileFailed(String),
+    InvalidSyntax(String),
+    InvalidData(String),
+    UnexpectedEof(String),
+    Io(String),
+    Unknown(String),
+    Mutex(String),
+    MemoryAllocateFailed(String),
+    UnallocatedMemory(String),
 }
 
 impl StdError for Error {
@@ -37,28 +39,34 @@ impl Display for Error {
 
 impl From<io::Error> for Error {
     fn from(value: io::Error) -> Self {
-        Error::ReadFileError(value.to_string())
+        Error::ReadFileFailed(value.to_string())
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(value: serde_json::Error) -> Self {
         if value.is_syntax() {
-            ParsingSyntaxError(value.to_string())
+            InvalidSyntax(value.to_string())
         } else if value.is_data() {
-            ParsingDataError(value.to_string())
+            InvalidData(value.to_string())
         } else if value.is_eof() {
-            ParsingEofError(value.to_string())
+            UnexpectedEof(value.to_string())
         } else if value.is_io() {
-            ParsingIoError(value.to_string())
+            Io(value.to_string())
         } else {
-            UnknownError(value.to_string())
+            Unknown(value.to_string())
         }
     }
 }
 
 impl<T> From<std::sync::PoisonError<MutexGuard<'_, T>>> for Error {
     fn from(value: std::sync::PoisonError<MutexGuard<'_, T>>) -> Self {
-        MutexError(value.to_string())
+        Mutex(value.to_string())
+    }
+}
+
+impl From<LayoutError> for Error {
+    fn from(value: LayoutError) -> Self {
+        MemoryAllocateFailed(value.to_string())
     }
 }

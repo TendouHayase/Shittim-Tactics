@@ -47,11 +47,11 @@ impl Boss for Binah {
         // 기초 스탯
         let base_stats = data
             .get(&attack_type)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find attack type key in json".to_string(),
             ))?
             .get(&difficulty)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find difficulty key in json".to_string(),
             ))?
             .stats;
@@ -59,11 +59,11 @@ impl Boss for Binah {
         // 그로기 게이지
         let groggy_gauge = data
             .get(&attack_type)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find attack type key in json".to_string(),
             ))?
             .get(&difficulty)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find difficulty key in json".to_string(),
             ))?
             .groggy_gauge;
@@ -71,11 +71,11 @@ impl Boss for Binah {
         // 그로기 지속시간
         let groggy_duration = data
             .get(&attack_type)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find attack type key in json".to_string(),
             ))?
             .get(&difficulty)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find difficulty key in json".to_string(),
             ))?
             .groggy_duration;
@@ -92,11 +92,11 @@ impl Boss for Binah {
         // 페이즈 전환 체력
         let phase_switching_hp = data
             .get(&attack_type)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find attack type key in json".to_string(),
             ))?
             .get(&difficulty)
-            .ok_or(Error::ParsingDataError(
+            .ok_or(Error::InvalidData(
                 "can not find difficulty key in json".to_string(),
             ))?
             .phase_switching_hp;
