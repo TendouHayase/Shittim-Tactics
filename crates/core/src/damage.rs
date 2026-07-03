@@ -1,3 +1,5 @@
+use stochastic::distributions::{IrwinHallDistribution, NormalDistribution};
+
 use crate::{
     base::BaseStats,
     context::{CasterContext, TargetContext},
@@ -5,23 +7,22 @@ use crate::{
     types::{ArmorType, AttackType, damage_scale, is_weak},
 };
 
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct DamageElement {
-    pub min_dmg: u64,
-    pub max_dmg: u64,
-    pub probability: f64,
+#[derive(Debug)]
+pub enum DamageElement<'a> {
+    IrwinHall(IrwinHallDistribution<'a>),
+    Normal(NormalDistribution),
 }
 
-pub struct Damage {
-    pub distribution: [DamageElement; Damage::RESOLUTION],
+pub struct Damage<'a> {
+    pub distribution: DamageElement<'a>,
     pub crit_dmg: u64,
     pub crit_probability: u8,
 }
 
-impl Damage {
+impl Damage<'_> {
     const RESOLUTION: usize = 10;
 
-    fn new(src: &CasterContext, tgt: &TargetContext) -> Self {
+    fn from_context(src: &CasterContext, tgt: &TargetContext) -> Self {
         let mut arr: [DamageElement; Damage::RESOLUTION] = Default::default();
 
         // Since stats are added via multiplication or addition depending on buffs and debuffs,
@@ -222,7 +223,7 @@ impl Damage {
         max_dmg *= dmg_dealt as u64 / 10000;
         max_dmg -= max_dmg * (tgt.stats.dmg_resist as u64 - 10000) / 10000;
 
-        let mut min_dmg: u64 =
+        let min_dmg: u64 =
             max_dmg - (((stability) / (stability + 1000)) + stability_rate / 5) as u64;
 
         let delta = (max_dmg - min_dmg) / 10;

@@ -4,7 +4,7 @@ use typed_builder::TypedBuilder;
 use crate::{base::BaseStats, terrains::Terrain};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
-pub struct BossSpec {
+pub struct BossStats {
     pub name: String,
     pub base_stats: BaseStats,
     pub terrain: Terrain,

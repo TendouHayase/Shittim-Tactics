@@ -1,6 +1,5 @@
 pub mod boss;
 pub mod difficulty;
-pub mod state;
 
 #[cfg(test)]
 mod tests {

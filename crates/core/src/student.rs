@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Position,
-    actions::Action,
     base::BaseStats,
     character::Character,
     skill::{Effect, Skill},
@@ -16,12 +15,6 @@ use crate::{
 pub struct StudentSpec {
     pub id: u32,
     pub name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StudentStat {
-    pub student_stats: StudentSpec,
-    pub base_stats: BaseStats,
 
     /// The elements in this array represent the levels of the following skills.
     /// Ex skill, Basic Skill, Enhanced Skill, Sub Skill
@@ -43,6 +36,12 @@ pub struct StudentStat {
     /// Each element in this array represents the following.
     /// Max HP Talent level, ATK Talent Level, Healing Talent Level
     pub talent_levels: [u8; 3],
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StudentStat {
+    pub student_stats: Rc<StudentSpec>,
+    pub base_stats: BaseStats,
 
     /// These are the student's coordinates.
     pub coordinate: Position,
@@ -58,7 +57,7 @@ pub struct Student {
     pub stats: StudentStat,
 
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
-    pub skills: Vec<Rc<dyn Skill>>,
+    pub skills: Rc<Vec<Box<dyn Skill>>>,
 }
 
 impl Character for Student {
@@ -78,7 +77,7 @@ impl Character for Student {
         self.stats.coordinate.y = ordered_float::OrderedFloat(y);
     }
 
-    fn skill_list(&self) -> &[Rc<dyn Skill>] {
+    fn skill_list(&self) -> &[Box<dyn Skill>] {
         &self.skills
     }
 }

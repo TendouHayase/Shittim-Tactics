@@ -33,6 +33,7 @@ dependencies = [
  "error",
  "ordered-float",
  "serde",
+ "stochastic",
  "typed-builder",
 ]
 

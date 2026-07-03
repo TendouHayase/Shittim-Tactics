@@ -127,10 +127,6 @@ impl Skill for FiresofSeverity {
                 "Fire of Severity 2 Skill is not a target of 4 people"
             );
 
-            ctx.targets[0].ctx.targets[1]
-                .stats
-                .hp
-                .saturating_sub(dmg / 2);
             ctx.targets[2].stats.hp.saturating_sub(dmg / 2);
             ctx.targets[3].stats.hp.saturating_sub(dmg / 4);
         }

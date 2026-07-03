@@ -1,6 +1,6 @@
 use core::{
     base::BaseStats,
-    boss::BossSpec,
+    boss::BossStats,
     skill::{Effect, Skill},
     state::State,
     terrains::Terrain,
@@ -12,16 +12,18 @@ use error::Error;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
-use crate::{boss::Boss, difficulty::Difficulty, state::CommonState};
+use crate::{boss::Boss, difficulty::Difficulty};
 
 mod skills;
 
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, TypedBuilder)]
 pub struct Binah {
-    stats: BossSpec,
+    stats: BossStats,
     difficulty: Difficulty,
     phase_switching_hp: [u64; 2],
-    skills: Vec<Rc<dyn Skill>>,
+    #[builder(default)]
+    skills: Box<Vec<Box<dyn Skill>>>,
+    #[builder(default)]
     effects: Vec<Effect>,
 }
 
@@ -81,7 +83,7 @@ impl Boss for Binah {
             .groggy_duration;
 
         // 보스스펙 빌드
-        let boss_spec = BossSpec::builder()
+        let boss_spec = BossStats::builder()
             .name("Binah".to_string())
             .base_stats(base_stats)
             .terrain(terrain)
@@ -106,7 +108,6 @@ impl Boss for Binah {
             .stats(boss_spec)
             .difficulty(difficulty)
             .phase_switching_hp(phase_switching_hp)
-            .skills(skills)
             .build();
 
         Ok(result)

@@ -1,22 +1,56 @@
 use std::{
+    cell::Cell,
     ops::{Deref, DerefMut},
+    ptr::NonNull,
     slice,
 };
 
 use crate::backend::{alloc_standard, dealloc_standard};
-use error::Error::{self};
+use error::Error::{self, MemoryAllocateFailed};
 
-struct Element<'a, T: Sized> {
-    pub element: T,
-    pub next: *mut Element<'a, T>,
+#[repr(C)]
+pub struct Element<'a, T: Sized> {
+    element: T,
+    next: *mut Element<'a, T>,
+}
+
+pub struct ElementGuard<'a, T: Sized> {
+    elem: NonNull<Element<'a, T>>,
+    pool: *mut PoolAllocator<'a, T>,
+    _marker: std::marker::PhantomData<&'a mut T>,
 }
 
 pub struct PoolAllocator<'a, T: Sized> {
     arr: &'a mut [Element<'a, T>],
-    head: *mut Element<'a, T>,
+    head: Cell<*mut Element<'a, T>>,
     len: usize,
     used: usize,
-    next: Option<Box<PoolAllocator<'a, T>>>,
+}
+
+impl<'a, T: Sized> Deref for ElementGuard<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        unsafe { &self.elem.as_ref().element }
+    }
+}
+
+impl<'a, T: Sized> DerefMut for ElementGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { &mut self.elem.as_mut().element }
+    }
+}
+
+impl<'a, T: Sized> Drop for ElementGuard<'a, T> {
+    fn drop(&mut self) {
+        unsafe {
+            let pool = &mut *self.pool;
+            let head = pool.head.get_mut();
+            // Set the `next` of `elem` to the existing `head`
+            self.elem.as_mut().next = *head;
+            // Update `free_head` to the current `elem`
+            *head = self.elem.as_ptr();
+        }
+    }
 }
 
 impl<'a, T: Sized> PoolAllocator<'a, T> {
@@ -26,44 +60,32 @@ impl<'a, T: Sized> PoolAllocator<'a, T> {
         unsafe {
             Ok(Self {
                 arr: slice::from_raw_parts_mut(ptr as *mut Element<T>, len),
-                head: ptr as *mut Element<'a, T>,
+                head: ,
                 len,
                 used: 0,
-                next: None,
             })
         }
     }
 
-    pub fn alloc(&mut self) -> Result<&'a mut T, Error> {
+    pub fn alloc(&mut self) -> Result<ElementGuard<'a, T>, Error> {
         if self.used == self.len {
-            let next = self
-                .next
-                .get_or_insert(Box::new(Self::from_size(self.len)?));
-            let tmp: *mut Element<T> = next.head;
-            next.head = unsafe { (*next.head).next };
-            next.used += 1;
-            Ok(unsafe { &mut (*tmp).element })
-        } else {
-            let tmp: *mut Element<T> = self.head;
-            self.head = unsafe { (*self.head).next };
-            self.used += 1;
-            Ok(unsafe { &mut (*tmp).element })
+            return Err(MemoryAllocateFailed("Memory Pool is full".to_string()));
+        }
+        let head = self.head.get_mut();
+        assert!(!(*head).is_null(), "pool exhausted");
+        unsafe {
+            let elem_ptr = *head;
+            *head = (*elem_ptr).next;
+            Ok(ElementGuard {
+                elem: NonNull::new_unchecked(elem_ptr),
+                pool: self as *mut Self,
+                _marker: std::marker::PhantomData,
+            })
         }
     }
 
-    pub fn dealloc(&mut self, target: &'a mut T) -> Result<(), Error> {
-        let obj: &mut PoolAllocator<'a, T> = if self.used == self.len {
-            unsafe { self.next.as_mut().unwrap_unchecked().as_mut() }
-        } else {
-            self
-        };
-
-        let next = unsafe { (*obj.head).next };
-        obj.head = target as *mut T as *mut Element<'a, T>;
-        unsafe {
-            (*obj.head).next = next;
-        };
-        Ok(())
+    pub fn dealloc(&mut self, guard: ElementGuard<'a, T>) {
+        drop(guard);
     }
 }
 
