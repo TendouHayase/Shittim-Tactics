@@ -14,7 +14,7 @@ fn from_size_creates_pool_of_given_capacity() {
 }
 
 #[test]
-fn from_size_zero_should_error_or_empty() {
+fn from_size_zero_should_empty() {
     let result = PoolAllocator::<Tracked>::from_size(0);
     match result {
         Ok(mut pool) => {

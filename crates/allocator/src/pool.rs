@@ -54,17 +54,27 @@ impl<'a, T: Sized> Drop for ElementGuard<'a, T> {
 }
 
 impl<'a, T: Sized> PoolAllocator<'a, T> {
-    pub fn from_size(len: usize) -> Result<Self, Error> {
-        let ptr =
-            unsafe { alloc_standard(len * size_of::<Element<T>>(), align_of::<Element<T>>())? };
-        unsafe {
-            Ok(Self {
-                arr: slice::from_raw_parts_mut(ptr as *mut Element<T>, len),
-                head: ,
-                len,
+    pub fn from_size(pool_size: usize) -> Result<Self, Error> {
+        let ptr = unsafe {
+            alloc_standard(
+                pool_size * size_of::<Element<T>>(),
+                align_of::<Element<T>>(),
+            )?
+        };
+        let result = unsafe {
+            Self {
+                arr: slice::from_raw_parts_mut(ptr as *mut Element<T>, pool_size),
+                head: Default::default(),
+                len: pool_size,
                 used: 0,
-            })
-        }
+            }
+        };
+        result.arr.iter_mut().for_each(|item| {
+            item.next = (item as *const Element<'_, T> as usize + size_of::<T>() as usize)
+                as *mut Element<'_, T>
+        });
+
+        Ok(result)
     }
 
     pub fn alloc(&mut self) -> Result<ElementGuard<'a, T>, Error> {
