@@ -1,5 +1,6 @@
 use std::{
     cell::Cell,
+    hash::Hash,
     ops::{Deref, DerefMut},
     ptr::NonNull,
     slice,
@@ -9,6 +10,7 @@ use crate::backend::{alloc_standard, dealloc_standard};
 use error::Error::{self, MemoryAllocateFailed};
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Element<'a, T: Sized> {
     element: T,
     next: *mut Element<'a, T>,
@@ -27,10 +29,24 @@ pub struct PoolAllocator<'a, T: Sized> {
     used: usize,
 }
 
+impl<'a, T: Sized> PartialEq for ElementGuard<'a, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.elem == other.elem
+    }
+}
+
+impl<T: Sized> Eq for ElementGuard<'_, T> {}
+
 impl<'a, T: Sized> Deref for ElementGuard<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
         unsafe { &self.elem.as_ref().element }
+    }
+}
+
+impl<T: Sized + Hash> Hash for ElementGuard<'_, T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.elem.hash(state)
     }
 }
 
@@ -49,12 +65,19 @@ impl<'a, T: Sized> Drop for ElementGuard<'a, T> {
             self.elem.as_mut().next = *head;
             // Update `free_head` to the current `elem`
             *head = self.elem.as_ptr();
+
+            (*self.pool).used -= 1;
         }
     }
 }
 
 impl<'a, T: Sized> PoolAllocator<'a, T> {
     pub fn from_size(pool_size: usize) -> Result<Self, Error> {
+        if pool_size.overflowing_mul(size_of::<Element<T>>()).1 {
+            return Err(MemoryAllocateFailed(
+                "Attempt to allocate too much memory".to_string(),
+            ));
+        }
         let ptr = unsafe {
             alloc_standard(
                 pool_size * size_of::<Element<T>>(),
@@ -64,14 +87,18 @@ impl<'a, T: Sized> PoolAllocator<'a, T> {
         let result = unsafe {
             Self {
                 arr: slice::from_raw_parts_mut(ptr as *mut Element<T>, pool_size),
-                head: Default::default(),
+                head: Cell::from(ptr as *mut Element<'_, T>),
                 len: pool_size,
                 used: 0,
             }
         };
-        result.arr.iter_mut().for_each(|item| {
-            item.next = (item as *const Element<'_, T> as usize + size_of::<T>() as usize)
-                as *mut Element<'_, T>
+        result.arr.iter_mut().enumerate().for_each(|item| {
+            item.1.next = if item.0 != pool_size - 1 {
+                (item.1 as *mut Element<T> as usize + size_of::<Element<'a, T>>())
+                    as *mut Element<T>
+            } else {
+                std::ptr::null_mut()
+            };
         });
 
         Ok(result)
@@ -82,7 +109,9 @@ impl<'a, T: Sized> PoolAllocator<'a, T> {
             return Err(MemoryAllocateFailed("Memory Pool is full".to_string()));
         }
         let head = self.head.get_mut();
-        assert!(!(*head).is_null(), "pool exhausted");
+
+        self.used += 1;
+
         unsafe {
             let elem_ptr = *head;
             *head = (*elem_ptr).next;
@@ -130,5 +159,17 @@ impl<T> Deref for Element<'_, T> {
 impl<T> DerefMut for Element<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.element
+    }
+}
+
+impl<T: Sized + PartialEq> PartialEq for Element<'_, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.element == other.element && self.next == other.next
+    }
+}
+
+impl<T: Sized + Hash> Hash for Element<'_, T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.element.hash(state);
     }
 }

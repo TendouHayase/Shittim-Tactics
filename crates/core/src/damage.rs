@@ -22,6 +22,7 @@ pub struct Damage<'a> {
 impl Damage<'_> {
     const RESOLUTION: usize = 10;
 
+    #[cfg(any())]
     fn from_context(src: &CasterContext, tgt: &TargetContext) -> Self {
         let mut arr: [DamageElement; Damage::RESOLUTION] = Default::default();
 
