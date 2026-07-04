@@ -1,7 +1,5 @@
-pub mod continuous;
-pub mod discrete;
+pub mod composite;
 pub mod distributions;
-pub mod sample;
 
 #[cfg(test)]
 mod tests {

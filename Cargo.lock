@@ -171,6 +171,9 @@ dependencies = [
 [[package]]
 name = "stochastic"
 version = "0.1.0"
+dependencies = [
+ "allocator",
+]
 
 [[package]]
 name = "syn"
