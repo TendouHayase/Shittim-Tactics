@@ -8,13 +8,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum DamageElement<'a> {
-    IrwinHall(IrwinHallDistribution<'a>),
+pub enum DamageElement {
+    IrwinHall(IrwinHallDistribution),
     Normal(NormalDistribution),
 }
 
-pub struct Damage<'a> {
-    pub distribution: DamageElement<'a>,
+pub struct Damage {
+    pub distribution: DamageElement,
     pub crit_dmg: u64,
     pub crit_probability: u8,
 }

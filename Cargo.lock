@@ -38,9 +38,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "distrs"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2906d3628a885aa49a23b88e71f63e51ae8df41cd76652287f0a6179a11833a9"
+
+[[package]]
 name = "error"
 version = "0.1.0"
 dependencies = [
+ "num-traits",
  "serde",
  "serde_json",
 ]
@@ -173,6 +180,9 @@ name = "stochastic"
 version = "0.1.0"
 dependencies = [
  "allocator",
+ "distrs",
+ "error",
+ "num-traits",
 ]
 
 [[package]]
