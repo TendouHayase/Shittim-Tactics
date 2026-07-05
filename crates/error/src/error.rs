@@ -1,7 +1,5 @@
 use std::{alloc::LayoutError, error::Error as StdError, fmt::Display, io, sync::MutexGuard};
 
-use num_traits::NumCast;
-
 use crate::Error::{
     InvalidData, InvalidSyntax, Io, MemoryAllocateFailed, Mutex, UnexpectedEof, Unknown,
 };

@@ -1,5 +1,5 @@
-use num_traits::{Float, NumCast, ToPrimitive};
+use num_traits::ToPrimitive;
 
-pub trait RangeProbability<K: ToPrimitive + PartialEq + PartialOrd, T: Float + NumCast> {
-    fn range_probability(&self, a: K, b: K) -> Result<T, error::Error>;
+pub trait RangeProbability<K: ToPrimitive + PartialEq + PartialOrd> {
+    fn range_probability(&self, a: K, b: K) -> f64;
 }

@@ -1,4 +1,4 @@
-use stochastic::distributions::{IrwinHallDistribution, NormalDistribution};
+use stochastic::distributions::{IrwinHall, Normal};
 
 use crate::{
     base::BaseStats,
@@ -9,8 +9,8 @@ use crate::{
 
 #[derive(Debug)]
 pub enum DamageElement {
-    IrwinHall(IrwinHallDistribution),
-    Normal(NormalDistribution),
+    IrwinHall(IrwinHall),
+    Normal(Normal),
 }
 
 pub struct Damage {

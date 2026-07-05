@@ -8,3 +8,6 @@ allocator = {path="../allocator"}
 distrs = "0.2.3"
 error = {path = "../error"}
 num-traits = "0.2.19"
+
+[dev-dependencies]
+approx = "0.5"
