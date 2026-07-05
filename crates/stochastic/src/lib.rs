@@ -179,7 +179,7 @@ mod tests {
         assert!(wide > narrow);
     }
 
-    // ==================== Composite ====================
+    // ==================== Irwin ====================
 
     #[test]
     fn test_compose_does_not_mutate_self() {
@@ -210,7 +210,6 @@ mod tests {
             .compose(&Uniform { min: 2, max: 8 })
             .compose(&Uniform { min: 1, max: 3 });
 
-        // 브루트포스: 0..=5, 2..=8, 1..=3 세 범위의 모든 조합 합산
         let mut total_ways = 0u128;
         let mut counts_by_value = std::collections::HashMap::new();
         for x in 0..=5u64 {
@@ -240,5 +239,116 @@ mod tests {
                 "range=({start},{end}): expected={expected_prob}, actual={actual}"
             );
         }
+    }
+
+    #[test]
+    fn test_full_range_probability_is_one() {
+        let base = make_base(0, 5).compose(&Uniform { min: 2, max: 8 });
+        let prob = base.range_probability(base.min, base.max);
+        assert!((prob - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_single_point_at_min_and_max_boundary() {
+        let base = make_base(0, 5).compose(&Uniform { min: 2, max: 8 });
+        let p_min = base.range_probability(base.min, base.min);
+        let p_max = base.range_probability(base.max, base.max);
+
+        assert!((p_min - p_max).abs() < 1e-12);
+        assert!(p_min > 0.0);
+    }
+
+    #[test]
+    fn test_degenerate_uniform_constant_shift() {
+        let base = make_base(0, 5);
+        let shifted = base.compose(&Uniform { min: 5, max: 5 });
+
+        assert_eq!(shifted.min, base.min + 5);
+        assert_eq!(shifted.max, base.max + 5);
+        assert_eq!(shifted.total_combinations, base.total_combinations);
+
+        let original_prob = base.range_probability(0u64, 5u64);
+        let shifted_prob = shifted.range_probability(5u64, 10u64);
+        assert!((original_prob - shifted_prob).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_query_range_outside_support_returns_zero() {
+        let base = make_base(0, 5).compose(&Uniform { min: 2, max: 8 });
+        assert_eq!(base.range_probability(0u64, 1u64), 0.0);
+        assert_eq!(base.range_probability(100u64, 200u64), 0.0);
+    }
+
+    #[test]
+    fn test_query_range_partially_overlapping_support() {
+        let base = make_base(0, 5).compose(&Uniform { min: 2, max: 8 });
+        let prob_clamped_low = base.range_probability(0u64, base.min + 2);
+        let prob_manual = base.range_probability(base.min, base.min + 2);
+        assert!((prob_clamped_low - prob_manual).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_probabilities_sum_across_partition() {
+        let base = make_base(0, 5).compose(&Uniform { min: 2, max: 8 });
+        let mid = (base.min + base.max) / 2;
+        let left = base.range_probability(base.min, mid);
+        let right = base.range_probability(mid + 1, base.max);
+        assert!((left + right - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_compose_preserves_uniforms_history() {
+        let base = make_base(0, 5);
+        let composed = base
+            .compose(&Uniform { min: 2, max: 8 })
+            .compose(&Uniform { min: 1, max: 3 });
+
+        let guard = composed.uniforms.read().unwrap();
+        assert_eq!(guard.len(), 3);
+        assert_eq!(guard[0].min, 0);
+        assert_eq!(guard[0].max, 5);
+        assert_eq!(guard[2].min, 1);
+        assert_eq!(guard[2].max, 3);
+    }
+
+    #[test]
+    fn test_n_field_increments_correctly() {
+        let base = make_base(0, 5);
+        assert_eq!(base.n, 1);
+        let composed = base.compose(&Uniform { min: 2, max: 8 });
+        assert_eq!(composed.n, 2);
+    }
+
+    #[test]
+    fn test_symmetry_of_composed_distribution() {
+        let base = make_base(0, 5).compose(&Uniform { min: 0, max: 5 });
+        let center = (base.min + base.max) / 2;
+        let offset = 2u64;
+
+        let left_val = base.min + (center - base.min - offset);
+        let right_val = center + offset;
+
+        let p_left = base.range_probability(left_val, left_val);
+        let p_right = base.range_probability(right_val, right_val);
+
+        assert!((p_left - p_right).abs() < 1e-12);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_generalized_pmf_empty_input_panics() {
+        let empty: Vec<Uniform> = vec![];
+        let _ = IrwinHall::generalized_pmf(&empty);
+    }
+
+    #[test]
+    fn test_large_range_no_overflow_within_u128() {
+        let base = make_base(0, 1_000_000).compose(&Uniform {
+            min: 0,
+            max: 1_000_000,
+        });
+        assert_eq!(base.total_combinations, 1_000_001u128 * 1_000_001u128);
+        let prob = base.range_probability(base.min, base.max);
+        assert!((prob - 1.0).abs() < 1e-9);
     }
 }
