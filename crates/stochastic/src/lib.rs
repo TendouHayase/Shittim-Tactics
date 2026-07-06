@@ -338,7 +338,7 @@ mod tests {
     #[should_panic]
     fn test_generalized_pmf_empty_input_panics() {
         let empty: Vec<Uniform> = vec![];
-        let _ = IrwinHall::generalized_pmf(&empty);
+        let _ = IrwinHall::build_pmf(&empty);
     }
 
     #[test]

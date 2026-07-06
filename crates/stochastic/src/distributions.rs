@@ -69,7 +69,7 @@ impl IrwinHall {
         }
     }
 
-    pub fn generalized_pmf(distr: &[Uniform]) -> Arc<Vec<u128>> {
+    pub fn build_pmf(distr: &[Uniform]) -> Arc<Vec<u128>> {
         assert!(!distr.is_empty(), "distr must not be empty");
 
         let first = &distr[0];
@@ -139,6 +139,22 @@ impl IrwinHall {
         let count = self.prefix_sum[idx + 1] - self.prefix_sum[idx];
         count as f64 / self.total_combinations as f64
     }
+
+    pub fn normal_approx(&self) -> Normal {
+        let guard = self.uniforms.read().unwrap();
+        let mut mean = 0.0f64;
+        let mut variance = 0.0f64;
+
+        for u in guard.iter() {
+            let a = u.min as f64;
+            let b = u.max as f64;
+            mean += (a + b) / 2.0;
+            let width = b - a + 1.0;
+            variance += (width * width - 1.0) / 12.0;
+        }
+
+        Normal::new(mean, variance)
+    }
 }
 
 impl Composite for Normal {
@@ -163,7 +179,7 @@ impl<'a> Composite for Uniform {
             total_combinations: (self.max - self.min + 1) as u128,
         };
 
-        result.prefix_sum = IrwinHall::generalized_pmf(&result.uniforms.read().unwrap());
+        result.prefix_sum = IrwinHall::build_pmf(&result.uniforms.read().unwrap());
         result
     }
 }
@@ -253,11 +269,7 @@ impl<K: ToPrimitive + PartialEq + PartialOrd> RangeProbability<K> for IrwinHall 
         }
         // N이 12 넘어가면 정규분포로 근사
         if self.n > 12 {
-            return Normal::new(
-                (self.max - self.min + 1) as f64 / 2f64,
-                (self.max - self.min + 1) as f64 / 12f64,
-            )
-            .range_probability(a, b);
+            return self.normal_approx().range_probability(a, b);
         }
 
         let a_u64 = a
