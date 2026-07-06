@@ -267,8 +267,8 @@ impl<K: ToPrimitive + PartialEq + PartialOrd> RangeProbability<K> for IrwinHall 
         if a > b {
             return 0.0;
         }
-        // N이 12 넘어가면 정규분포로 근사
-        if self.n > 12 {
+        // N이 12이상이면 정규분포로 근사
+        if self.n >= 12 {
             return self.normal_approx().range_probability(a, b);
         }
 
