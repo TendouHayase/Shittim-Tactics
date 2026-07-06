@@ -1,5 +1,6 @@
 use std::{hash::Hash, rc::Rc};
 
+use stochastic::distributions::IrwinHall;
 use typed_builder::TypedBuilder;
 
 use serde::{Deserialize, Serialize};
@@ -8,6 +9,7 @@ use crate::{
     Position,
     base::BaseStats,
     character::Character,
+    damage::{Damage, DamageCache},
     skill::{Effect, Skill},
 };
 
@@ -55,6 +57,9 @@ pub struct StudentStat {
 #[derive(Debug, Clone)]
 pub struct Student {
     pub stats: StudentStat,
+
+    pub accumulated_damage: Vec<Damage>,
+    pub accumulated_damage_cache: DamageCache,
 
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
     pub skills: Rc<Vec<Box<dyn Skill>>>,

@@ -160,10 +160,7 @@ impl IrwinHall {
 
 impl AddAssign<&Uniform> for IrwinHall {
     fn add_assign(&mut self, rhs: &Uniform) {
-        self.modify_pmf(Uniform {
-            min: rhs.min,
-            max: rhs.max,
-        });
+        *self = self.compose(rhs);
     }
 }
 
@@ -218,6 +215,34 @@ impl Composite for IrwinHall {
     type Output = Self;
     fn compose(&self, rhs: &Self) -> Self::Output {
         self + rhs
+    }
+}
+impl<'a> Composite<Uniform> for IrwinHall {
+    type Output = IrwinHall;
+
+    fn compose(&self, rhs: &Uniform) -> Self::Output {
+        let new_counts = IrwinHall::convolve_via_prefix(&self.prefix_sum, rhs.min, rhs.max);
+        let new_prefix = build_prefix_sum(&new_counts);
+
+        let new_min = self.min + rhs.min;
+        let new_max = self.max + rhs.max;
+        let new_total = self.total_combinations * (rhs.max - rhs.min + 1) as u128;
+        let new_n = self.n + 1;
+
+        let mut new_uniforms = self.uniforms.read().unwrap().clone();
+        new_uniforms.push(Uniform {
+            min: rhs.min,
+            max: rhs.max,
+        });
+
+        IrwinHall {
+            prefix_sum: Arc::new(new_prefix),
+            uniforms: Arc::new(RwLock::new(new_uniforms)),
+            n: new_n,
+            min: new_min,
+            max: new_max,
+            total_combinations: new_total,
+        }
     }
 }
 

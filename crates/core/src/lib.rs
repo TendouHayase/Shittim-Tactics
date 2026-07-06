@@ -3,7 +3,6 @@ pub mod agent;
 pub mod base;
 pub mod boss;
 pub mod character;
-pub mod context;
 pub mod damage;
 pub mod simulator;
 pub mod skill;

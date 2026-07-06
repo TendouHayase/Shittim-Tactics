@@ -12,7 +12,13 @@ use error::Error;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
-use crate::{boss::Boss, difficulty::Difficulty};
+use crate::{
+    boss::{
+        Boss,
+        binah::skills::{AtsilutsLight, FiresofSeverity, PurifyingStorm},
+    },
+    difficulty::Difficulty,
+};
 
 mod skills;
 
@@ -21,7 +27,6 @@ pub struct Binah {
     stats: BossStats,
     difficulty: Difficulty,
     phase_switching_hp: [u64; 2],
-    #[builder(default)]
     skills: Box<Vec<Box<dyn Skill>>>,
     #[builder(default)]
     effects: Vec<Effect>,
@@ -103,11 +108,18 @@ impl Boss for Binah {
             ))?
             .phase_switching_hp;
 
+        let skills: Box<Vec<Box<dyn Skill>>> = Box::new(vec![
+            Box::new(AtsilutsLight::new(difficulty)),
+            Box::new(FiresofSeverity::new(difficulty)),
+            Box::new(PurifyingStorm::new(difficulty)),
+        ]);
+
         // 최종 객체
         let result = Binah::builder()
             .stats(boss_spec)
             .difficulty(difficulty)
             .phase_switching_hp(phase_switching_hp)
+            .skills(skills)
             .build();
 
         Ok(result)

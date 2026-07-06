@@ -1,6 +1,9 @@
-use core::skill::{Effect, EffectKind, EffectTarget, EffectTiming, Skill};
+use core::{
+    damage::Damage,
+    skill::{Debuff::Def, Effect, EffectKind, EffectTarget, EffectTiming, Skill},
+};
 
-use crate::difficulty::Difficulty;
+use crate::difficulty::{self, Difficulty};
 
 #[derive(Debug)]
 pub struct AtsilutsLight {
@@ -47,25 +50,27 @@ impl Skill for AtsilutsLight {
         ]
     }
 
-    fn apply(&self, ctx: &mut core::context::SkillContext) {
+    fn apply(&self, ctx: &mut core::skill::SkillContext) {
         let atk: u64 = ctx.caster.atk().into();
-        let dmg: u64;
+        let dmg_scale: f64;
 
         match self.difficulty {
-            Difficulty::Torment => dmg = (atk as f32 * 1.6) as u64,
-            Difficulty::Lunatic => dmg = atk * 2,
-            _ => dmg = (atk as f32 * 1.2) as u64,
+            Difficulty::Torment => dmg_scale = 1.6,
+            Difficulty::Lunatic => dmg_scale = 2.,
+            _ => dmg_scale = 1.2,
         }
 
-        for target in ctx.targets.iter_mut() {
-            target.decrease_hp(dmg);
-        }
+        for target in ctx.targets.iter_mut() {}
     }
 }
 
 impl AtsilutsLight {
     const SKILL_1: &str = "Atsilut's Light 1";
     const SKILL_2: &str = "Atsilut's Light 2";
+
+    pub fn new(difficulty: Difficulty) -> Self {
+        AtsilutsLight { difficulty }
+    }
 }
 
 #[derive(Debug)]
@@ -99,26 +104,36 @@ impl Skill for FiresofSeverity {
         ]
     }
 
-    fn apply(&self, ctx: &mut core::context::SkillContext) {
-        let atk: u64 = ctx.caster.atk() as u64;
-        let dmg: u64;
+    fn apply(&self, ctx: &mut core::skill::SkillContext) {
+        let dmg_num;
+        let mut dmg_den;
 
-        if ctx.name == Self::SKILL_1 {
+        if ctx.name == FiresofSeverity::SKILL_1 {
             match self.difficulty {
-                Difficulty::Insane => dmg = atk * 3 / 2,
-                Difficulty::Torment => dmg = atk * 3 / 2,
-                Difficulty::Lunatic => dmg = atk * 3 / 2,
-                _ => dmg = atk * 3 / 4,
+                Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
+                    dmg_num = 3;
+                    dmg_den = 2;
+                }
+                _ => {
+                    dmg_num = 3;
+                    dmg_den = 4;
+                }
             }
             for target in ctx.targets.iter_mut() {
-                target.decrease_hp(dmg);
+                let d = Damage::from_skill_context(&ctx.caster, target, dmg_num, dmg_den);
+                target.accumulated_damage.push(d);
+                target.accumulated_damage_cached.append(&d);
             }
-        } else if ctx.name == Self::SKILL_2 {
+        } else if ctx.name == FiresofSeverity::SKILL_2 {
             match self.difficulty {
-                Difficulty::Insane => dmg = atk * 25 / 2,
-                Difficulty::Torment => dmg = atk * 25 / 2,
-                Difficulty::Lunatic => dmg = atk * 25 / 2,
-                _ => dmg = atk * 25 / 4,
+                Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
+                    dmg_num = 15;
+                    dmg_den = 2;
+                }
+                _ => {
+                    dmg_num = 15;
+                    dmg_den = 4;
+                }
             }
 
             assert_eq!(
@@ -127,8 +142,16 @@ impl Skill for FiresofSeverity {
                 "Fire of Severity 2 Skill is not a target of 4 people"
             );
 
-            ctx.targets[2].stats.hp.saturating_sub(dmg / 2);
-            ctx.targets[3].stats.hp.saturating_sub(dmg / 4);
+            for (i, target) in ctx.targets.iter_mut().enumerate() {
+                let d = Damage::from_skill_context(&ctx.caster, target, dmg_num, dmg_den);
+                target.accumulated_damage.push(d);
+                target.accumulated_damage_cached.append(&d);
+                if i == 0 {
+                    dmg_den *= 2;
+                } else if i == 2 {
+                    dmg_den *= 2;
+                }
+            }
         }
     }
 }
@@ -136,4 +159,51 @@ impl Skill for FiresofSeverity {
 impl FiresofSeverity {
     const SKILL_1: &str = "Fires of Severity 1";
     const SKILL_2: &str = "Fires of Severity 2";
+
+    pub fn new(difficulty: Difficulty) -> Self {
+        FiresofSeverity { difficulty }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PurifyingStorm {
+    pub difficulty: Difficulty,
+}
+
+impl Skill for PurifyingStorm {
+    fn cost(&self) -> u8 {
+        3
+    }
+
+    fn frames(&self) -> u32 {
+        todo!()
+    }
+
+    fn effects(&self) -> Vec<Effect> {
+        vec![Effect {
+            name: "PurifyingStorm",
+            kind: EffectKind::Debuff {
+                ty: Def,
+                duration: 3000,
+                scale: 50,
+                amount: 0,
+            },
+            timing: EffectTiming::Instant,
+            targets: vec![EffectTarget::Student; 4],
+        }]
+    }
+
+    fn apply(&self, ctx: &mut core::skill::SkillContext) {
+        for target in ctx.targets.iter_mut() {
+            let dmg = Damage::from_skill_context(&ctx.caster, target, 300, 1);
+            target.accumulated_damage.push(dmg);
+            target.accumulated_damage_cached.append(&dmg);
+        }
+    }
+}
+
+impl PurifyingStorm {
+    pub fn new(difficulty: Difficulty) -> Self {
+        PurifyingStorm { difficulty }
+    }
 }
