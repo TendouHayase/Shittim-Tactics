@@ -1,5 +1,6 @@
 use std::{
     any::type_name,
+    ops::{Add, AddAssign, Sub},
     sync::{Arc, RwLock},
 };
 
@@ -14,7 +15,7 @@ pub struct Uniform {
     pub max: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IrwinHall {
     pub prefix_sum: Arc<Vec<u128>>,
     pub uniforms: Arc<RwLock<Vec<Uniform>>>,
@@ -24,7 +25,7 @@ pub struct IrwinHall {
     pub total_combinations: u128,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Normal {
     pub avg: f64,
     pub var: f64,
@@ -154,6 +155,26 @@ impl IrwinHall {
         }
 
         Normal::new(mean, variance)
+    }
+}
+
+impl AddAssign<&IrwinHall> for IrwinHall {
+    fn add_assign(&mut self, rhs: &IrwinHall) {
+        let rhs_uniforms = rhs.uniforms.read().unwrap().clone();
+
+        for u in rhs_uniforms {
+            *self = self.compose(&u);
+        }
+    }
+}
+
+impl Add for &IrwinHall {
+    type Output = IrwinHall;
+
+    fn add(self, rhs: &IrwinHall) -> Self::Output {
+        let mut result = self.clone();
+        result += rhs;
+        result
     }
 }
 
