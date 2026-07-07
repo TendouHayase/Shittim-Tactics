@@ -1,13 +1,53 @@
+use error::Error;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
-use crate::{base::BaseStats, terrains::Terrain};
+use crate::{
+    Position,
+    base::BaseStats,
+    damage::{Damage, DamageCache},
+    difficulty::Difficulty,
+    skill::Effect,
+    terrains::Terrain,
+    types::AttackType,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
 pub struct BossStats {
     pub name: String,
+    pub id: u32,
     pub base_stats: BaseStats,
     pub terrain: Terrain,
     pub groggy_gauge: u64,
     pub groggy_duration: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Boss<T: BossTrait> {
+    pub stats: BossStats,
+    pub other_stats: T,
+
+    /// These are the student's coordinates.
+    pub coordinate: Position,
+
+    /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
+    pub cooldowns: [u32; 4],
+
+    pub effects: Vec<Effect>,
+
+    pub accumulated_damage: Vec<Damage>,
+    pub accumulated_damage_cache: DamageCache,
+}
+
+pub trait BossTrait {
+    /// Generates bosses with stats tailored to the difficulty, attack type, and terrain.
+    fn from_file(
+        difficulty: Difficulty,
+        attack_type: AttackType,
+        terrain: Terrain,
+    ) -> Result<Self, Error>
+    where
+        Self: Sized;
+
+    fn stats(&self) -> &BossStats;
 }

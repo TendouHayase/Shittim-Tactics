@@ -1,8 +1,8 @@
-use crate::{actions::Action, skill::Skill, state::State};
+use std::rc::Rc;
 
-pub trait Simulator {
-    type Sk: Skill;
+use crate::{actions::ActionContext, boss::BossTrait, skill::Skill, state::State};
 
-    fn legal_actions(&self, state: &State) -> Vec<Action<Self::Sk>>;
-    fn apply(&self, state: &State, action: &Action<dyn Skill>) -> State;
+pub trait Simulator<T: BossTrait> {
+    fn legal_actions(&self, state: &State<T>) -> Vec<Rc<dyn Skill>>;
+    fn apply(&self, state: &State<T>, action: &ActionContext<dyn Skill>) -> State<T>;
 }

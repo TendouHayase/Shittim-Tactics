@@ -3,7 +3,9 @@ use typed_builder::TypedBuilder;
 
 use crate::types::{ArmorType, AttackType};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, TypedBuilder,
+)]
 pub struct BaseStats {
     pub level: u8,
     pub hp: u64,

@@ -21,6 +21,12 @@ pub enum AttackType {
     Sonic,
 }
 
+impl Default for AttackType {
+    fn default() -> Self {
+        AttackType::Normal
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ArmorType {
     Normal,
@@ -30,6 +36,12 @@ pub enum ArmorType {
     Special,
     Elastic,
     Structure,
+}
+
+impl Default for ArmorType {
+    fn default() -> Self {
+        ArmorType::Normal
+    }
 }
 
 pub fn damage_scale(atk_type: &AttackType, armor_type: &ArmorType) -> u32 {

@@ -1,24 +1,18 @@
 use core::{
     base::BaseStats,
-    boss::BossStats,
+    boss::{Boss, BossStats, BossTrait},
+    difficulty::Difficulty,
     skill::{Effect, Skill},
-    state::State,
     terrains::Terrain,
     types::AttackType,
 };
-use std::{collections::HashMap, marker::PhantomData, rc::Rc, str::FromStr, thread::Builder};
+use std::collections::HashMap;
 
 use error::Error;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
-use crate::{
-    boss::{
-        Boss,
-        binah::skills::{AtsilutsLight, FiresofSeverity, PurifyingStorm},
-    },
-    difficulty::Difficulty,
-};
+use crate::binah::skills::{AtsilutsLight, FireofSeverity2, FiresofSeverity1, PurifyingStorm};
 
 mod skills;
 
@@ -36,12 +30,13 @@ pub struct Binah {
 struct DifficultyWrapper {
     #[serde(rename = "BaseStats")]
     stats: BaseStats,
+    id: u32,
     groggy_gauge: u64,
     groggy_duration: u8,
     phase_switching_hp: [u64; 2],
 }
 
-impl Boss for Binah {
+impl BossTrait for Binah {
     fn from_file(
         difficulty: Difficulty,
         attack_type: AttackType,
@@ -62,6 +57,18 @@ impl Boss for Binah {
                 "can not find difficulty key in json".to_string(),
             ))?
             .stats;
+
+        // id
+        let id = data
+            .get(&attack_type)
+            .ok_or(Error::InvalidData(
+                "can not find attack type key in json".to_string(),
+            ))?
+            .get(&difficulty)
+            .ok_or(Error::InvalidData(
+                "can not find difficulty key in json".to_string(),
+            ))?
+            .id;
 
         // 그로기 게이지
         let groggy_gauge = data
@@ -94,6 +101,7 @@ impl Boss for Binah {
             .terrain(terrain)
             .groggy_gauge(groggy_gauge)
             .groggy_duration(groggy_duration)
+            .id(id)
             .build();
 
         // 페이즈 전환 체력
@@ -109,9 +117,10 @@ impl Boss for Binah {
             .phase_switching_hp;
 
         let skills: Box<Vec<Box<dyn Skill>>> = Box::new(vec![
-            Box::new(AtsilutsLight::new(difficulty)),
-            Box::new(FiresofSeverity::new(difficulty)),
-            Box::new(PurifyingStorm::new(difficulty)),
+            Box::new(AtsilutsLight::from_difficulty(difficulty)),
+            Box::new(FiresofSeverity1::from_difficulty(difficulty)),
+            Box::new(FireofSeverity2::from_difficulty(difficulty)),
+            Box::new(PurifyingStorm::from_difficulty(difficulty)),
         ]);
 
         // 최종 객체
@@ -125,14 +134,7 @@ impl Boss for Binah {
         Ok(result)
     }
 
-    fn hp(&self) -> u64 {
-        self.stats.base_stats.hp
-    }
-
-    fn status(&self) -> &Self {
-        self
-    }
-    fn mut_status(&mut self) -> &mut Self {
-        self
+    fn stats(&self) -> &BossStats {
+        &self.stats
     }
 }

@@ -1,6 +1,5 @@
 use std::{hash::Hash, rc::Rc};
 
-use stochastic::distributions::IrwinHall;
 use typed_builder::TypedBuilder;
 
 use serde::{Deserialize, Serialize};
@@ -41,7 +40,7 @@ pub struct StudentSpec {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StudentStat {
+pub struct StudentStats {
     pub student_stats: Rc<StudentSpec>,
     pub base_stats: BaseStats,
 
@@ -49,28 +48,41 @@ pub struct StudentStat {
     pub coordinate: Position,
 
     /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
-    pub cooldowns: [ordered_float::OrderedFloat<f32>; 4],
+    pub cooldowns: [u32; 4],
 
     pub effects: Vec<Effect>,
 }
-
 #[derive(Debug, Clone)]
 pub struct Student {
-    pub stats: StudentStat,
+    pub stats: StudentStats,
 
     pub accumulated_damage: Vec<Damage>,
     pub accumulated_damage_cache: DamageCache,
-
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
-    pub skills: Rc<Vec<Box<dyn Skill>>>,
+    pub skills: Rc<Vec<Rc<dyn Skill>>>,
+}
+
+impl PartialEq for Student {
+    fn eq(&self, other: &Self) -> bool {
+        self.stats == other.stats && self.accumulated_damage == other.accumulated_damage
+    }
 }
 
 impl Character for Student {
-    fn status(&self) -> &Self
-    where
-        Self: Sized,
-    {
-        self
+    fn id(&self) -> u32 {
+        self.stats.student_stats.id
+    }
+
+    fn stats(&self) -> &BaseStats {
+        &self.stats.base_stats
+    }
+
+    fn effects(&self) -> &Vec<Effect> {
+        &self.stats.effects
+    }
+
+    fn position(&self) -> &Position {
+        &self.stats.coordinate
     }
 
     fn decrease_hp(&mut self, amount: u64) {
@@ -82,20 +94,14 @@ impl Character for Student {
         self.stats.coordinate.y = ordered_float::OrderedFloat(y);
     }
 
-    fn skill_list(&self) -> &[Box<dyn Skill>] {
-        &self.skills
+    fn skill_list(&self) -> Rc<Vec<Rc<dyn Skill>>> {
+        self.skills.clone()
     }
 }
 
 impl Hash for Student {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.stats.hash(state);
-    }
-}
-
-impl PartialEq for Student {
-    fn eq(&self, other: &Self) -> bool {
-        self.stats == other.stats
     }
 }
 

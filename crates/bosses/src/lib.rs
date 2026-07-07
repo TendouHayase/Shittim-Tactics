@@ -1,14 +1,5 @@
-pub mod boss;
-pub mod difficulty;
+use core::{skill::Effect, terrains::Terrain, types::AttackType};
 
-#[cfg(test)]
-mod tests {
-    use parsing_json::read_json;
+use error::Error;
 
-    use crate::boss::binah::Binah;
-
-    use super::*;
-
-    #[test]
-    fn json_convert_test() {}
-}
+pub mod binah;

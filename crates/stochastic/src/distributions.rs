@@ -46,6 +46,18 @@ impl Normal {
     }
 }
 
+impl PartialEq for IrwinHall {
+    fn eq(&self, other: &Self) -> bool {
+        self.max == other.max
+            && self.min == other.min
+            && self.n == other.n
+            && self.total_combinations == other.total_combinations
+            && self.prefix_sum == other.prefix_sum
+    }
+}
+
+impl Eq for IrwinHall {}
+
 impl IrwinHall {
     pub fn new() -> Self {
         Self {

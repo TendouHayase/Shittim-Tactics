@@ -7,6 +7,12 @@ pub enum Terrain {
     Indoor,
 }
 
+impl Default for Terrain {
+    fn default() -> Self {
+        Self::Street
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TerrainCombatPowerState {
     SS,

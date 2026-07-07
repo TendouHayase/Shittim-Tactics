@@ -1,17 +1,16 @@
 use std::sync::{Arc, RwLock};
 
 use stochastic::{
-    distributions::{IrwinHall, Normal, Uniform},
+    distributions::{IrwinHall, Uniform},
     utils::build_prefix_sum,
 };
 
 use crate::{
-    base::BaseStats,
-    skill::{Buff, CasterContext, Debuff, Effect, EffectKind, SkillType, TargetContext},
-    types::{ArmorType, AttackType, damage_scale, is_weak},
+    skill::{Buff, CasterContext, Debuff, EffectKind, SkillType, TargetContext},
+    types::{AttackType, damage_scale, is_weak},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Damage {
     pub normal: Uniform,
     pub crit: Uniform,
@@ -19,7 +18,7 @@ pub struct Damage {
     pub crit_den: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DamageCache {
     cached: Option<IrwinHall>,
     last_len: usize,
