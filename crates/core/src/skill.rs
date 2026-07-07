@@ -4,9 +4,9 @@ use std::hash::Hash;
 
 use crate::Position;
 use crate::base::BaseStats;
-use crate::boss::{Boss, BossState, BossStats, BossTrait};
+use crate::boss::{Boss, BossState, BossTrait};
 use crate::damage::{Damage, DamageCache};
-use crate::student::{Student, StudentState, StudentStats};
+use crate::student::{Student, StudentState};
 use crate::types::AttackType;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -140,7 +140,7 @@ impl<'a> CasterContext<'a> {
         for effect in self.effects.iter() {
             if let EffectKind::Buff {
                 ty: t,
-                duration: d,
+                duration: _,
                 scale: s,
                 amount: i,
             } = &effect.kind
@@ -193,7 +193,7 @@ impl<'a> TargetContext<'a> {
         for effect in self.effects.iter() {
             if let EffectKind::Buff {
                 ty: t,
-                duration: d,
+                duration: _,
                 scale: s,
                 amount: i,
             } = &effect.kind

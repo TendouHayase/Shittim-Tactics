@@ -1,10 +1,6 @@
 use std::{fmt::Debug, rc::Rc};
 
-use crate::{
-    Position,
-    base::BaseStats,
-    skill::{SkillEffect, Skill},
-};
+use crate::{base::BaseStats, skill::Skill};
 
 pub trait Character: Debug {
     fn id(&self) -> u32;

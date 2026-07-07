@@ -9,7 +9,7 @@ use crate::{
     base::BaseStats,
     damage::{Damage, DamageCache},
     difficulty::Difficulty,
-    skill::{Effect, Skill, SkillEffect},
+    skill::{Effect, Skill},
     terrains::Terrain,
     types::AttackType,
 };

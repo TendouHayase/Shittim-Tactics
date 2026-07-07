@@ -31,7 +31,7 @@ pub struct TerrainCombatPower {
 }
 
 impl TerrainCombatPower {
-    fn new(
+    pub fn new(
         street: TerrainCombatPowerState,
         outdoor: TerrainCombatPowerState,
         indoor: TerrainCombatPowerState,
@@ -43,7 +43,7 @@ impl TerrainCombatPower {
         }
     }
 
-    fn get_damage_rate(&self, terrain: Terrain) -> f32 {
+    pub fn get_damage_rate(&self, terrain: Terrain) -> f32 {
         match terrain {
             Terrain::Street => match self.street {
                 TerrainCombatPowerState::SS => return 1.3,

@@ -1,9 +1,6 @@
 use std::rc::Rc;
 
-use crate::{
-    character::Character,
-    skill::{Skill, SkillContext},
-};
+use crate::{character::Character, skill::Skill};
 
 #[derive(Debug, Clone)]
 pub struct Action<'a, T: Skill + ?Sized> {

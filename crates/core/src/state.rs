@@ -1,6 +1,6 @@
 use crate::{
-    boss::{Boss, BossState, BossStats, BossTrait},
-    student::{Student, StudentState},
+    boss::{BossState, BossTrait},
+    student::StudentState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

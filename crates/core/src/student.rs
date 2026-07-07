@@ -9,7 +9,7 @@ use crate::{
     base::BaseStats,
     character::Character,
     damage::{Damage, DamageCache},
-    skill::{Effect, Skill, SkillEffect},
+    skill::{Effect, Skill},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]

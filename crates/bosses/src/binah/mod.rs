@@ -1,8 +1,8 @@
 use core::{
     base::BaseStats,
-    boss::{Boss, BossStats, BossTrait},
+    boss::{BossStats, BossTrait},
     difficulty::Difficulty,
-    skill::{SkillEffect, Skill},
+    skill::{Skill, SkillEffect},
     terrains::Terrain,
     types::AttackType,
 };
@@ -19,11 +19,11 @@ mod skills;
 #[derive(Debug, TypedBuilder)]
 pub struct Binah {
     stats: BossStats,
-    difficulty: Difficulty,
-    phase_switching_hp: [u64; 2],
-    skills: Box<Vec<Box<dyn Skill>>>,
+    pub difficulty: Difficulty,
+    pub phase_switching_hp: [u64; 2],
+    pub skills: Box<Vec<Box<dyn Skill>>>,
     #[builder(default)]
-    effects: Vec<SkillEffect>,
+    pub effects: Vec<SkillEffect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
