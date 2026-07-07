@@ -1,4 +1,4 @@
-use std::{hash::Hash, rc::Rc};
+use std::{collections::LinkedList, hash::Hash, rc::Rc};
 
 use typed_builder::TypedBuilder;
 
@@ -9,7 +9,7 @@ use crate::{
     base::BaseStats,
     character::Character,
     damage::{Damage, DamageCache},
-    skill::{Effect, Skill},
+    skill::{Effect, Skill, SkillEffect},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -41,30 +41,30 @@ pub struct StudentSpec {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StudentStats {
-    pub student_stats: Rc<StudentSpec>,
+    pub student_stats: Box<StudentSpec>,
     pub base_stats: BaseStats,
-
-    /// These are the student's coordinates.
-    pub coordinate: Position,
-
-    /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
-    pub cooldowns: [u32; 4],
-
-    pub effects: Vec<Effect>,
 }
 #[derive(Debug, Clone)]
 pub struct Student {
     pub stats: StudentStats,
 
-    pub accumulated_damage: Vec<Damage>,
-    pub accumulated_damage_cache: DamageCache,
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
     pub skills: Rc<Vec<Rc<dyn Skill>>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudentState<'a> {
+    pub student: &'a Student,
+    pub accumulated_damage: Vec<Damage>,
+    pub accumulated_damage_cache: DamageCache,
+    pub coordinate: Position,
+    pub cooldowns: [u32; 4],
+    pub effects: LinkedList<Effect>,
+}
+
 impl PartialEq for Student {
     fn eq(&self, other: &Self) -> bool {
-        self.stats == other.stats && self.accumulated_damage == other.accumulated_damage
+        self.stats == other.stats
     }
 }
 
@@ -75,23 +75,6 @@ impl Character for Student {
 
     fn stats(&self) -> &BaseStats {
         &self.stats.base_stats
-    }
-
-    fn effects(&self) -> &Vec<Effect> {
-        &self.stats.effects
-    }
-
-    fn position(&self) -> &Position {
-        &self.stats.coordinate
-    }
-
-    fn decrease_hp(&mut self, amount: u64) {
-        self.stats.base_stats.hp -= amount;
-    }
-
-    fn walk(&mut self, x: f32, y: f32) {
-        self.stats.coordinate.x = ordered_float::OrderedFloat(x);
-        self.stats.coordinate.y = ordered_float::OrderedFloat(y);
     }
 
     fn skill_list(&self) -> Rc<Vec<Rc<dyn Skill>>> {

@@ -1,4 +1,4 @@
-use core::{skill::Effect, terrains::Terrain, types::AttackType};
+use core::{skill::SkillEffect, terrains::Terrain, types::AttackType};
 
 use error::Error;
 

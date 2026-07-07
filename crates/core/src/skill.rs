@@ -1,11 +1,12 @@
+use std::collections::LinkedList;
 use std::fmt::Debug;
 use std::hash::Hash;
 
 use crate::Position;
 use crate::base::BaseStats;
-use crate::boss::{Boss, BossStats, BossTrait};
+use crate::boss::{Boss, BossState, BossStats, BossTrait};
 use crate::damage::{Damage, DamageCache};
-use crate::student::{Student, StudentStats};
+use crate::student::{Student, StudentState, StudentStats};
 use crate::types::AttackType;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,6 +19,7 @@ pub enum Buff {
     ExSkillDmgDealt,
     DmgDealt,
     Def,
+    CostRecovery,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -30,6 +32,7 @@ pub enum Debuff {
     BasicProficiency,
     DmgDealt,
     Def,
+    CostRecovery,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -66,17 +69,24 @@ pub enum EffectKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum EffectTarget {
+pub struct Effect {
+    pub name: &'static str,
+    pub kind: EffectKind,
+    pub timing: EffectTiming,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SkillEffectTarget {
     Boss,
     Student,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Effect {
+pub struct SkillEffect {
     pub name: &'static str,
     pub kind: EffectKind,
     pub timing: EffectTiming,
-    pub targets: Vec<EffectTarget>,
+    pub targets: Vec<SkillEffectTarget>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -94,24 +104,24 @@ pub trait Skill: Debug {
     fn cost(&self) -> u8;
     fn frames(&self) -> u32;
     fn skill_type(&self) -> SkillType;
-    fn effects(&self) -> Vec<Effect>;
+    fn effects(&self) -> Vec<SkillEffect>;
     fn apply(&self, caster: &mut CasterContext, targets: &mut Vec<TargetContext>);
 }
 
 #[derive(Debug)]
 pub struct CasterContext<'a> {
-    pub stats: &'a mut BaseStats,
-    pub effects: &'a mut Vec<Effect>,
+    pub stats: &'a BaseStats,
+    pub effects: &'a mut LinkedList<Effect>,
     pub position: &'a mut Position,
     pub skill_type: SkillType,
 }
 
 #[derive(Debug)]
 pub struct TargetContext<'a> {
-    pub stats: &'a mut BaseStats,
+    pub stats: &'a BaseStats,
     pub accumulated_damage: &'a mut Vec<Damage>,
     pub accumulated_damage_cached: &'a mut DamageCache,
-    pub effects: &'a mut Vec<Effect>,
+    pub effects: &'a mut LinkedList<Effect>,
     pub position: &'a mut Position,
 }
 
@@ -148,11 +158,28 @@ impl<'a> CasterContext<'a> {
         (result + inc) * (scale as u32)
     }
 
-    pub fn from_student(student: &'a mut Student, skill_type: SkillType) -> Self {
+    pub fn from_student(
+        student: &'a Student,
+        state: &'a mut StudentState,
+        skill_type: SkillType,
+    ) -> Self {
         CasterContext {
-            stats: &mut student.stats.base_stats,
-            effects: &mut student.stats.effects,
-            position: &mut student.stats.coordinate,
+            stats: &student.stats.base_stats,
+            effects: &mut state.effects,
+            position: &mut state.coordinate,
+            skill_type,
+        }
+    }
+
+    pub fn from_boss<T: BossTrait>(
+        boss: &'a Boss<T>,
+        state: &'a mut BossState<T>,
+        skill_type: SkillType,
+    ) -> Self {
+        CasterContext {
+            stats: &boss.stats.base_stats,
+            effects: &mut state.effects,
+            position: &mut state.coordinate,
             skill_type,
         }
     }
@@ -184,23 +211,26 @@ impl<'a> TargetContext<'a> {
         (result + inc) * (scale as u32)
     }
 
-    pub fn from_student(student: &'a mut Student) -> Self {
+    pub fn from_student(student: &'a Student, state: &'a mut StudentState) -> Self {
         TargetContext {
-            stats: &mut student.stats.base_stats,
-            effects: &mut student.stats.effects,
-            position: &mut student.stats.coordinate,
-            accumulated_damage: &mut student.accumulated_damage,
-            accumulated_damage_cached: &mut student.accumulated_damage_cache,
+            stats: &student.stats.base_stats,
+            effects: &mut state.effects,
+            position: &mut state.coordinate,
+            accumulated_damage: &mut state.accumulated_damage,
+            accumulated_damage_cached: &mut state.accumulated_damage_cache,
         }
     }
 
-    pub fn from_boss(boss: &'a mut Boss<impl BossTrait>) -> Self {
+    pub fn from_boss(
+        boss: &'a Boss<impl BossTrait>,
+        state: &'a mut BossState<impl BossTrait>,
+    ) -> Self {
         TargetContext {
-            stats: &mut boss.stats.base_stats,
-            accumulated_damage: &mut boss.accumulated_damage,
-            accumulated_damage_cached: &mut boss.accumulated_damage_cache,
-            effects: &mut boss.effects,
-            position: &mut boss.coordinate,
+            stats: &boss.stats.base_stats,
+            accumulated_damage: &mut state.accumulated_damage,
+            accumulated_damage_cached: &mut state.accumulated_damage_cache,
+            effects: &mut state.effects,
+            position: &mut state.coordinate,
         }
     }
 }

@@ -2,7 +2,7 @@ use core::{
     base::BaseStats,
     boss::{Boss, BossStats, BossTrait},
     difficulty::Difficulty,
-    skill::{Effect, Skill},
+    skill::{SkillEffect, Skill},
     terrains::Terrain,
     types::AttackType,
 };
@@ -23,7 +23,7 @@ pub struct Binah {
     phase_switching_hp: [u64; 2],
     skills: Box<Vec<Box<dyn Skill>>>,
     #[builder(default)]
-    effects: Vec<Effect>,
+    effects: Vec<SkillEffect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

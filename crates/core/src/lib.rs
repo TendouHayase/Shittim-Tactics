@@ -12,7 +12,7 @@ pub mod student;
 pub mod terrains;
 pub mod types;
 
-const TPS: u32 = 30;
+pub const TPS: u32 = 30;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Position {

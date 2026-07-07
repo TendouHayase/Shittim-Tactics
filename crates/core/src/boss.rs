@@ -1,3 +1,5 @@
+use std::{collections::LinkedList, rc::Rc};
+
 use error::Error;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
@@ -7,7 +9,7 @@ use crate::{
     base::BaseStats,
     damage::{Damage, DamageCache},
     difficulty::Difficulty,
-    skill::Effect,
+    skill::{Effect, Skill, SkillEffect},
     terrains::Terrain,
     types::AttackType,
 };
@@ -22,18 +24,31 @@ pub struct BossStats {
     pub groggy_duration: u8,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Boss<T: BossTrait> {
     pub stats: BossStats,
     pub other_stats: T,
+    pub skills: Rc<Vec<Rc<dyn Skill>>>,
+}
 
+impl<T: BossTrait> PartialEq for Boss<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.stats == other.stats
+    }
+}
+
+impl<T: BossTrait> Eq for Boss<T> {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BossState<'a, T: BossTrait> {
+    pub boss: &'a Boss<T>,
     /// These are the student's coordinates.
     pub coordinate: Position,
 
     /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
-    pub cooldowns: [u32; 4],
+    pub cooldowns: Vec<u32>,
 
-    pub effects: Vec<Effect>,
+    pub effects: LinkedList<Effect>,
 
     pub accumulated_damage: Vec<Damage>,
     pub accumulated_damage_cache: DamageCache,

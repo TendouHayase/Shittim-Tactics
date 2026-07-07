@@ -2,8 +2,8 @@ use core::{
     damage::Damage,
     difficulty::Difficulty,
     skill::{
-        CasterContext, Debuff::Def, Effect, EffectKind, EffectTarget, EffectTiming, Skill,
-        SkillType::Ex, TargetContext,
+        CasterContext, Debuff::Def, EffectKind, EffectTiming, Skill, SkillEffect,
+        SkillEffectTarget, SkillType::Ex, TargetContext,
     },
 };
 
@@ -24,7 +24,7 @@ impl Skill for AtsilutsLight {
         1
     }
 
-    fn effects(&self) -> Vec<Effect> {
+    fn effects(&self) -> Vec<SkillEffect> {
         let duration: u32;
 
         match self.difficulty {
@@ -34,13 +34,13 @@ impl Skill for AtsilutsLight {
         }
 
         vec![
-            Effect {
+            SkillEffect {
                 name: Self::SKILL_1,
                 kind: EffectKind::Damage,
                 timing: EffectTiming::Instant,
                 targets: vec![],
             },
-            Effect {
+            SkillEffect {
                 name: Self::SKILL_2,
                 kind: EffectKind::DamageRegion {
                     length: 2200,
@@ -102,12 +102,12 @@ impl Skill for FiresofSeverity1 {
         core::skill::SkillType::Ex
     }
 
-    fn effects(&self) -> Vec<Effect> {
-        vec![Effect {
+    fn effects(&self) -> Vec<SkillEffect> {
+        vec![SkillEffect {
             name: Self::NAME,
             kind: EffectKind::Damage,
             timing: EffectTiming::Instant,
-            targets: vec![EffectTarget::Student; 4],
+            targets: vec![SkillEffectTarget::Student; 4],
         }]
     }
 
@@ -164,12 +164,12 @@ impl Skill for FireofSeverity2 {
         1
     }
 
-    fn effects(&self) -> Vec<Effect> {
-        vec![Effect {
+    fn effects(&self) -> Vec<SkillEffect> {
+        vec![SkillEffect {
             name: Self::NAME,
             kind: EffectKind::Damage,
             timing: EffectTiming::Instant,
-            targets: vec![EffectTarget::Student; 4],
+            targets: vec![SkillEffectTarget::Student; 4],
         }]
     }
 
@@ -244,8 +244,8 @@ impl Skill for PurifyingStorm {
         core::skill::SkillType::Ex
     }
 
-    fn effects(&self) -> Vec<Effect> {
-        vec![Effect {
+    fn effects(&self) -> Vec<SkillEffect> {
+        vec![SkillEffect {
             name: "PurifyingStorm",
             kind: EffectKind::Debuff {
                 ty: Def,
@@ -254,7 +254,7 @@ impl Skill for PurifyingStorm {
                 amount: 0,
             },
             timing: EffectTiming::Instant,
-            targets: vec![EffectTarget::Student; 4],
+            targets: vec![SkillEffectTarget::Student; 4],
         }]
     }
 

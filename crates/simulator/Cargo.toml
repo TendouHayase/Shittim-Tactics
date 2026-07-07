@@ -7,3 +7,4 @@ edition = "2024"
 core = {path= "../core"}
 bosses = {path= "../bosses"}
 error = {path = "../error"}
+allocator = {path = "../allocator"}

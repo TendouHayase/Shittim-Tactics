@@ -180,6 +180,7 @@ impl Damage {
                         target_def -= decrease;
                         target_def_scale -= scale;
                     }
+                    _ => (),
                 },
                 _ => (),
             }
