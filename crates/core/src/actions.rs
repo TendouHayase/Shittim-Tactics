@@ -3,14 +3,14 @@ use std::rc::Rc;
 use crate::{character::Character, skill::Skill};
 
 #[derive(Debug, Clone)]
-pub struct Action<'a, T: Skill + ?Sized> {
-    pub caster: &'a dyn Character,
-    pub targets: Vec<&'a dyn Character>,
+pub struct Action<T: Skill + ?Sized> {
+    pub caster: u32,
+    pub targets: Vec<u32>,
     pub skill: Rc<T>,
 }
 
 #[derive(Debug)]
-pub enum ActionContext<'a, T: Skill + ?Sized> {
+pub enum ActionContext<T: Skill + ?Sized> {
     Wait,
-    Use(Action<'a, T>),
+    Use(Action<T>),
 }

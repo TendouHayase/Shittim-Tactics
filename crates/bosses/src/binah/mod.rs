@@ -1,6 +1,6 @@
 use core::{
     base::BaseStats,
-    boss::{BossStats, BossTrait},
+    boss::{BossBehavior, BossStats},
     difficulty::Difficulty,
     skill::{Skill, SkillEffect},
     terrains::Terrain,
@@ -36,7 +36,7 @@ struct DifficultyWrapper {
     phase_switching_hp: [u64; 2],
 }
 
-impl BossTrait for Binah {
+impl Binah {
     fn from_file(
         difficulty: Difficulty,
         attack_type: AttackType,

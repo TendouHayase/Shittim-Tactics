@@ -2,9 +2,9 @@ use core::{
     damage::Damage,
     difficulty::Difficulty,
     skill::{
-        CasterContext, Debuff::Def, EffectKind, EffectTiming, Skill, SkillEffect,
-        SkillEffectTarget, SkillType::Ex, TargetContext,
+        Debuff::Def, EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget, SkillType::Ex,
     },
+    state::{AccumulatedDamage, StateData},
 };
 
 #[derive(Debug)]
@@ -20,12 +20,12 @@ impl Skill for AtsilutsLight {
         0
     }
 
-    fn frames(&self) -> u32 {
+    fn frames(&self) -> u16 {
         1
     }
 
     fn effects(&self) -> Vec<SkillEffect> {
-        let duration: u32;
+        let duration: u16;
 
         match self.difficulty {
             Difficulty::Torment => duration = 15 * 30,
@@ -55,7 +55,11 @@ impl Skill for AtsilutsLight {
         ]
     }
 
-    fn apply(&self, caster: &mut CasterContext, target: &mut Vec<TargetContext>) {
+    fn apply<'a: 'b, 'b, 'c: 'b>(
+        &self,
+        caster: &'b StateData<'a>,
+        targets: &'b Vec<&'c StateData<'a>>,
+    ) -> Vec<StateData<'a>> {
         todo!()
     }
 
@@ -90,7 +94,7 @@ impl Skill for FiresofSeverity1 {
         0
     }
 
-    fn frames(&self) -> u32 {
+    fn frames(&self) -> u16 {
         1
     }
 
@@ -111,7 +115,11 @@ impl Skill for FiresofSeverity1 {
         }]
     }
 
-    fn apply(&self, caster: &mut CasterContext, targets: &mut Vec<TargetContext>) {
+    fn apply<'a: 'b, 'b, 'c: 'b>(
+        &self,
+        caster: &'b StateData<'a>,
+        targets: &'b Vec<&'c StateData<'a>>,
+    ) -> Vec<StateData<'a>> {
         let dmg_num;
         let dmg_den;
 
@@ -126,11 +134,34 @@ impl Skill for FiresofSeverity1 {
             }
         }
 
-        for target in targets.iter_mut() {
-            let d = Damage::from_skill_context(caster, target, dmg_num, dmg_den);
-            target.accumulated_damage.push(d);
-            target.accumulated_damage_cached.append(&d);
+        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
+
+        for &target in targets.iter() {
+            let d = caster.effects.damage();
+
+            let mut ac_dmg = target.accumulated_damage.clone();
+            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
+
+            if let Some(damage) = d {
+                ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
+                ac_dmg.push(AccumulatedDamage {
+                    damage: target.effects.clone(),
+                    ticks: self.frames(),
+                });
+            }
+
+            result.push(StateData::from_parts(
+                target.character,
+                target.coordinate,
+                &target.cooldowns,
+                &target.effects,
+                &target.remained_effects,
+                &ac_dmg,
+                ac_dmg_cache,
+            ));
         }
+
+        result
     }
 }
 
@@ -160,7 +191,7 @@ impl Skill for FireofSeverity2 {
         0
     }
 
-    fn frames(&self) -> u32 {
+    fn frames(&self) -> u16 {
         1
     }
 
@@ -177,7 +208,11 @@ impl Skill for FireofSeverity2 {
         Ex
     }
 
-    fn apply(&self, caster: &mut CasterContext, targets: &mut Vec<TargetContext>) {
+    fn apply<'a: 'b, 'b, 'c: 'b>(
+        &self,
+        caster: &'b StateData<'a>,
+        targets: &'b Vec<&'c StateData<'a>>,
+    ) -> Vec<StateData<'a>> {
         let dmg_num;
         let mut dmg_den;
 
@@ -198,16 +233,40 @@ impl Skill for FireofSeverity2 {
             "Fire of Severity 2 Skill is not a target of 4 people"
         );
 
-        for (i, target) in targets.iter_mut().enumerate() {
-            let d = Damage::from_skill_context(caster, target, dmg_num, dmg_den);
-            target.accumulated_damage.push(d);
-            target.accumulated_damage_cached.append(&d);
+        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
+
+        for (i, &target) in targets.iter().enumerate() {
+            let d = caster.effects.damage();
+
+            let mut ac_dmg = target.accumulated_damage.clone();
+            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
+
+            if let Some(damage) = d {
+                ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
+                ac_dmg.push(AccumulatedDamage {
+                    damage: target.effects.clone(),
+                    ticks: self.frames(),
+                });
+            }
+
+            result.push(StateData::from_parts(
+                target.character,
+                target.coordinate,
+                &target.cooldowns,
+                &target.effects,
+                &target.remained_effects,
+                &ac_dmg,
+                ac_dmg_cache,
+            ));
+
             if i == 0 {
                 dmg_den *= 2;
             } else if i == 2 {
                 dmg_den *= 2;
             }
         }
+
+        result
     }
 }
 
@@ -232,7 +291,7 @@ impl Skill for PurifyingStorm {
         3
     }
 
-    fn frames(&self) -> u32 {
+    fn frames(&self) -> u16 {
         todo!()
     }
 
@@ -258,12 +317,39 @@ impl Skill for PurifyingStorm {
         }]
     }
 
-    fn apply(&self, caster: &mut CasterContext, targets: &mut Vec<TargetContext>) {
-        for target in targets.iter_mut() {
-            let dmg = Damage::from_skill_context(caster, target, 300, 1);
-            target.accumulated_damage.push(dmg);
-            target.accumulated_damage_cached.append(&dmg);
+    fn apply<'a: 'b, 'b, 'c: 'b>(
+        &self,
+        caster: &'b StateData<'a>,
+        targets: &'b Vec<&'c StateData<'a>>,
+    ) -> Vec<StateData<'a>> {
+        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
+
+        for &target in targets.iter() {
+            let d = caster.effects.damage();
+
+            let mut ac_dmg = target.accumulated_damage.clone();
+            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
+
+            if let Some(damage) = d {
+                ac_dmg_cache.append(&(damage * 3));
+                ac_dmg.push(AccumulatedDamage {
+                    damage: target.effects.clone(),
+                    ticks: self.frames(),
+                });
+            }
+
+            result.push(StateData::from_parts(
+                target.character,
+                target.coordinate,
+                &target.cooldowns,
+                &target.effects,
+                &target.remained_effects,
+                &ac_dmg,
+                ac_dmg_cache,
+            ));
         }
+
+        result
     }
 }
 

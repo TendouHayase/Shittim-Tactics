@@ -3,13 +3,6 @@
 version = 4
 
 [[package]]
-name = "allocator"
-version = "0.1.0"
-dependencies = [
- "error",
-]
-
-[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -173,10 +166,10 @@ dependencies = [
 name = "simulator"
 version = "0.1.0"
 dependencies = [
- "allocator",
  "bosses",
  "core",
  "error",
+ "typed-arena",
 ]
 
 [[package]]
@@ -190,7 +183,6 @@ dependencies = [
 name = "stochastic"
 version = "0.1.0"
 dependencies = [
- "allocator",
  "approx",
  "distrs",
  "error",
@@ -207,6 +199,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "typed-arena"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 
 [[package]]
 name = "typed-builder"

@@ -1,10 +1,24 @@
 use std::rc::Rc;
 
-use crate::{actions::ActionContext, boss::BossTrait, skill::Skill, state::State};
+use crate::{
+    actions::ActionContext,
+    boss::BossBehavior,
+    damage::{Damage, key::DamageKey},
+    skill::Skill,
+    state::{State, Stateful},
+};
 
-pub trait Simulator<T: BossTrait> {
-    fn legal_actions(&self, state: &State<T>) -> Vec<Rc<dyn Skill>>;
-    fn apply<'a>(&self, state: &'a State<T>, action: &ActionContext<dyn Skill>) -> State<'a, T>;
-    fn advance<'a>(&'a self, state: &'a State<T>, delta_ticks: u32) -> State<'a, T>;
-    fn next_event_frames(&self, state: &State<T>) -> u32;
+pub trait Simulator {
+    fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<Rc<dyn Skill>>;
+    fn apply<'a, 'b, 'c>(
+        &self,
+        state: &'b impl Stateful<'a>,
+        action: &'b ActionContext<dyn Skill + 'c>,
+    ) -> Result<impl Stateful<'a>, error::Error>;
+    fn advance<'a, 'b>(
+        &self,
+        state: &'b impl Stateful<'a>,
+        delta_ticks: u16,
+    ) -> Result<impl Stateful<'a>, error::Error>;
+    fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16;
 }

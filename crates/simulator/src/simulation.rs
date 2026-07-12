@@ -4,357 +4,257 @@ use core::{
         Action,
         ActionContext::{self},
     },
-    boss::{Boss, BossState, BossTrait},
+    boss::{Boss, BossBehavior},
+    character::Character,
+    damage::{
+        Damage,
+        key::{DamageKey, SkillsBitMask},
+    },
     simulator::Simulator,
-    skill::{
-        Buff, CasterContext, Debuff, Effect, EffectKind, EffectTiming, Skill, SkillContext,
-        TargetContext,
-    },
-    state::{
-        State::{self, Assault, RestrictionRelease},
-        StateData,
-    },
-    student::{Student, StudentState},
+    skill::{Buff, Debuff, Effect, EffectKind, EffectTiming, Skill},
+    state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
+    student::Student,
+    terrains::TerrainCombatPowerState::C,
 };
-use std::{collections::LinkedList, rc::Rc};
+use std::{
+    collections::{BinaryHeap, HashMap, LinkedList, VecDeque},
+    rc::Rc,
+};
 
-use allocator::pool::PoolAllocator;
+use error::Error;
 
-pub struct Simulation<'a: 'b, 'b, T: BossTrait> {
+pub struct Simulation<'a, T: BossBehavior + Clone, const N: usize> {
     pub students: Vec<Student>,
     pub boss: Boss<T>,
 
-    pub g_cost: f64,
-    pub score: f64,
+    pub damage_list: HashMap<SkillsBitMask, Damage>,
+    pub one_cost_charge_time_list: HashMap<SkillsBitMask, u16>,
 
-    pub allocator: PoolAllocator<'a, State<'b, T>>,
+    pub allocator: typed_arena::Arena<State<'a, N>>,
 }
 
-impl<'b, 'c, T: BossTrait + Clone> Simulator<T> for Simulation<'_, 'b, T> {
-    fn legal_actions(&self, state: &core::state::State<T>) -> Vec<Rc<dyn Skill>> {
-        match state {
-            Assault(content) => {
-                let cost = content.cost;
-                let mut result = vec![];
-                for (i, stat) in content.students.iter().enumerate() {
-                    for (j, cooltime) in stat.cooldowns.iter().enumerate() {
-                        let skill = self.students[i].skills[j].clone();
-                        if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
-                            result.push(skill);
-                        }
-                    }
+impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N> {
+    fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<Rc<dyn Skill>> {
+        let cost = state.cost();
+        let mut result = vec![];
+        for (i, stat) in state.students().iter().enumerate() {
+            for (j, cooltime) in stat.cooldowns.iter().enumerate() {
+                let skill = self.students[i].skills[j].clone();
+                if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
+                    result.push(skill);
                 }
-
-                result
-            }
-            RestrictionRelease(content) => {
-                let cost = content.cost;
-                let mut result = vec![];
-                for (i, stat) in content.students.iter().enumerate() {
-                    for (j, cooltime) in stat.cooldowns.iter().enumerate() {
-                        let skill = self.students[i].skills[j].clone();
-                        if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
-                            result.push(skill);
-                        }
-                    }
-                }
-
-                result
             }
         }
-    }
-
-    fn apply<'a>(
-        &self,
-        state: &'a State<T>,
-        action: &core::actions::ActionContext<dyn Skill>,
-    ) -> core::state::State<'a, T> {
-        let action = match action {
-            ActionContext::Wait => return state.clone(),
-            ActionContext::Use(action) => action,
-        };
-
-        match state {
-            Assault(data) => {
-                let mut new_data = data.clone();
-                Simulation::apply_action_to_data(&mut new_data, action);
-                State::Assault(data.clone())
-            }
-            RestrictionRelease(data) => {
-                let mut new_data = data.clone();
-                Simulation::apply_action_to_data(&mut new_data, action);
-                State::RestrictionRelease(data.clone())
-            }
-        }
-    }
-
-    fn advance<'a>(&'a self, state: &'a State<T>, delta_ticks: u32) -> State<'a, T> {
-        let mut boss_state = state.boss();
-        let students_state = state.students();
-
-        let cost_buff_amount: i32 = students_state
-            .iter()
-            .map(|student| {
-                let result: i32 = student
-                    .effects
-                    .iter()
-                    .map(|effect| match &effect.kind {
-                        EffectKind::Buff {
-                            ty,
-                            duration: _,
-                            scale: _,
-                            amount,
-                        } => {
-                            if *ty == Buff::CostRecovery {
-                                *amount as i32
-                            } else {
-                                0
-                            }
-                        }
-                        EffectKind::Debuff {
-                            ty,
-                            duration: _,
-                            scale: _,
-                            amount,
-                        } => {
-                            if *ty == Debuff::CostRecovery {
-                                -1 * *amount as i32
-                            } else {
-                                0
-                            }
-                        }
-                        _ => 0,
-                    })
-                    .sum();
-                result
-            })
-            .sum();
-        let cost_buff_scale: i32 = students_state
-            .iter()
-            .map(|student| {
-                let result: i32 = student
-                    .effects
-                    .iter()
-                    .map(|effect| match &effect.kind {
-                        EffectKind::Buff {
-                            ty,
-                            duration: _,
-                            scale,
-                            amount: _,
-                        } => {
-                            if *ty == Buff::CostRecovery {
-                                *scale as i32
-                            } else {
-                                0
-                            }
-                        }
-                        EffectKind::Debuff {
-                            ty,
-                            duration: _,
-                            scale,
-                            amount: _,
-                        } => {
-                            if *ty == Debuff::CostRecovery {
-                                -1 * *scale as i32
-                            } else {
-                                0
-                            }
-                        }
-                        _ => 0,
-                    })
-                    .sum();
-                result
-            })
-            .sum();
-
-        let cost_per_second: u32 = ((students_state
-            .iter()
-            .map(|student| student.student.stats.base_stats.cost_recovery as i32)
-            .sum::<i32>()
-            + cost_buff_amount)
-            * cost_buff_scale
-            / 10000)
-            .max(0) as u32;
-
-        boss_state.effects = boss_state
-            .effects
-            .extract_if(|effect| {
-                effect.timing == EffectTiming::Instant
-                    || match &effect.kind {
-                        EffectKind::Buff {
-                            ty: _,
-                            duration,
-                            scale: _,
-                            amount: _,
-                        } => *duration <= delta_ticks,
-                        EffectKind::Debuff {
-                            ty: _,
-                            duration,
-                            scale: _,
-                            amount: _,
-                        } => *duration <= delta_ticks,
-                        _ => false,
-                    }
-            })
-            .collect();
-
-        match state {
-            State::Assault(data) => {
-                let mut new_student_state = data.students.clone();
-                let _ = new_student_state.iter_mut().map(|student| {
-                    student.effects.extract_if(|effect| {
-                        effect.timing == EffectTiming::Instant
-                            || match &effect.kind {
-                                EffectKind::Buff {
-                                    ty: _,
-                                    duration,
-                                    scale: _,
-                                    amount: _,
-                                } => *duration <= delta_ticks,
-                                EffectKind::Debuff {
-                                    ty: _,
-                                    duration,
-                                    scale: _,
-                                    amount: _,
-                                } => *duration <= delta_ticks,
-                                _ => false,
-                            }
-                    })
-                });
-
-                State::Assault(StateData {
-                    students: new_student_state,
-                    cost: data.cost + (delta_ticks * cost_per_second / TPS).min(10) as i8,
-                    boss: boss_state,
-                })
-            }
-            State::RestrictionRelease(data) => {
-                let mut new_student_state = data.students.clone();
-                for new_student in new_student_state.iter_mut() {
-                    new_student.effects = new_student
-                        .effects
-                        .extract_if(|effect| {
-                            effect.timing == EffectTiming::Instant
-                                || match &effect.kind {
-                                    EffectKind::Buff {
-                                        ty: _,
-                                        duration,
-                                        scale: _,
-                                        amount: _,
-                                    } => *duration <= delta_ticks,
-                                    EffectKind::Debuff {
-                                        ty: _,
-                                        duration,
-                                        scale: _,
-                                        amount: _,
-                                    } => *duration <= delta_ticks,
-                                    _ => false,
-                                }
-                        })
-                        .collect::<LinkedList<Effect>>();
-                }
-
-                State::RestrictionRelease(StateData {
-                    students: new_student_state,
-                    cost: data.cost + (delta_ticks * cost_per_second / TPS).min(10) as i8,
-                    boss: boss_state,
-                })
-            }
-        }
-    }
-
-    fn next_event_frames(&self, state: &State<T>) -> u32 {
-        let mut result: u32 = u32::MAX;
-
-        for student in state.students() {
-            result = *student
-                .cooldowns
-                .iter()
-                .min()
-                .unwrap_or(&u32::MAX)
-                .min(&result);
-        }
-
-        result = *state
-            .boss()
-            .cooldowns
-            .iter()
-            .min()
-            .unwrap_or(&u32::MAX)
-            .min(&result);
 
         result
     }
-}
 
-impl<T: BossTrait> Simulation<'_, '_, T> {
-    pub fn build_skill_context<'a, const N: usize>(
-        data: &'a mut StateData<'a, N, T>,
-        action: &'a Action<'a, dyn Skill>,
-    ) -> SkillContext<'a> {
-        let caster_id = action.caster.id();
-        let caster_idx = Self::find_index::<N>(&data.students, caster_id);
+    fn apply<'a, 'b, 'c>(
+        &self,
+        state: &'b impl Stateful<'a>,
+        action: &'b core::actions::ActionContext<dyn Skill + 'c>,
+    ) -> Result<impl Stateful<'a>, error::Error> {
+        let action = match action {
+            ActionContext::Wait => return Ok((*state).clone()),
+            ActionContext::Use(action) => action,
+        };
 
-        let target_ids: Vec<u32> = action.targets.iter().map(|t| t.id()).collect();
+        let caster_id = action.caster;
 
-        let mut seen = std::collections::HashSet::new();
-        seen.insert(caster_idx);
-        for &id in &target_ids {
-            if id != data.boss.boss.stats.id {
-                let idx = Self::find_index(&data.students, id);
-                assert!(
-                    seen.insert(idx),
-                    "duplicate or self-targeting index detected; handle separately"
-                );
-            }
-        }
+        let target_ids = &action.targets;
 
-        let ptr = data.students.as_mut_ptr();
-        let caster_student = unsafe { &mut *ptr.add(caster_idx) };
-        let caster_ctx = CasterContext::from_student(
-            caster_student.student,
-            caster_student,
-            action.skill.skill_type(),
-        );
+        let mut targets: Vec<&StateData> = Vec::with_capacity(target_ids.len());
 
-        let mut target_contexts = Vec::with_capacity(target_ids.len());
-        for &id in &target_ids {
-            if id == data.boss.boss.stats.id {
-                let boss_ref: &'a mut BossState<'a, T> =
-                    unsafe { &mut *(&mut data.boss as *mut BossState<'a, T>) };
-                target_contexts.push(TargetContext::from_boss(boss_ref.boss, boss_ref));
+        for id in target_ids {
+            if *id == state.boss().character.id() {
+                targets.push(state.boss());
             } else {
-                let idx = Self::find_index(&data.students, id);
-                let student_ref: &'a mut StudentState = unsafe { &mut *ptr.add(idx) };
-                target_contexts.push(TargetContext::from_student(
-                    student_ref.student,
-                    student_ref,
-                ));
+                for student in state.students() {
+                    if *id == student.character.id() {
+                        targets.push(student);
+                    }
+                }
             }
         }
 
-        SkillContext {
-            name: action.skill.name(),
-            caster: caster_ctx,
-            targets: target_contexts,
+        let mut new_state = state.clone();
+
+        {
+            {
+                if caster_id == state.boss().character.id() {
+                    let changed_target = action.skill.apply(new_state.boss(), &targets);
+                    for target in changed_target {
+                        if state.boss().character.id() == target.character.id() {
+                            {
+                                let boss_mut = new_state.boss_mut();
+                                *boss_mut = target;
+                            }
+                        } else {
+                            for student in new_state.students_mut() {
+                                {
+                                    *student = target;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    for student in state.students() {
+                        if caster_id == student.character.id() {
+                            for target in action.skill.apply(student, &targets) {
+                                if state.boss().character.id() == target.character.id() {
+                                    {
+                                        let t = new_state.boss_mut();
+                                        *t = target;
+                                    }
+                                } else {
+                                    for student in new_state.students_mut() {
+                                        *student = target;
+                                        break;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            {}
         }
+
+        Ok(new_state)
     }
 
-    fn apply_action_to_data<'a, const N: usize>(
-        data: &'a mut StateData<'a, N, T>,
-        action: &'a Action<dyn Skill>,
-    ) {
-        let mut skill_context = Self::build_skill_context(data, action);
+    fn advance<'a, 'b>(
+        &self,
+        state: &'b impl Stateful<'a>,
+        delta_ticks: u16,
+    ) -> Result<impl Stateful<'a>, error::Error> {
+        let mut skill_mask = 0u64;
 
-        action
-            .skill
-            .apply(&mut skill_context.caster, &mut skill_context.targets);
+        for student in state.students() {
+            skill_mask |= student.effects.mask.data();
+        }
+
+        skill_mask |= state.boss().effects.mask.data();
+
+        let cost_per_second: u16 = self.one_cost_charge_time_list[&skill_mask.into()].max(0) as u16;
+
+        let boss_effects_len = state.boss().remained_effects.len();
+        let boss_remain_effects_ref = &state.boss().remained_effects;
+        let mut new_boss_remain_effects = BinaryHeap::with_capacity(boss_effects_len);
+        let mut boss_effects_mask = state.boss().effects.clone().mask.data();
+        let mut boss_acc_damage = state.boss().accumulated_damage.clone();
+        let damage = state.boss().effects.damage();
+        for item in boss_remain_effects_ref {
+            let bit = 1u64 << item.bit;
+
+            if item.ticks <= delta_ticks {
+                if damage != None {
+                    boss_acc_damage.push(AccumulatedDamage {
+                        damage: DamageKey::from_mask(
+                            boss_effects_mask.into(),
+                            &state.boss().effects,
+                        ),
+                        ticks: item.ticks,
+                    });
+                }
+                boss_effects_mask &= !bit;
+            } else {
+                if damage != None {
+                    boss_acc_damage.push(AccumulatedDamage {
+                        damage: DamageKey::from_mask(
+                            boss_effects_mask.into(),
+                            &state.boss().effects,
+                        ),
+                        ticks: delta_ticks,
+                    });
+                }
+                new_boss_remain_effects.push(RemainedEffects {
+                    ticks: item.ticks - delta_ticks,
+                    bit: item.bit,
+                });
+            }
+        }
+
+        let boss_effects = DamageKey::from_mask(boss_effects_mask.into(), &state.boss().effects);
+
+        let cooldowns_lambda = |t: &u16| (t - delta_ticks).max(0);
+
+        let mut student_effects_lambda = state.students().iter().map(|student: &StateData<'a>| {
+            let damage = student.effects.damage();
+            let mut acc_damage = student.accumulated_damage.clone();
+
+            let effects_len = student.remained_effects.len();
+            let mut new_remain_effects = BinaryHeap::with_capacity(effects_len);
+            let mut effects_mask = student.effects.clone().mask.data();
+            for item in &student.remained_effects {
+                let bit = 1u64 << item.bit;
+
+                if item.ticks <= delta_ticks {
+                    if damage != None {
+                        acc_damage.push(AccumulatedDamage {
+                            damage: DamageKey::from_mask(effects_mask.into(), &student.effects),
+                            ticks: item.ticks,
+                        });
+                    }
+                    effects_mask &= !bit;
+                } else {
+                    if damage != None {
+                        acc_damage.push(AccumulatedDamage {
+                            damage: DamageKey::from_mask(effects_mask.into(), &student.effects),
+                            ticks: delta_ticks,
+                        });
+                    }
+                    new_remain_effects.push(RemainedEffects {
+                        ticks: item.ticks - delta_ticks,
+                        bit: item.bit,
+                    });
+                }
+            }
+
+            StateData {
+                character: student.character,
+                coordinate: student.coordinate,
+                accumulated_damage_cache: student.accumulated_damage_cache.clone(),
+                cooldowns: student
+                    .cooldowns
+                    .iter()
+                    .map(|i| (i - delta_ticks).max(0))
+                    .collect(),
+                effects: DamageKey::from_mask(effects_mask.into(), &student.effects),
+                remained_effects: new_remain_effects,
+                accumulated_damage: acc_damage,
+            }
+        });
+
+        let new_students: [StateData<'a>; N] =
+            std::array::from_fn(|_| student_effects_lambda.next().unwrap());
+        Ok(State {
+            students: new_students,
+            cost: (state.cost() + (delta_ticks * cost_per_second / TPS) as i8).min(10),
+            boss: state.boss().clone_matching(
+                cooldowns_lambda,
+                boss_effects,
+                new_boss_remain_effects,
+            ),
+            frames: state.frames() + delta_ticks as u16,
+        })
     }
 
-    fn find_index<const N: usize>(students: &[StudentState; N], id: u32) -> usize {
-        students
-            .iter()
-            .position(|s| s.student.stats.student_stats.id == id)
-            .expect("caster or target id not found in current state")
+    fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16 {
+        let mut result: u16 = u16::MAX;
+
+        for student in state.students() {
+            for i in &student.cooldowns {
+                result = result.min(*i);
+            }
+        }
+
+        for i in &state.boss().cooldowns {
+            result = result.min(*i);
+        }
+
+        result
     }
 }

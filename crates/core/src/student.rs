@@ -1,16 +1,10 @@
-use std::{collections::LinkedList, hash::Hash, rc::Rc};
+use std::{hash::Hash, rc::Rc};
 
 use typed_builder::TypedBuilder;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    Position,
-    base::BaseStats,
-    character::Character,
-    damage::{Damage, DamageCache},
-    skill::{Effect, Skill},
-};
+use crate::{base::BaseStats, character::Character, skill::Skill};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
 pub struct StudentSpec {
@@ -49,17 +43,7 @@ pub struct Student {
     pub stats: StudentStats,
 
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
-    pub skills: Rc<Vec<Rc<dyn Skill>>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StudentState<'a> {
-    pub student: &'a Student,
-    pub accumulated_damage: Vec<Damage>,
-    pub accumulated_damage_cache: DamageCache,
-    pub coordinate: Position,
-    pub cooldowns: [u32; 4],
-    pub effects: LinkedList<Effect>,
+    pub skills: Vec<Rc<dyn Skill>>,
 }
 
 impl PartialEq for Student {
@@ -77,8 +61,8 @@ impl Character for Student {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> Rc<Vec<Rc<dyn Skill>>> {
-        self.skills.clone()
+    fn skill_list(&self) -> &Vec<Rc<dyn Skill>> {
+        &self.skills
     }
 }
 

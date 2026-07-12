@@ -12,9 +12,10 @@ pub mod student;
 pub mod terrains;
 pub mod types;
 
-pub const TPS: u32 = 30;
+pub const TPS: u16 = 30;
+pub const MAX_STUDENT_COUNT: usize = 10;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Hash)]
 pub struct Position {
     pub x: OrderedFloat<f32>,
     pub y: OrderedFloat<f32>,

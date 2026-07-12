@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-allocator = {path="../allocator"}
 distrs = "0.2.3"
 error = {path = "../error"}
 num-traits = "0.2.19"

@@ -5,13 +5,8 @@ use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 use crate::{
-    Position,
-    base::BaseStats,
-    damage::{Damage, DamageCache},
-    difficulty::Difficulty,
-    skill::{Effect, Skill},
+    base::BaseStats, character::Character, damage::cache::DamageCache, skill::Skill,
     terrains::Terrain,
-    types::AttackType,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -25,44 +20,36 @@ pub struct BossStats {
 }
 
 #[derive(Debug, Clone)]
-pub struct Boss<T: BossTrait> {
+pub struct Boss<T: BossBehavior> {
     pub stats: BossStats,
     pub other_stats: T,
-    pub skills: Rc<Vec<Rc<dyn Skill>>>,
+    pub skills: Vec<Rc<dyn Skill>>,
 }
 
-impl<T: BossTrait> PartialEq for Boss<T> {
+impl<T: BossBehavior + PartialEq> PartialEq for Boss<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.stats == other.stats
+        self.stats == other.stats && self.other_stats == other.other_stats
     }
 }
 
-impl<T: BossTrait> Eq for Boss<T> {}
+impl<T: BossBehavior + PartialEq> Eq for Boss<T> {}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BossState<'a, T: BossTrait> {
-    pub boss: &'a Boss<T>,
-    /// These are the student's coordinates.
-    pub coordinate: Position,
+impl<T: Character + BossBehavior> Character for Boss<T> {
+    fn id(&self) -> u32 {
+        self.stats.id
+    }
 
-    /// These are the cooldowns for EX, Basic, Enhanced, and Sub Skills.
-    pub cooldowns: Vec<u32>,
+    fn stats(&self) -> &BaseStats {
+        &self.stats.base_stats
+    }
 
-    pub effects: LinkedList<Effect>,
-
-    pub accumulated_damage: Vec<Damage>,
-    pub accumulated_damage_cache: DamageCache,
+    fn skill_list(&self) -> &Vec<Rc<dyn Skill>> {
+        &self.skills
+    }
 }
 
-pub trait BossTrait {
-    /// Generates bosses with stats tailored to the difficulty, attack type, and terrain.
-    fn from_file(
-        difficulty: Difficulty,
-        attack_type: AttackType,
-        terrain: Terrain,
-    ) -> Result<Self, Error>
-    where
-        Self: Sized;
-
-    fn stats(&self) -> &BossStats;
+pub trait BossBehavior: Character {
+    fn groggy_gauge(&self) -> u64;
+    fn groggy_duration(&self) -> u8;
+    fn terrain(&self) -> Terrain;
 }
