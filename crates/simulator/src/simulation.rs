@@ -138,7 +138,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
 
         skill_mask |= state.boss().effects.mask.data();
 
-        let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()].max(0) as u16;
+        let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()];
 
         let boss_effects_len = state.boss().remained_effects.len();
         let boss_remain_effects_ref = &state.boss().remained_effects;
@@ -151,7 +151,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
             let bit = 1u64 << item.0.bit;
 
             if item.0.ticks <= delta_ticks {
-                if damage != None {
+                if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
                         damage: DamageKey::from_mask(
                             boss_effects_mask.into(),
@@ -180,7 +180,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
 
         let boss_effects = DamageKey::from_mask(boss_effects_mask.into(), &state.boss().effects);
 
-        let cooldowns_lambda = |t: &u16| (t - delta_ticks).max(0);
+        let cooldowns_lambda = |t: &u16| t - delta_ticks ;
 
         let mut student_effects_lambda = state.students().iter().map(|student: &StateData<'a>| {
             let damage = student.effects.damage();
@@ -194,7 +194,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                 let bit = 1u64 << item.0.bit;
 
                 if item.0.ticks <= delta_ticks {
-                    if damage != None {
+                    if damage.is_some() {
                         acc_damage.push(AccumulatedDamage {
                             damage: DamageKey::from_mask(effects_mask.into(), &student.effects),
                             ticks: item.0.ticks,
@@ -202,7 +202,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                     }
                     effects_mask &= !bit;
                 } else {
-                    if damage != None {
+                    if damage.is_some() {
                         acc_damage.push(AccumulatedDamage {
                             damage: DamageKey::from_mask(effects_mask.into(), &student.effects),
                             ticks: delta_ticks,
@@ -222,7 +222,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                 cooldowns: student
                     .cooldowns
                     .iter()
-                    .map(|i| (i - delta_ticks).max(0))
+                    .map(|i| i - delta_ticks )
                     .collect(),
                 effects: DamageKey::from_mask(effects_mask.into(), &student.effects),
                 remained_effects: new_remain_effects,

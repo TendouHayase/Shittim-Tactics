@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum AttackType {
     #[serde(rename = "normal")]
+    #[default]
     Normal,
 
     #[serde(rename = "explosive")]
@@ -21,14 +23,11 @@ pub enum AttackType {
     Sonic,
 }
 
-impl Default for AttackType {
-    fn default() -> Self {
-        AttackType::Normal
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ArmorType {
+    #[default]
     Normal,
     Light,
     Heavy,
@@ -38,11 +37,6 @@ pub enum ArmorType {
     Structure,
 }
 
-impl Default for ArmorType {
-    fn default() -> Self {
-        ArmorType::Normal
-    }
-}
 
 pub fn damage_scale(atk_type: &AttackType, armor_type: &ArmorType) -> u32 {
     match atk_type {
@@ -86,9 +80,5 @@ pub fn is_weak(atk_type: AttackType, armor_type: ArmorType) -> bool {
         true
     } else if atk_type == AttackType::Corrosive && armor_type == ArmorType::Composite {
         true
-    } else if atk_type == AttackType::Sonic && armor_type == ArmorType::Elastic {
-        true
-    } else {
-        false
-    }
+    } else { atk_type == AttackType::Sonic && armor_type == ArmorType::Elastic }
 }

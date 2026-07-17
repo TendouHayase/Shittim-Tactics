@@ -44,11 +44,10 @@ impl<const N: usize> Algorithm for Astar<N> {
                 break;
             };
 
-            if let Some(&best_g) = closed.get(&node.state) {
-                if best_g <= node.g {
+            if let Some(&best_g) = closed.get(&node.state)
+                && best_g <= node.g {
                     continue;
                 }
-            }
             closed.insert(node.state.clone(), node.g);
 
             let dt = simulator.next_event_frames(&node.state);

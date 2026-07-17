@@ -213,7 +213,7 @@ impl<'a> Composite for Uniform {
     fn compose(&self, rhs: &Self) -> Self::Output {
         let mut result = IrwinHall {
             prefix_sum: Arc::new(vec![]),
-            uniforms: Arc::new(RwLock::new(vec![self.clone(), rhs.clone()])),
+            uniforms: Arc::new(RwLock::new(vec![*self, *rhs])),
             n: 1,
             max: self.max,
             min: self.min,
@@ -268,10 +268,10 @@ impl<K: ToPrimitive + PartialEq + PartialOrd> RangeProbability<K> for Uniform {
 
         let a_u64 = a
             .to_u64()
-            .expect(format!("convert {} to i64 failed", type_name::<K>()).as_str());
+            .unwrap_or_else(|| panic!("convert {} to i64 failed", type_name::<K>()));
         let b_u64 = b
             .to_u64()
-            .expect(format!("convert {} to i64 failed", type_name::<K>()).as_str());
+            .unwrap_or_else(|| panic!("convert {} to i64 failed", type_name::<K>()));
 
         if a_u64 > b_u64 {
             return 0.0;
@@ -298,10 +298,10 @@ impl<K: ToPrimitive + PartialEq + PartialOrd> RangeProbability<K> for Normal {
 
         let a_f64 = a
             .to_f64()
-            .expect(format!("convert {} to f64 failed", type_name::<K>()).as_str());
+            .unwrap_or_else(|| panic!("convert {} to f64 failed", type_name::<K>()));
         let b_f64 = b
             .to_f64()
-            .expect(format!("convert {} to f64 failed", type_name::<K>()).as_str());
+            .unwrap_or_else(|| panic!("convert {} to f64 failed", type_name::<K>()));
 
         let a_cdf = distrsNormal::cdf(a_f64 as f64, self.avg, self.var.sqrt());
         let b_cdf = distrsNormal::cdf(b_f64 as f64, self.avg, self.var.sqrt());
@@ -322,10 +322,10 @@ impl<K: ToPrimitive + PartialEq + PartialOrd> RangeProbability<K> for IrwinHall 
 
         let a_u64 = a
             .to_u64()
-            .expect(format!("convert {} to i64 failed", type_name::<K>()).as_str());
+            .unwrap_or_else(|| panic!("convert {} to i64 failed", type_name::<K>()));
         let b_u64 = b
             .to_u64()
-            .expect(format!("convert {} to i64 failed", type_name::<K>()).as_str());
+            .unwrap_or_else(|| panic!("convert {} to i64 failed", type_name::<K>()));
 
         if b_u64 < self.min || a_u64 > self.max {
             return 0.0;

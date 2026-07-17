@@ -195,7 +195,7 @@ impl<'a> StateData<'a> {
             cooldowns: cooldowns.to_vec(),
             effects: effects.clone(),
             remained_effects: remained_effects.clone(),
-            accumulated_damage: accumulated_damage.iter().cloned().collect(),
+            accumulated_damage: accumulated_damage.to_vec(),
         }
     }
 
@@ -212,7 +212,7 @@ impl<'a> StateData<'a> {
             cooldowns: self
                 .cooldowns
                 .iter()
-                .map(|i| cooldowns_condition(i))
+                .map(cooldowns_condition)
                 .collect(),
             effects,
             remained_effects,
@@ -223,10 +223,7 @@ impl<'a> StateData<'a> {
     pub fn damage_list(&self) -> Vec<Damage> {
         let mut result = Vec::with_capacity(self.accumulated_damage.len());
         for d in &self.accumulated_damage {
-            match d.damage.damage() {
-                Some(x) => result.push(x.clone()),
-                _ => (),
-            }
+            if let Some(x) = d.damage.damage() { result.push(x) }
         }
 
         result

@@ -65,7 +65,7 @@ impl DamageCache {
         let mut cached_mut = self.cached.write().unwrap();
         match &mut *cached_mut {
             Some(existing) => *existing += &ih,
-            None => *cached_mut = Some(ih).into(),
+            None => *cached_mut = Some(ih),
         }
     }
 

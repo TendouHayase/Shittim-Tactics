@@ -1,5 +1,4 @@
 use error::error::Error;
-use serde_json;
 use std::{fs::File, io::BufReader};
 
 pub fn read_json<'a, T: serde::de::DeserializeOwned>(path: &str) -> Result<T, Error> {

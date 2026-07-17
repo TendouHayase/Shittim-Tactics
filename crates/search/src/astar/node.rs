@@ -43,7 +43,7 @@ impl<'a, S: Stateful<'a>> Node<'a, S> {
             f: g + h,
             record: None,
             action: None,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 
@@ -60,7 +60,7 @@ impl<'a, S: Stateful<'a>> Node<'a, S> {
             f: g + h,
             record: Some(parent_node),
             action: Some(action),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 
