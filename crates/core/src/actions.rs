@@ -1,4 +1,4 @@
-use crate::{character::Character, skill::Skill};
+use crate::skill::Skill;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]

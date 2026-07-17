@@ -1,12 +1,9 @@
 use core::{
-    actions::{
-        Action,
-        ActionContext::{self, Use, Wait},
-    },
+    actions::ActionContext::{self, Use, Wait},
     skill::Skill,
     state::Stateful,
 };
-use std::{hash::Hash, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 #[derive(Debug)]
 pub struct Node<'a, S: Stateful<'a>> {

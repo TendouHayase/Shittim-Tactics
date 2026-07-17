@@ -1,11 +1,4 @@
-use core::{
-    damage::{
-        Damage,
-        key::{DamageKey, SkillsBitMask},
-    },
-    simulator::Simulator,
-    state::Stateful,
-};
+use core::{damage::Damage, simulator::Simulator, state::Stateful};
 
 pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {
     let students = state.students();

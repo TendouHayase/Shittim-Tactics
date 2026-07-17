@@ -1,10 +1,9 @@
-use std::{
-    cell::{Ref, RefCell},
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockResult, atomic::AtomicUsize},
+use std::sync::{
+    Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockResult, atomic::AtomicUsize,
 };
 use stochastic::distributions::IrwinHall;
 
-use crate::damage::{Damage, cache};
+use crate::damage::Damage;
 
 #[derive(Debug, Default)]
 pub struct DamageCache {

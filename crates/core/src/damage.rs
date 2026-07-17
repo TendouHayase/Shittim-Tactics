@@ -8,8 +8,6 @@ use stochastic::{
     utils::build_prefix_sum,
 };
 
-use crate::damage::key::DamageKey;
-
 pub mod cache;
 pub mod key;
 

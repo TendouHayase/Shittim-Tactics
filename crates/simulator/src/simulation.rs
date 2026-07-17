@@ -14,7 +14,6 @@ use core::{
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
-    rc::Rc,
     sync::Arc,
 };
 

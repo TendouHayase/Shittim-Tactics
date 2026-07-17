@@ -7,10 +7,7 @@ use core::{
     terrains::Terrain,
     types::AttackType,
 };
-use std::{
-    collections::HashMap,
-    sync::{Arc, Weak},
-};
+use std::{collections::HashMap, sync::Arc};
 
 use error::Error;
 use serde::{Deserialize, Serialize};

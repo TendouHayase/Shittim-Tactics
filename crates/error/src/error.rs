@@ -3,7 +3,7 @@ use std::{
     error::Error as StdError,
     fmt::Display,
     io,
-    sync::{MutexGuard, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    sync::{MutexGuard, PoisonError, RwLockReadGuard, RwLockWriteGuard},
 };
 
 use crate::Error::{

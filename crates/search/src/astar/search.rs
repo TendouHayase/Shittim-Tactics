@@ -13,7 +13,6 @@ use core::{
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
-    error,
     sync::Arc,
 };
 
@@ -73,7 +72,7 @@ impl<const N: usize> Algorithm for Astar<N> {
                                         targets.push(caster.upgrade().unwrap().id())
                                     }
                                     SkillEffectTarget::Student(num) => {
-                                        let caster_arc = caster.upgrade().unwrap();
+                                        let _caster_arc = caster.upgrade().unwrap();
 
                                         let mut students: Vec<(Position, u32)> = advanced
                                             .students()

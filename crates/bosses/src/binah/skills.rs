@@ -1,16 +1,12 @@
 use core::{
     character::Character,
-    damage::Damage,
     difficulty::Difficulty,
     skill::{
         Debuff::Def, EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget, SkillType::Ex,
     },
     state::{AccumulatedDamage, StateData},
 };
-use std::{
-    marker::PhantomPinned,
-    sync::{Arc, Weak},
-};
+use std::sync::{Arc, Weak};
 
 use crate::binah::Binah;
 
@@ -67,8 +63,8 @@ impl Skill for AtsilutsLight {
 
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
+        _caster: &'b StateData<'a>,
+        _targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>> {
         todo!()
     }

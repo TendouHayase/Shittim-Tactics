@@ -1,6 +1,6 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
-use crate::{actions::ActionContext, character::Character, skill::Skill, state::Stateful};
+use crate::{actions::ActionContext, skill::Skill, state::Stateful};
 
 pub trait Agent {
     type S<'a>: Stateful<'a>;

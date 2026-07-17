@@ -1,14 +1,10 @@
-use std::{collections::HashMap, rc::Rc, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     actions::ActionContext,
-    boss::BossBehavior,
-    damage::{
-        Damage,
-        key::{DamageKey, SkillsBitMask},
-    },
+    damage::{Damage, key::SkillsBitMask},
     skill::Skill,
-    state::{State, Stateful},
+    state::Stateful,
 };
 
 pub trait Simulator {
