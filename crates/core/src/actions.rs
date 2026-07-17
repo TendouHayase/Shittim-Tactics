@@ -1,12 +1,11 @@
-use std::rc::Rc;
-
 use crate::{character::Character, skill::Skill};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Action<T: Skill + ?Sized> {
     pub caster: u32,
     pub targets: Vec<u32>,
-    pub skill: Rc<T>,
+    pub skill: Arc<T>,
 }
 
 #[derive(Debug)]

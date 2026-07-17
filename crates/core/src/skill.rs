@@ -93,7 +93,7 @@ pub enum SkillType {
     NormalAttack,
 }
 
-pub trait Skill: Debug {
+pub trait Skill: Debug + Send + Sync {
     fn name(&self) -> &str;
     fn owner(&self) -> &str;
     fn cost(&self) -> u8;

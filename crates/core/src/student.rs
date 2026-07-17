@@ -1,4 +1,4 @@
-use std::{hash::Hash, rc::Rc};
+use std::{hash::Hash, rc::Rc, sync::Arc};
 
 use typed_builder::TypedBuilder;
 
@@ -33,17 +33,32 @@ pub struct StudentSpec {
     pub talent_levels: [u8; 3],
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct StudentStats {
     pub student_stats: Box<StudentSpec>,
     pub base_stats: BaseStats,
 }
+
+impl PartialEq for StudentStats {
+    fn eq(&self, other: &Self) -> bool {
+        self.student_stats.id == other.student_stats.id
+    }
+}
+
+impl Eq for StudentStats {}
+
+impl Hash for StudentStats {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.student_stats.id.hash(state);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Student {
     pub stats: StudentStats,
 
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
-    pub skills: Vec<Rc<dyn Skill>>,
+    pub skills: Vec<Arc<dyn Skill>>,
 }
 
 impl PartialEq for Student {
@@ -61,7 +76,7 @@ impl Character for Student {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> &Vec<Rc<dyn Skill>> {
+    fn skill_list(&self) -> &Vec<Arc<dyn Skill>> {
         &self.skills
     }
 }

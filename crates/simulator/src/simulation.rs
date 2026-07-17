@@ -1,40 +1,34 @@
 use core::{
     TPS,
-    actions::{
-        Action,
-        ActionContext::{self},
-    },
+    actions::ActionContext::{self},
     boss::{Boss, BossBehavior},
-    character::Character,
     damage::{
         Damage,
         key::{DamageKey, SkillsBitMask},
     },
     simulator::Simulator,
-    skill::{Buff, Debuff, Effect, EffectKind, EffectTiming, Skill},
+    skill::Skill,
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
     student::Student,
-    terrains::TerrainCombatPowerState::C,
 };
 use std::{
-    collections::{BinaryHeap, HashMap, LinkedList, VecDeque},
+    collections::{BinaryHeap, HashMap},
     rc::Rc,
+    sync::Arc,
 };
-
-use error::Error;
 
 pub struct Simulation<'a, T: BossBehavior + Clone, const N: usize> {
     pub students: Vec<Student>,
     pub boss: Boss<T>,
 
-    pub damage_list: HashMap<SkillsBitMask, Damage>,
-    pub one_cost_charge_time_list: HashMap<SkillsBitMask, u16>,
+    damage_list: HashMap<SkillsBitMask, Damage>,
+    one_cost_charge_time_list: HashMap<SkillsBitMask, u16>,
 
-    pub allocator: typed_arena::Arena<State<'a, N>>,
+    allocator: typed_arena::Arena<State<'a, N>>,
 }
 
 impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N> {
-    fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<Rc<dyn Skill>> {
+    fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<Arc<dyn Skill>> {
         let cost = state.cost();
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
@@ -92,8 +86,10 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                         } else {
                             for student in new_state.students_mut() {
                                 {
-                                    *student = target;
-                                    break;
+                                    if student.character.id() == target.character.id() {
+                                        *student = target;
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -109,8 +105,12 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                                     }
                                 } else {
                                     for student in new_state.students_mut() {
-                                        *student = target;
-                                        break;
+                                        if student.character.id() == target.character.id() {
+                                            *student = target;
+                                            break;
+
+                                            *student = target;
+                                        }
                                     }
                                 }
                             }
@@ -161,7 +161,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                 }
                 boss_effects_mask &= !bit;
             } else {
-                if damage != None {
+                if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
                         damage: DamageKey::from_mask(
                             boss_effects_mask.into(),
@@ -238,7 +238,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                 boss_effects,
                 new_boss_remain_effects,
             ),
-            frames: state.frames() + delta_ticks as u16,
+            frames: state.frames() + delta_ticks,
         })
     }
 
@@ -256,5 +256,9 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
         }
 
         result
+    }
+
+    fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage> {
+        &self.damage_list
     }
 }

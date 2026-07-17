@@ -1,4 +1,4 @@
-use std::{collections::LinkedList, rc::Rc};
+use std::{collections::LinkedList, hash::Hash, rc::Rc, sync::Arc};
 
 use error::Error;
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,7 @@ pub struct BossStats {
 pub struct Boss<T: BossBehavior> {
     pub stats: BossStats,
     pub other_stats: T,
-    pub skills: Vec<Rc<dyn Skill>>,
+    pub skills: Vec<Arc<dyn Skill>>,
 }
 
 impl<T: BossBehavior + PartialEq> PartialEq for Boss<T> {
@@ -34,6 +34,12 @@ impl<T: BossBehavior + PartialEq> PartialEq for Boss<T> {
 
 impl<T: BossBehavior + PartialEq> Eq for Boss<T> {}
 
+impl<T: Character + BossBehavior> Hash for Boss<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.stats.id.hash(state);
+    }
+}
+
 impl<T: Character + BossBehavior> Character for Boss<T> {
     fn id(&self) -> u32 {
         self.stats.id
@@ -43,7 +49,7 @@ impl<T: Character + BossBehavior> Character for Boss<T> {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> &Vec<Rc<dyn Skill>> {
+    fn skill_list(&self) -> &Vec<Arc<dyn Skill>> {
         &self.skills
     }
 }

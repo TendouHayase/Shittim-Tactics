@@ -13,12 +13,35 @@ use crate::damage::key::DamageKey;
 pub mod cache;
 pub mod key;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Damage {
     pub normal: Uniform,
     pub crit: Uniform,
     pub crit_num: u32,
     pub crit_den: u32,
+}
+
+impl Ord for Damage {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.normal.max.cmp(&other.normal.max)
+    }
+}
+
+impl PartialOrd for Damage {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Default for Damage {
+    fn default() -> Self {
+        Self {
+            normal: Uniform { min: 0, max: 0 },
+            crit: Uniform { min: 0, max: 0 },
+            crit_num: 0,
+            crit_den: 1,
+        }
+    }
 }
 
 impl Damage {

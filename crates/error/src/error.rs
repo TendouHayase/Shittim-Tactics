@@ -1,7 +1,14 @@
-use std::{alloc::LayoutError, error::Error as StdError, fmt::Display, io, sync::MutexGuard};
+use std::{
+    alloc::LayoutError,
+    error::Error as StdError,
+    fmt::Display,
+    io,
+    sync::{MutexGuard, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard},
+};
 
 use crate::Error::{
-    InvalidData, InvalidSyntax, Io, MemoryAllocateFailed, Mutex, UnexpectedEof, Unknown,
+    InvalidData, InvalidSyntax, Io, LockPoisoned, MemoryAllocateFailed, Mutex, UnexpectedEof,
+    Unknown,
 };
 
 #[derive(Debug)]
@@ -18,6 +25,8 @@ pub enum Error {
     OutOfRange(String),
     InvalidArgument(String),
     InvalidCasting(String),
+    LockPoisoned(String),
+    Empty,
 }
 
 impl StdError for Error {
@@ -71,5 +80,17 @@ impl<T> From<std::sync::PoisonError<MutexGuard<'_, T>>> for Error {
 impl From<LayoutError> for Error {
     fn from(value: LayoutError) -> Self {
         MemoryAllocateFailed(value.to_string())
+    }
+}
+
+impl<T> From<PoisonError<RwLockWriteGuard<'_, T>>> for Error {
+    fn from(value: PoisonError<RwLockWriteGuard<'_, T>>) -> Self {
+        LockPoisoned(value.to_string())
+    }
+}
+
+impl<T> From<PoisonError<RwLockReadGuard<'_, T>>> for Error {
+    fn from(value: PoisonError<RwLockReadGuard<'_, T>>) -> Self {
+        LockPoisoned(value.to_string())
     }
 }

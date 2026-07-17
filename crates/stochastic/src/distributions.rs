@@ -58,8 +58,8 @@ impl PartialEq for IrwinHall {
 
 impl Eq for IrwinHall {}
 
-impl IrwinHall {
-    pub fn new() -> Self {
+impl Default for IrwinHall {
+    fn default() -> Self {
         Self {
             prefix_sum: Arc::new(Vec::new()),
             uniforms: Arc::new(RwLock::new(Vec::new())),
@@ -69,7 +69,9 @@ impl IrwinHall {
             total_combinations: 0,
         }
     }
+}
 
+impl IrwinHall {
     pub fn from_uniform(uniform: Uniform, n: u32) -> Self {
         let domain = uniform.max - uniform.min + 1;
         Self {

@@ -1,15 +1,18 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use crate::{
     actions::ActionContext,
     boss::BossBehavior,
-    damage::{Damage, key::DamageKey},
+    damage::{
+        Damage,
+        key::{DamageKey, SkillsBitMask},
+    },
     skill::Skill,
     state::{State, Stateful},
 };
 
 pub trait Simulator {
-    fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<Rc<dyn Skill>>;
+    fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<Arc<dyn Skill>>;
     fn apply<'a, 'b, 'c>(
         &self,
         state: &'b impl Stateful<'a>,
@@ -21,4 +24,5 @@ pub trait Simulator {
         delta_ticks: u16,
     ) -> Result<impl Stateful<'a>, error::Error>;
     fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16;
+    fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage>;
 }
