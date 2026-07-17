@@ -1,10 +1,14 @@
 use core::{
-    actions::{Action, ActionContext},
+    actions::{
+        Action,
+        ActionContext::{self, Use, Wait},
+    },
     skill::Skill,
     state::Stateful,
 };
 use std::{hash::Hash, marker::PhantomData, sync::Arc};
 
+#[derive(Debug)]
 pub struct Node<'a, S: Stateful<'a>> {
     pub state: S,
     pub g: u64,
@@ -50,16 +54,27 @@ impl<'a, S: Stateful<'a>> Node<'a, S> {
         state: S,
         g: u64,
         h: u64,
-        parent_node: Node<'a, S>,
+        parent_node: Arc<Node<'a, S>>,
         action: ActionContext<dyn Skill>,
     ) -> Self {
         Node {
             state,
             g,
             f: g + h,
-            record: Some(Arc::new(parent_node)),
+            record: Some(parent_node),
             action: Some(action),
             _marker: PhantomData::default(),
+        }
+    }
+
+    pub fn get_parent(&self) -> Option<Arc<Node<'a, S>>> {
+        self.record.clone()
+    }
+
+    pub fn get_action(&self) -> Option<Arc<dyn Skill>> {
+        match self.action.as_ref()? {
+            Wait => None,
+            Use(a) => Some(a.skill.clone()),
         }
     }
 }

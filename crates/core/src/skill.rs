@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::Weak;
 
+use crate::character::Character;
 use crate::state::StateData;
 use crate::types::AttackType;
 
@@ -73,7 +75,9 @@ pub struct Effect {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SkillEffectTarget {
     Boss,
-    Student,
+    Student(u8),
+    Land,
+    Oneself,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -95,14 +99,14 @@ pub enum SkillType {
 
 pub trait Skill: Debug + Send + Sync {
     fn name(&self) -> &str;
-    fn owner(&self) -> &str;
+    fn owner(&self) -> Weak<dyn Character>;
     fn cost(&self) -> u8;
     fn frames(&self) -> u16;
     fn skill_type(&self) -> SkillType;
-    fn effects(&self) -> Vec<SkillEffect>;
+    fn skill_effects(&self) -> Vec<SkillEffect>;
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'b StateData<'a>,
-        targets: &'b Vec<&'c StateData<'a>>,
+        targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>>;
 }

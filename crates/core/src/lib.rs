@@ -11,6 +11,7 @@ pub mod state;
 pub mod student;
 pub mod terrains;
 pub mod types;
+pub mod utils;
 
 pub const TPS: u16 = 30;
 pub const MAX_STUDENT_COUNT: usize = 10;

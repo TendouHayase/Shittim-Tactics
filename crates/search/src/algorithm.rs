@@ -4,5 +4,10 @@ use std::sync::Arc;
 pub trait Algorithm {
     type S<'a>: Stateful<'a>;
 
-    fn search<'a>(&self, simulator: &impl Simulator, initial: Self::S<'a>) -> Vec<Arc<dyn Skill>>;
+    fn search<'a>(
+        &self,
+        simulator: &impl Simulator<S<'a> = Self::S<'a>>,
+        initial: Self::S<'a>,
+        threshold: f64,
+    ) -> Vec<Arc<dyn Skill>>;
 }

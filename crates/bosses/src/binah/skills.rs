@@ -1,4 +1,5 @@
 use core::{
+    character::Character,
     damage::Damage,
     difficulty::Difficulty,
     skill::{
@@ -6,10 +7,16 @@ use core::{
     },
     state::{AccumulatedDamage, StateData},
 };
+use std::{
+    marker::PhantomPinned,
+    sync::{Arc, Weak},
+};
+
+use crate::binah::Binah;
 
 #[derive(Debug)]
 pub struct AtsilutsLight {
-    difficulty: Difficulty,
+    parent: Weak<Binah>,
 }
 
 impl Skill for AtsilutsLight {
@@ -24,10 +31,10 @@ impl Skill for AtsilutsLight {
         1
     }
 
-    fn effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         let duration: u16;
 
-        match self.difficulty {
+        match self.parent.upgrade().unwrap().difficulty {
             Difficulty::Torment => duration = 15 * 30,
             Difficulty::Lunatic => duration = 120 * 30,
             _ => duration = 0,
@@ -36,9 +43,12 @@ impl Skill for AtsilutsLight {
         vec![
             SkillEffect {
                 name: Self::SKILL_1,
-                kind: EffectKind::Damage,
+                kind: EffectKind::DamageRegion {
+                    length: 2200,
+                    width: 300,
+                },
                 timing: EffectTiming::Instant,
-                targets: vec![],
+                targets: vec![SkillEffectTarget::Land],
             },
             SkillEffect {
                 name: Self::SKILL_2,
@@ -50,7 +60,7 @@ impl Skill for AtsilutsLight {
                     interval_frames: 90,
                     duration_frames: duration,
                 },
-                targets: vec![],
+                targets: vec![SkillEffectTarget::Land],
             },
         ]
     }
@@ -58,13 +68,13 @@ impl Skill for AtsilutsLight {
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'b StateData<'a>,
-        targets: &'b Vec<&'c StateData<'a>>,
+        targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>> {
         todo!()
     }
 
-    fn owner(&self) -> &str {
-        "Binah"
+    fn owner(&self) -> Weak<dyn Character> {
+        self.parent.clone()
     }
 
     fn skill_type(&self) -> core::skill::SkillType {
@@ -76,14 +86,16 @@ impl AtsilutsLight {
     const SKILL_1: &str = "Atsilut's Light 1";
     const SKILL_2: &str = "Atsilut's Light 2";
 
-    pub fn from_difficulty(difficulty: Difficulty) -> Self {
-        AtsilutsLight { difficulty }
+    pub fn new(binah: &Binah) -> Self {
+        AtsilutsLight {
+            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct FiresofSeverity1 {
-    difficulty: Difficulty,
+    parent: Weak<Binah>,
 }
 
 impl Skill for FiresofSeverity1 {
@@ -98,32 +110,32 @@ impl Skill for FiresofSeverity1 {
         1
     }
 
-    fn owner(&self) -> &str {
-        "Binah"
+    fn owner(&self) -> Weak<dyn Character> {
+        self.parent.clone()
     }
 
     fn skill_type(&self) -> core::skill::SkillType {
         core::skill::SkillType::Ex
     }
 
-    fn effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             name: Self::NAME,
             kind: EffectKind::Damage,
             timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Student; 4],
+            targets: vec![SkillEffectTarget::Student(4)],
         }]
     }
 
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'b StateData<'a>,
-        targets: &'b Vec<&'c StateData<'a>>,
+        targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>> {
         let dmg_num;
         let dmg_den;
 
-        match self.difficulty {
+        match self.parent.upgrade().unwrap().difficulty {
             Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
                 dmg_num = 3;
                 dmg_den = 2;
@@ -168,14 +180,16 @@ impl Skill for FiresofSeverity1 {
 impl FiresofSeverity1 {
     const NAME: &str = "Fire of Severity 1";
 
-    pub fn from_difficulty(difficulty: Difficulty) -> Self {
-        FiresofSeverity1 { difficulty }
+    pub fn new(binah: &Binah) -> Self {
+        FiresofSeverity1 {
+            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct FireofSeverity2 {
-    pub difficulty: Difficulty,
+    parent: Weak<Binah>,
 }
 
 impl Skill for FireofSeverity2 {
@@ -183,8 +197,8 @@ impl Skill for FireofSeverity2 {
         "Fire of Severity 2"
     }
 
-    fn owner(&self) -> &str {
-        "Binah"
+    fn owner(&self) -> Weak<dyn Character> {
+        self.parent.clone()
     }
 
     fn cost(&self) -> u8 {
@@ -195,12 +209,12 @@ impl Skill for FireofSeverity2 {
         1
     }
 
-    fn effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             name: Self::NAME,
             kind: EffectKind::Damage,
             timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Student; 4],
+            targets: vec![SkillEffectTarget::Student(4)],
         }]
     }
 
@@ -211,12 +225,12 @@ impl Skill for FireofSeverity2 {
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'b StateData<'a>,
-        targets: &'b Vec<&'c StateData<'a>>,
+        targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>> {
         let dmg_num;
         let mut dmg_den;
 
-        match self.difficulty {
+        match self.parent.upgrade().unwrap().difficulty {
             Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
                 dmg_num = 15;
                 dmg_den = 2;
@@ -273,14 +287,16 @@ impl Skill for FireofSeverity2 {
 impl FireofSeverity2 {
     const NAME: &str = "Fires of Severity 2";
 
-    pub fn from_difficulty(difficulty: Difficulty) -> Self {
-        FireofSeverity2 { difficulty }
+    pub fn new(binah: &Binah) -> Self {
+        Self {
+            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct PurifyingStorm {
-    pub difficulty: Difficulty,
+    parent: Weak<Binah>,
 }
 
 impl Skill for PurifyingStorm {
@@ -295,15 +311,15 @@ impl Skill for PurifyingStorm {
         todo!()
     }
 
-    fn owner(&self) -> &str {
-        "Binah"
+    fn owner(&self) -> Weak<dyn Character> {
+        self.parent.clone()
     }
 
     fn skill_type(&self) -> core::skill::SkillType {
         core::skill::SkillType::Ex
     }
 
-    fn effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             name: "PurifyingStorm",
             kind: EffectKind::Debuff {
@@ -313,14 +329,14 @@ impl Skill for PurifyingStorm {
                 amount: 0,
             },
             timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Student; 4],
+            targets: vec![SkillEffectTarget::Student(4)],
         }]
     }
 
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'b StateData<'a>,
-        targets: &'b Vec<&'c StateData<'a>>,
+        targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>> {
         let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
 
@@ -354,7 +370,9 @@ impl Skill for PurifyingStorm {
 }
 
 impl PurifyingStorm {
-    pub fn from_difficulty(difficulty: Difficulty) -> Self {
-        PurifyingStorm { difficulty }
+    pub fn new(binah: &Binah) -> Self {
+        Self {
+            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+        }
     }
 }

@@ -10,12 +10,14 @@ pub struct Solver<Sim, Alg, const N: usize> {
 
 impl<Sim, Alg, const N: usize> Agent for Solver<Sim, Alg, N>
 where
-    Sim: Simulator,
+    Sim: for<'a> Simulator<S<'a> = State<'a, N>>,
     Alg: for<'a> Algorithm<S<'a> = State<'a, N>>,
 {
     type S<'a> = State<'a, N>;
 
-    fn solve<'a>(&self, initial: &Self::S<'a>) -> Vec<Arc<dyn Skill>> {
-        self.algorithm.search(&self.sim, initial.clone()).into()
+    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<Arc<dyn Skill>> {
+        self.algorithm
+            .search(&self.sim, initial.clone(), threshold)
+            .into()
     }
 }

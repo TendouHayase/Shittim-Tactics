@@ -61,7 +61,7 @@ pub trait Stateful<'a>: Clone + Send + Sync {
     fn cost(&self) -> i8;
     fn frames(&self) -> u16;
     fn is_terminated(&self) -> bool;
-    fn is_goal(&self) -> bool;
+    fn is_goal(&self, threshold_percent: f64) -> bool;
 }
 
 impl PartialOrd for RemainedEffects {
@@ -109,12 +109,12 @@ impl<'a, const N: usize> Stateful<'a> for State<'a, N> {
         self.frames
     }
 
-    fn is_goal(&self) -> bool {
+    fn is_goal(&self, threshold_percent: f64) -> bool {
         self.boss
             .accumulated_damage_cache
             .get_or_compute(&self.boss.damage_list())
             .as_ref()
-            .is_some_and(|x| x.max >= self.boss.character.stats().hp)
+            .is_some_and(|x| x.query_range(0, self.boss.character.stats().hp) >= threshold_percent)
     }
 
     fn is_terminated(&self) -> bool {
@@ -132,7 +132,7 @@ impl<'a, const N: usize> Stateful<'a> for State<'a, N> {
             }
         }
 
-        self.is_goal() || result
+        result
     }
 }
 

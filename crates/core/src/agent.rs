@@ -1,11 +1,11 @@
 use std::{rc::Rc, sync::Arc};
 
-use crate::{actions::ActionContext, skill::Skill, state::Stateful};
+use crate::{actions::ActionContext, character::Character, skill::Skill, state::Stateful};
 
 pub trait Agent {
     type S<'a>: Stateful<'a>;
 
-    fn solve<'a>(&self, initial: &Self::S<'a>) -> Vec<Arc<dyn Skill>>;
+    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<Arc<dyn Skill>>;
 }
 
 pub trait RLAgent: Agent {

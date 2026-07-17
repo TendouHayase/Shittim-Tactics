@@ -12,6 +12,7 @@ use core::{
     student::Student,
 };
 use std::{
+    cmp::Reverse,
     collections::{BinaryHeap, HashMap},
     rc::Rc,
     sync::Arc,
@@ -21,13 +22,16 @@ pub struct Simulation<'a, T: BossBehavior + Clone, const N: usize> {
     pub students: Vec<Student>,
     pub boss: Boss<T>,
 
+    limit_ticks: u16,
+
     damage_list: HashMap<SkillsBitMask, Damage>,
-    one_cost_charge_time_list: HashMap<SkillsBitMask, u16>,
+    cost_charge_time: HashMap<SkillsBitMask, u16>,
 
     allocator: typed_arena::Arena<State<'a, N>>,
 }
 
 impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N> {
+    type S<'a> = State<'a, N>;
     fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<Arc<dyn Skill>> {
         let cost = state.cost();
         let mut result = vec![];
@@ -43,13 +47,13 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
         result
     }
 
-    fn apply<'a, 'b, 'c>(
+    fn apply<'a: 'b, 'b, 'c>(
         &self,
-        state: &'b impl Stateful<'a>,
+        state: &'b Self::S<'a>,
         action: &'b core::actions::ActionContext<dyn Skill + 'c>,
-    ) -> Result<impl Stateful<'a>, error::Error> {
+    ) -> Self::S<'a> {
         let action = match action {
-            ActionContext::Wait => return Ok((*state).clone()),
+            ActionContext::Wait => return (*state).clone(),
             ActionContext::Use(action) => action,
         };
 
@@ -108,8 +112,6 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                                         if student.character.id() == target.character.id() {
                                             *student = target;
                                             break;
-
-                                            *student = target;
                                         }
                                     }
                                 }
@@ -119,17 +121,16 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                     }
                 }
             }
-            {}
         }
 
-        Ok(new_state)
+        new_state
     }
 
-    fn advance<'a, 'b>(
+    fn advance<'a: 'b, 'b>(
         &self,
-        state: &'b impl Stateful<'a>,
+        state: &'b Self::S<'a>,
         delta_ticks: u16,
-    ) -> Result<impl Stateful<'a>, error::Error> {
+    ) -> Result<Self::S<'a>, error::Error> {
         let mut skill_mask = 0u64;
 
         for student in state.students() {
@@ -138,25 +139,26 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
 
         skill_mask |= state.boss().effects.mask.data();
 
-        let cost_per_second: u16 = self.one_cost_charge_time_list[&skill_mask.into()].max(0) as u16;
+        let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()].max(0) as u16;
 
         let boss_effects_len = state.boss().remained_effects.len();
         let boss_remain_effects_ref = &state.boss().remained_effects;
-        let mut new_boss_remain_effects = BinaryHeap::with_capacity(boss_effects_len);
+        let mut new_boss_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
+            BinaryHeap::with_capacity(boss_effects_len);
         let mut boss_effects_mask = state.boss().effects.clone().mask.data();
         let mut boss_acc_damage = state.boss().accumulated_damage.clone();
         let damage = state.boss().effects.damage();
         for item in boss_remain_effects_ref {
-            let bit = 1u64 << item.bit;
+            let bit = 1u64 << item.0.bit;
 
-            if item.ticks <= delta_ticks {
+            if item.0.ticks <= delta_ticks {
                 if damage != None {
                     boss_acc_damage.push(AccumulatedDamage {
                         damage: DamageKey::from_mask(
                             boss_effects_mask.into(),
                             &state.boss().effects,
                         ),
-                        ticks: item.ticks,
+                        ticks: item.0.ticks,
                     });
                 }
                 boss_effects_mask &= !bit;
@@ -170,10 +172,10 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                         ticks: delta_ticks,
                     });
                 }
-                new_boss_remain_effects.push(RemainedEffects {
-                    ticks: item.ticks - delta_ticks,
-                    bit: item.bit,
-                });
+                new_boss_remain_effects.push(Reverse(RemainedEffects {
+                    ticks: item.0.ticks - delta_ticks,
+                    bit: item.0.bit,
+                }));
             }
         }
 
@@ -186,16 +188,17 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
             let mut acc_damage = student.accumulated_damage.clone();
 
             let effects_len = student.remained_effects.len();
-            let mut new_remain_effects = BinaryHeap::with_capacity(effects_len);
+            let mut new_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
+                BinaryHeap::with_capacity(effects_len);
             let mut effects_mask = student.effects.clone().mask.data();
             for item in &student.remained_effects {
-                let bit = 1u64 << item.bit;
+                let bit = 1u64 << item.0.bit;
 
-                if item.ticks <= delta_ticks {
+                if item.0.ticks <= delta_ticks {
                     if damage != None {
                         acc_damage.push(AccumulatedDamage {
                             damage: DamageKey::from_mask(effects_mask.into(), &student.effects),
-                            ticks: item.ticks,
+                            ticks: item.0.ticks,
                         });
                     }
                     effects_mask &= !bit;
@@ -206,10 +209,10 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                             ticks: delta_ticks,
                         });
                     }
-                    new_remain_effects.push(RemainedEffects {
-                        ticks: item.ticks - delta_ticks,
-                        bit: item.bit,
-                    });
+                    new_remain_effects.push(Reverse(RemainedEffects {
+                        ticks: item.0.ticks - delta_ticks,
+                        bit: item.0.bit,
+                    }));
                 }
             }
 
@@ -246,13 +249,24 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
         let mut result: u16 = u16::MAX;
 
         for student in state.students() {
-            for i in &student.cooldowns {
-                result = result.min(*i);
+            for (i, time) in student.cooldowns.iter().enumerate() {
+                let cost = *time / self.cost_charge_time[&student.effects.mask];
+                if student.character.skill_list()[i].cost() as u16 >= cost {
+                    result = result.min(*time);
+                }
+            }
+            let remain_effect = student.remained_effects.peek();
+            if let Some(effect) = remain_effect {
+                result = result.min(effect.0.ticks);
             }
         }
 
-        for i in &state.boss().cooldowns {
-            result = result.min(*i);
+        for (i, time) in state.boss().cooldowns.iter().enumerate() {
+            if state.boss().character.skill_list()[i].cost() as u16
+                >= *time / self.cost_charge_time[&state.boss().effects.mask]
+            {
+                result = result.min(*time);
+            }
         }
 
         result
@@ -260,5 +274,9 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
 
     fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage> {
         &self.damage_list
+    }
+
+    fn is_time_over(&self, ticks: u16) -> bool {
+        self.limit_ticks <= ticks
     }
 }

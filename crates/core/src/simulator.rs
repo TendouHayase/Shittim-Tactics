@@ -12,17 +12,19 @@ use crate::{
 };
 
 pub trait Simulator {
+    type S<'a>: Stateful<'a>;
     fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<Arc<dyn Skill>>;
-    fn apply<'a, 'b, 'c>(
+    fn apply<'a: 'b, 'b, 'c>(
         &self,
-        state: &'b impl Stateful<'a>,
+        state: &'b Self::S<'a>,
         action: &'b ActionContext<dyn Skill + 'c>,
-    ) -> Result<impl Stateful<'a>, error::Error>;
-    fn advance<'a, 'b>(
+    ) -> Self::S<'a>;
+    fn advance<'a: 'b, 'b>(
         &self,
-        state: &'b impl Stateful<'a>,
+        state: &'b Self::S<'a>,
         delta_ticks: u16,
-    ) -> Result<impl Stateful<'a>, error::Error>;
+    ) -> Result<Self::S<'a>, error::Error>;
     fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16;
     fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage>;
+    fn is_time_over(&self, ticks: u16) -> bool;
 }

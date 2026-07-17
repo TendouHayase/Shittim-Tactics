@@ -47,9 +47,9 @@ pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {
         all_ex_damage += damage.unwrap_or_default().crit.max;
 
         if damage.unwrap_or_default().crit.max > max_ex_damage {
-            let frames = student.character.skill_list()[0].frames() as u64;
+            let frames = student.character.skill_list()[0].frames();
 
-            max_ex_damage = max_ex_damage.max(damage.unwrap_or_default().crit.max / frames);
+            max_ex_damage = max_ex_damage.max(damage.unwrap_or_default().crit.max / frames as u64);
 
             max_damage_cast_frames = frames;
         }
@@ -57,7 +57,7 @@ pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {
 
     let h_max_dps = remain_boss_min_hp / max_damage.1.normal.max;
     let h_all_ex_dps = remain_boss_min_hp / all_ex_damage;
-    let h_min_cast = (remain_boss_min_hp * max_damage_cast_frames) / max_ex_damage;
+    let h_min_cast = (remain_boss_min_hp * max_damage_cast_frames as u64) / max_ex_damage;
 
     h_max_dps.max(h_all_ex_dps).max(h_min_cast)
 }

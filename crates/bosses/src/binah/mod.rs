@@ -1,12 +1,16 @@
 use core::{
     base::BaseStats,
     boss::{BossBehavior, BossStats},
+    character::Character,
     difficulty::Difficulty,
     skill::{Skill, SkillEffect},
     terrains::Terrain,
     types::AttackType,
 };
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Weak},
+};
 
 use error::Error;
 use serde::{Deserialize, Serialize};
@@ -21,7 +25,7 @@ pub struct Binah {
     stats: BossStats,
     pub difficulty: Difficulty,
     pub phase_switching_hp: [u64; 2],
-    pub skills: Box<Vec<Box<dyn Skill>>>,
+    pub skills: Box<Vec<Arc<dyn Skill>>>,
     #[builder(default)]
     pub effects: Vec<SkillEffect>,
 }
@@ -34,6 +38,20 @@ struct DifficultyWrapper {
     groggy_gauge: u64,
     groggy_duration: u8,
     phase_switching_hp: [u64; 2],
+}
+
+impl Character for Binah {
+    fn id(&self) -> u32 {
+        self.stats.id
+    }
+
+    fn stats(&self) -> &BaseStats {
+        &self.stats.base_stats
+    }
+
+    fn skill_list(&self) -> &Vec<Arc<dyn Skill>> {
+        &self.skills
+    }
 }
 
 impl Binah {
@@ -116,20 +134,24 @@ impl Binah {
             ))?
             .phase_switching_hp;
 
-        let skills: Box<Vec<Box<dyn Skill>>> = Box::new(vec![
-            Box::new(AtsilutsLight::from_difficulty(difficulty)),
-            Box::new(FiresofSeverity1::from_difficulty(difficulty)),
-            Box::new(FireofSeverity2::from_difficulty(difficulty)),
-            Box::new(PurifyingStorm::from_difficulty(difficulty)),
-        ]);
+        let tmp_skills: Box<Vec<Arc<dyn Skill>>> = Box::new(vec![]);
 
         // 최종 객체
-        let result = Binah::builder()
+        let mut result = Binah::builder()
             .stats(boss_spec)
             .difficulty(difficulty)
             .phase_switching_hp(phase_switching_hp)
-            .skills(skills)
+            .skills(tmp_skills)
             .build();
+
+        let skills: Box<Vec<Arc<dyn Skill>>> = Box::new(vec![
+            Arc::new(AtsilutsLight::new(&result)),
+            Arc::new(FiresofSeverity1::new(&result)),
+            Arc::new(FireofSeverity2::new(&result)),
+            Arc::new(PurifyingStorm::new(&result)),
+        ]);
+
+        result.skills = skills;
 
         Ok(result)
     }
