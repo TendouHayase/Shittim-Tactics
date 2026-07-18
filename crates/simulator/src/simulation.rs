@@ -2,14 +2,16 @@ use core::{
     TPS,
     actions::ActionContext::{self},
     boss::{Boss, BossBehavior},
+    character::Character,
     damage::{
         Damage,
         key::{DamageKey, SkillsBitMask},
     },
     simulator::Simulator,
-    skill::Skill,
+    skill::{Skill, SkillEffectTarget::Land},
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
     student::Student,
+    utils::is_inside,
 };
 use std::{
     cmp::Reverse,
@@ -180,7 +182,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
 
         let boss_effects = DamageKey::from_mask(boss_effects_mask.into(), &state.boss().effects);
 
-        let cooldowns_lambda = |t: &u16| t - delta_ticks ;
+        let cooldowns_lambda = |t: &u16| t - delta_ticks;
 
         let mut student_effects_lambda = state.students().iter().map(|student: &StateData<'a>| {
             let damage = student.effects.damage();
@@ -208,10 +210,32 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                             ticks: delta_ticks,
                         });
                     }
-                    new_remain_effects.push(Reverse(RemainedEffects {
-                        ticks: item.0.ticks - delta_ticks,
-                        bit: item.0.bit,
-                    }));
+
+                    let skill_type = self.lookup_skill(item.0.bit.into());
+                    if let Ok(sk) = skill_type {
+                        for skill_effect in sk.skill_effects() {
+                            for target in skill_effect.targets {
+                                // 장판스킬일 경우 범위 안에 있는지 고려
+                                if let Land { kind, region } = target {
+                                    let caster_state =
+                                        state.state_data_by_id(sk.owner().upgrade().unwrap().id());
+                                    if let Some(data) = caster_state {
+                                        if is_inside(student.coordinate, region, data.coordinate) {
+                                            new_remain_effects.push(Reverse(RemainedEffects {
+                                                ticks: item.0.ticks - delta_ticks,
+                                                bit: item.0.bit,
+                                            }));
+                                        }
+                                    }
+                                } else {
+                                    new_remain_effects.push(Reverse(RemainedEffects {
+                                        ticks: item.0.ticks - delta_ticks,
+                                        bit: item.0.bit,
+                                    }));
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -219,11 +243,7 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
                 character: student.character,
                 coordinate: student.coordinate,
                 accumulated_damage_cache: student.accumulated_damage_cache.clone(),
-                cooldowns: student
-                    .cooldowns
-                    .iter()
-                    .map(|i| i - delta_ticks )
-                    .collect(),
+                cooldowns: student.cooldowns.iter().map(|i| i - delta_ticks).collect(),
                 effects: DamageKey::from_mask(effects_mask.into(), &student.effects),
                 remained_effects: new_remain_effects,
                 accumulated_damage: acc_damage,
@@ -277,5 +297,61 @@ impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N>
 
     fn is_time_over(&self, ticks: u16) -> bool {
         self.limit_ticks <= ticks
+    }
+
+    fn lookup_skill(&self, index: usize) -> Result<Arc<dyn Skill>, error::Error> {
+        let total_skill_count = 3 + N * 3 + self.boss.skill_list().len();
+        let student_skill_offset = 3;
+        let boss_skill_offset = 3 + 3 * N;
+        if index < 3 || index >= total_skill_count {
+            return Err(error::Error::OutOfRange(format!(
+                "{index} must be between 3 and {}",
+                total_skill_count - 1
+            )));
+        }
+
+        if index < boss_skill_offset {
+            Ok(self
+                .students
+                .get((index - student_skill_offset) / 3)
+                .ok_or(error::Error::Unknown(format!(
+                    "index {} can't find skill",
+                    index
+                )))
+                .unwrap()
+                .skills
+                .get((index - student_skill_offset) % 3)
+                .ok_or(error::Error::Unknown(format!(
+                    "index {} can't find skill",
+                    index
+                )))
+                .unwrap()
+                .clone())
+        } else {
+            Ok(self
+                .boss
+                .skills
+                .get(index - boss_skill_offset)
+                .ok_or(error::Error::Unknown(format!(
+                    "index {} can't find skill",
+                    index
+                )))
+                .unwrap()
+                .clone())
+        }
+    }
+
+    fn character_by_id(&self, id: u32) -> Option<&dyn Character> {
+        if id == self.boss.id() {
+            Some(&self.boss)
+        } else {
+            for student in &self.students {
+                if id == student.id() {
+                    return Some(student);
+                }
+            }
+
+            None
+        }
     }
 }

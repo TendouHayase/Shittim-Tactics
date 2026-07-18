@@ -40,7 +40,7 @@ pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {
         all_ex_damage += damage.unwrap_or_default().crit.max;
 
         if damage.unwrap_or_default().crit.max > max_ex_damage {
-            let frames = student.character.skill_list()[0].frames();
+            let frames = student.character.skill_list()[0].duration();
 
             max_ex_damage = max_ex_damage.max(damage.unwrap_or_default().crit.max / frames as u64);
 

@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     actions::ActionContext,
+    character::Character,
     damage::{Damage, key::SkillsBitMask},
     skill::Skill,
     state::Stateful,
@@ -23,4 +24,6 @@ pub trait Simulator {
     fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16;
     fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage>;
     fn is_time_over(&self, ticks: u16) -> bool;
+    fn lookup_skill(&self, index: usize) -> Result<Arc<dyn Skill>, error::Error>;
+    fn character_by_id(&self, id: u32) -> Option<&dyn Character>;
 }

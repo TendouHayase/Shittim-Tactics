@@ -6,9 +6,9 @@ use core::{
     Position,
     actions::ActionContext,
     simulator::Simulator,
-    skill::{Skill, SkillEffectTarget},
+    skill::{Region, Skill, SkillEffectTarget},
     state::{State, Stateful},
-    utils::euclidean_distance,
+    utils::{cross_product, euclidean_distance, is_inside},
 };
 use std::{
     cmp::Reverse,
@@ -45,9 +45,10 @@ impl<const N: usize> Algorithm for Astar<N> {
             };
 
             if let Some(&best_g) = closed.get(&node.state)
-                && best_g <= node.g {
-                    continue;
-                }
+                && best_g <= node.g
+            {
+                continue;
+            }
             closed.insert(node.state.clone(), node.g);
 
             let dt = simulator.next_event_frames(&node.state);
@@ -67,10 +68,10 @@ impl<const N: usize> Algorithm for Astar<N> {
                         for skill_effect in skill_effects {
                             for target in skill_effect.targets {
                                 match target {
-                                    SkillEffectTarget::Oneself => {
+                                    SkillEffectTarget::Oneself { kind } => {
                                         targets.push(caster.upgrade().unwrap().id())
                                     }
-                                    SkillEffectTarget::Student(num) => {
+                                    SkillEffectTarget::Student { kind, count: num } => {
                                         let _caster_arc = caster.upgrade().unwrap();
 
                                         let mut students: Vec<(Position, u32)> = advanced
@@ -103,10 +104,35 @@ impl<const N: usize> Algorithm for Astar<N> {
                                             targets.push(students[i as usize].1);
                                         }
                                     }
-                                    SkillEffectTarget::Boss => {
+                                    SkillEffectTarget::Boss { kind } => {
                                         targets.push(advanced.boss().character.id())
                                     }
-                                    SkillEffectTarget::Land => (),
+                                    SkillEffectTarget::Land { kind, region } => {
+                                        let mut caster_coord = Default::default();
+                                        if advanced.boss.character.id() == caster_id {
+                                            caster_coord = advanced.boss.coordinate
+                                        } else {
+                                            for student in advanced.students() {
+                                                if student.character.id() == caster_id {
+                                                    caster_coord = student.coordinate;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        if is_inside(advanced.boss.coordinate, region, caster_coord)
+                                        {
+                                            targets.push(advanced.boss.character.id());
+                                        }
+
+                                        for student in advanced.students.iter() {
+                                            let student_coord = student.coordinate;
+
+                                            if is_inside(student_coord, region, caster_coord) {
+                                                targets.push(student.character.id());
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

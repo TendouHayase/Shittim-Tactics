@@ -2,7 +2,8 @@ use core::{
     character::Character,
     difficulty::Difficulty,
     skill::{
-        Debuff::Def, EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget, SkillType::Ex,
+        DebuffType::Def, EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget,
+        SkillType::Ex,
     },
     state::{AccumulatedDamage, StateData},
 };
@@ -13,6 +14,7 @@ use crate::binah::Binah;
 #[derive(Debug)]
 pub struct AtsilutsLight {
     parent: Weak<Binah>,
+    index: usize,
 }
 
 impl Skill for AtsilutsLight {
@@ -23,8 +25,16 @@ impl Skill for AtsilutsLight {
         0
     }
 
+    fn duration(&self) -> u16 {
+        0
+    }
+
     fn frames(&self) -> u16 {
-        1
+        todo!()
+    }
+
+    fn skill_mask_index(&self) -> usize {
+        self.index
     }
 
     fn skill_effects(&self) -> Vec<SkillEffect> {
@@ -39,24 +49,38 @@ impl Skill for AtsilutsLight {
         vec![
             SkillEffect {
                 name: Self::SKILL_1,
-                kind: EffectKind::DamageRegion {
-                    length: 2200,
-                    width: 300,
-                },
                 timing: EffectTiming::Instant,
-                targets: vec![SkillEffectTarget::Land],
+                targets: vec![SkillEffectTarget::Land {
+                    kind: EffectKind::Damage,
+                    region: Region::Polygon {
+                        vertex: [
+                            (-150, 2200).into(),
+                            (150, 2200).into(),
+                            (150, 0).into(),
+                            (-150, 0).into(),
+                        ],
+                        count: 4,
+                    },
+                }],
             },
             SkillEffect {
                 name: Self::SKILL_2,
-                kind: EffectKind::DamageRegion {
-                    length: 2200,
-                    width: 300,
-                },
                 timing: EffectTiming::Persistent {
                     interval_frames: 90,
                     duration_frames: duration,
                 },
-                targets: vec![SkillEffectTarget::Land],
+                targets: vec![SkillEffectTarget::Land {
+                    kind: EffectKind::Damage,
+                    region: Region::Polygon {
+                        vertex: [
+                            (-150f32, 2200f32).into(),
+                            (150, 2200).into(),
+                            (150, 0).into(),
+                            (-150, 0).into(),
+                        ],
+                        count: 4,
+                    },
+                }],
             },
         ]
     }
@@ -82,9 +106,10 @@ impl AtsilutsLight {
     const SKILL_1: &str = "Atsilut's Light 1";
     const SKILL_2: &str = "Atsilut's Light 2";
 
-    pub fn new(binah: &Binah) -> Self {
+    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
         AtsilutsLight {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            index: skill_mask_index,
         }
     }
 }
@@ -92,6 +117,7 @@ impl AtsilutsLight {
 #[derive(Debug)]
 pub struct FiresofSeverity1 {
     parent: Weak<Binah>,
+    index: usize,
 }
 
 impl Skill for FiresofSeverity1 {
@@ -102,12 +128,20 @@ impl Skill for FiresofSeverity1 {
         0
     }
 
+    fn duration(&self) -> u16 {
+        0
+    }
+
     fn frames(&self) -> u16 {
-        1
+        todo!()
     }
 
     fn owner(&self) -> Weak<dyn Character> {
         self.parent.clone()
+    }
+
+    fn skill_mask_index(&self) -> usize {
+        self.index
     }
 
     fn skill_type(&self) -> core::skill::SkillType {
@@ -117,9 +151,11 @@ impl Skill for FiresofSeverity1 {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             name: Self::NAME,
-            kind: EffectKind::Damage,
             timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Student(4)],
+            targets: vec![SkillEffectTarget::Student {
+                kind: EffectKind::Damage,
+                count: 4,
+            }],
         }]
     }
 
@@ -154,7 +190,7 @@ impl Skill for FiresofSeverity1 {
                 ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
                 ac_dmg.push(AccumulatedDamage {
                     damage: target.effects.clone(),
-                    ticks: self.frames(),
+                    ticks: self.duration(),
                 });
             }
 
@@ -176,9 +212,10 @@ impl Skill for FiresofSeverity1 {
 impl FiresofSeverity1 {
     const NAME: &str = "Fire of Severity 1";
 
-    pub fn new(binah: &Binah) -> Self {
+    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
         FiresofSeverity1 {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            index: skill_mask_index,
         }
     }
 }
@@ -186,6 +223,7 @@ impl FiresofSeverity1 {
 #[derive(Debug)]
 pub struct FireofSeverity2 {
     parent: Weak<Binah>,
+    index: usize,
 }
 
 impl Skill for FireofSeverity2 {
@@ -201,16 +239,26 @@ impl Skill for FireofSeverity2 {
         0
     }
 
+    fn duration(&self) -> u16 {
+        0
+    }
+
     fn frames(&self) -> u16 {
-        1
+        todo!()
+    }
+
+    fn skill_mask_index(&self) -> usize {
+        self.index
     }
 
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             name: Self::NAME,
-            kind: EffectKind::Damage,
             timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Student(4)],
+            targets: vec![SkillEffectTarget::Student {
+                kind: EffectKind::Damage,
+                count: 4,
+            }],
         }]
     }
 
@@ -255,7 +303,7 @@ impl Skill for FireofSeverity2 {
                 ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
                 ac_dmg.push(AccumulatedDamage {
                     damage: target.effects.clone(),
-                    ticks: self.frames(),
+                    ticks: self.duration(),
                 });
             }
 
@@ -283,9 +331,10 @@ impl Skill for FireofSeverity2 {
 impl FireofSeverity2 {
     const NAME: &str = "Fires of Severity 2";
 
-    pub fn new(binah: &Binah) -> Self {
+    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
         Self {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            index: skill_mask_index,
         }
     }
 }
@@ -293,6 +342,7 @@ impl FireofSeverity2 {
 #[derive(Debug)]
 pub struct PurifyingStorm {
     parent: Weak<Binah>,
+    index: usize,
 }
 
 impl Skill for PurifyingStorm {
@@ -303,8 +353,16 @@ impl Skill for PurifyingStorm {
         3
     }
 
+    fn duration(&self) -> u16 {
+        30
+    }
+
     fn frames(&self) -> u16 {
         todo!()
+    }
+
+    fn skill_mask_index(&self) -> usize {
+        self.index
     }
 
     fn owner(&self) -> Weak<dyn Character> {
@@ -318,14 +376,17 @@ impl Skill for PurifyingStorm {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             name: "PurifyingStorm",
-            kind: EffectKind::Debuff {
-                ty: Def,
-                duration: 90,
-                scale: 50,
-                amount: 0,
-            },
+
             timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Student(4)],
+            targets: vec![SkillEffectTarget::Student {
+                kind: EffectKind::Debuff {
+                    ty: Def,
+                    duration: 90,
+                    scale: 50,
+                    amount: 0,
+                },
+                count: 4,
+            }],
         }]
     }
 
@@ -346,7 +407,7 @@ impl Skill for PurifyingStorm {
                 ac_dmg_cache.append(&(damage * 3));
                 ac_dmg.push(AccumulatedDamage {
                     damage: target.effects.clone(),
-                    ticks: self.frames(),
+                    ticks: self.duration(),
                 });
             }
 
@@ -366,9 +427,10 @@ impl Skill for PurifyingStorm {
 }
 
 impl PurifyingStorm {
-    pub fn new(binah: &Binah) -> Self {
+    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
         Self {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            index: skill_mask_index,
         }
     }
 }

@@ -40,7 +40,38 @@ impl From<(f64, f64)> for Position {
     }
 }
 
+impl From<(i32, i32)> for Position {
+    fn from(value: (i32, i32)) -> Self {
+        Self {
+            x: OrderedFloat(value.0 as f32),
+            y: OrderedFloat(value.1 as f32),
+        }
+    }
+}
+
+impl Add<Position> for Position {
+    type Output = Position;
+    fn add(self, rhs: Self) -> Self::Output {
+        Position {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Sub<Position> for Position {
+    type Output = Position;
+    fn sub(self, rhs: Position) -> Self::Output {
+        Position {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
 pub use std::default;
 pub use std::marker;
+use std::ops::Add;
+use std::ops::Sub;
 
 use ordered_float::OrderedFloat;

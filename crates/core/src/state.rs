@@ -62,6 +62,7 @@ pub trait Stateful<'a>: Clone + Send + Sync {
     fn frames(&self) -> u16;
     fn is_terminated(&self) -> bool;
     fn is_goal(&self, threshold_percent: f64) -> bool;
+    fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32) -> Option<&'c StateData<'a>>;
 }
 
 impl PartialOrd for RemainedEffects {
@@ -133,6 +134,20 @@ impl<'a, const N: usize> Stateful<'a> for State<'a, N> {
         }
 
         result
+    }
+
+    fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32) -> Option<&'c StateData<'a>> {
+        if id == self.boss.character.id() {
+            return Some(&self.boss);
+        }
+
+        for student in &self.students {
+            if id == student.character.id() {
+                return Some(student);
+            }
+        }
+
+        None
     }
 }
 
@@ -209,11 +224,7 @@ impl<'a> StateData<'a> {
             character: self.character,
             coordinate: self.coordinate,
             accumulated_damage_cache: self.accumulated_damage_cache.clone(),
-            cooldowns: self
-                .cooldowns
-                .iter()
-                .map(cooldowns_condition)
-                .collect(),
+            cooldowns: self.cooldowns.iter().map(cooldowns_condition).collect(),
             effects,
             remained_effects,
             accumulated_damage: self.accumulated_damage.clone(),
@@ -223,7 +234,9 @@ impl<'a> StateData<'a> {
     pub fn damage_list(&self) -> Vec<Damage> {
         let mut result = Vec::with_capacity(self.accumulated_damage.len());
         for d in &self.accumulated_damage {
-            if let Some(x) = d.damage.damage() { result.push(x) }
+            if let Some(x) = d.damage.damage() {
+                result.push(x)
+            }
         }
 
         result

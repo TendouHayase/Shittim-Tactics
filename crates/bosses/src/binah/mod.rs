@@ -56,6 +56,7 @@ impl Binah {
         difficulty: Difficulty,
         attack_type: AttackType,
         terrain: Terrain,
+        skill_mask_offset: usize,
     ) -> Result<Self, Error> {
         // json 데이터 가져오기
         let data: HashMap<AttackType, HashMap<Difficulty, DifficultyWrapper>> =
@@ -142,10 +143,10 @@ impl Binah {
             .build();
 
         let skills: Box<Vec<Arc<dyn Skill>>> = Box::new(vec![
-            Arc::new(AtsilutsLight::new(&result)),
-            Arc::new(FiresofSeverity1::new(&result)),
-            Arc::new(FireofSeverity2::new(&result)),
-            Arc::new(PurifyingStorm::new(&result)),
+            Arc::new(AtsilutsLight::new(&result, skill_mask_offset)),
+            Arc::new(FiresofSeverity1::new(&result, skill_mask_offset + 1)),
+            Arc::new(FireofSeverity2::new(&result, skill_mask_offset + 2)),
+            Arc::new(PurifyingStorm::new(&result, skill_mask_offset + 3)),
         ]);
 
         result.skills = skills;
