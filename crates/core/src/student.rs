@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::Arc};
+use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 use typed_builder::TypedBuilder;
 

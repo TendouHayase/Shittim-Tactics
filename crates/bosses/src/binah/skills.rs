@@ -11,10 +11,13 @@ use std::sync::{Arc, Weak};
 
 use crate::binah::Binah;
 
+// TODO! 스킬 이름 런타임에 선택한 언어로 반환 구현 필요
+
 #[derive(Debug)]
 pub struct AtsilutsLight {
     parent: Weak<Binah>,
     index: usize,
+    id: (u32, u8),
 }
 
 impl Skill for AtsilutsLight {
@@ -33,7 +36,7 @@ impl Skill for AtsilutsLight {
         todo!()
     }
 
-    fn skill_mask_index(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
 
@@ -48,7 +51,7 @@ impl Skill for AtsilutsLight {
 
         vec![
             SkillEffect {
-                name: Self::SKILL_1,
+                id: self.id,
                 timing: EffectTiming::Instant,
                 targets: vec![SkillEffectTarget::Land {
                     kind: EffectKind::Damage,
@@ -64,7 +67,7 @@ impl Skill for AtsilutsLight {
                 }],
             },
             SkillEffect {
-                name: Self::SKILL_2,
+                id: self.id,
                 timing: EffectTiming::Persistent {
                     interval_frames: 90,
                     duration_frames: duration,
@@ -110,6 +113,7 @@ impl AtsilutsLight {
         AtsilutsLight {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
             index: skill_mask_index,
+            id: (binah.id(), 0),
         }
     }
 }
@@ -118,6 +122,7 @@ impl AtsilutsLight {
 pub struct FiresofSeverity1 {
     parent: Weak<Binah>,
     index: usize,
+    id: (u32, u8),
 }
 
 impl Skill for FiresofSeverity1 {
@@ -140,7 +145,7 @@ impl Skill for FiresofSeverity1 {
         self.parent.clone()
     }
 
-    fn skill_mask_index(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
 
@@ -150,7 +155,7 @@ impl Skill for FiresofSeverity1 {
 
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
-            name: Self::NAME,
+            id: self.id,
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Student {
                 kind: EffectKind::Damage,
@@ -216,6 +221,7 @@ impl FiresofSeverity1 {
         FiresofSeverity1 {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
             index: skill_mask_index,
+            id: (binah.id(), 1),
         }
     }
 }
@@ -224,11 +230,13 @@ impl FiresofSeverity1 {
 pub struct FireofSeverity2 {
     parent: Weak<Binah>,
     index: usize,
+    name: String,
+    id: (u32, u8),
 }
 
 impl Skill for FireofSeverity2 {
     fn name(&self) -> &str {
-        "Fire of Severity 2"
+        &self.name
     }
 
     fn owner(&self) -> Weak<dyn Character> {
@@ -247,13 +255,13 @@ impl Skill for FireofSeverity2 {
         todo!()
     }
 
-    fn skill_mask_index(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
 
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
-            name: Self::NAME,
+            id: self.id,
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Student {
                 kind: EffectKind::Damage,
@@ -335,6 +343,8 @@ impl FireofSeverity2 {
         Self {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
             index: skill_mask_index,
+            name: Self::NAME.to_string(),
+            id: (binah.id(), 2),
         }
     }
 }
@@ -343,6 +353,7 @@ impl FireofSeverity2 {
 pub struct PurifyingStorm {
     parent: Weak<Binah>,
     index: usize,
+    id: (u32, u8),
 }
 
 impl Skill for PurifyingStorm {
@@ -361,7 +372,7 @@ impl Skill for PurifyingStorm {
         todo!()
     }
 
-    fn skill_mask_index(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
 
@@ -375,8 +386,7 @@ impl Skill for PurifyingStorm {
 
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
-            name: "PurifyingStorm",
-
+            id: self.id,
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Student {
                 kind: EffectKind::Debuff {
@@ -431,6 +441,7 @@ impl PurifyingStorm {
         Self {
             parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
             index: skill_mask_index,
+            id: (binah.id(), 3),
         }
     }
 }

@@ -1,6 +1,6 @@
 use core::{
     base::BaseStats,
-    boss::{BossBehavior, BossStats},
+    boss::BossStats,
     character::Character,
     difficulty::Difficulty,
     skill::{Skill, SkillEffect},

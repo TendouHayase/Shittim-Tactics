@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::Arc};
+use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
@@ -16,27 +16,27 @@ pub struct BossStats {
 }
 
 #[derive(Debug, Clone)]
-pub struct Boss<T: BossBehavior> {
+pub struct Boss<T: PartialEq + Send + Sync> {
     pub stats: BossStats,
     pub other_stats: T,
     pub skills: Vec<Arc<dyn Skill>>,
 }
 
-impl<T: BossBehavior + PartialEq> PartialEq for Boss<T> {
+impl<T: PartialEq + Send + Sync> PartialEq for Boss<T> {
     fn eq(&self, other: &Self) -> bool {
         self.stats == other.stats && self.other_stats == other.other_stats
     }
 }
 
-impl<T: BossBehavior + PartialEq> Eq for Boss<T> {}
+impl<T: PartialEq + Send + Sync> Eq for Boss<T> {}
 
-impl<T: Character + BossBehavior> Hash for Boss<T> {
+impl<T: PartialEq + Send + Sync> Hash for Boss<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.stats.id.hash(state);
     }
 }
 
-impl<T: Character + BossBehavior> Character for Boss<T> {
+impl<T: PartialEq + Send + Sync + Debug> Character for Boss<T> {
     fn id(&self) -> u32 {
         self.stats.id
     }
@@ -48,10 +48,4 @@ impl<T: Character + BossBehavior> Character for Boss<T> {
     fn skill_list(&self) -> &Vec<Arc<dyn Skill>> {
         &self.skills
     }
-}
-
-pub trait BossBehavior: Character {
-    fn groggy_gauge(&self) -> u64;
-    fn groggy_duration(&self) -> u8;
-    fn terrain(&self) -> Terrain;
 }

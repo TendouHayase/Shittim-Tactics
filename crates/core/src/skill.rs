@@ -63,8 +63,8 @@ pub enum EffectKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Effect {
-    pub name: &'static str,
+pub struct Effect<'a> {
+    pub name: &'a str,
     pub kind: EffectKind,
     pub timing: EffectTiming,
 }
@@ -93,7 +93,7 @@ pub enum Region {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SkillEffect {
-    pub name: &'static str,
+    pub id: (u32, u8), // (캐릭터 id, 스킬 인덱스)
     pub timing: EffectTiming,
     pub targets: Vec<SkillEffectTarget>,
 }
@@ -113,9 +113,9 @@ pub trait Skill: Debug + Send + Sync {
     fn cost(&self) -> u8;
     fn frames(&self) -> u16;
     fn duration(&self) -> u16;
-    fn skill_mask_index(&self) -> usize;
+    fn skill_mask_offset(&self) -> usize;
     fn skill_type(&self) -> SkillType;
-    fn skill_effects(&self) -> Vec<SkillEffect>;
+    fn skill_effects<'a>(&'a self) -> Vec<SkillEffect>;
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'b StateData<'a>,

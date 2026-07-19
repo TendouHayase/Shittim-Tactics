@@ -1,7 +1,7 @@
 use core::{
     TPS,
     actions::ActionContext::{self},
-    boss::{Boss, BossBehavior},
+    boss::Boss,
     character::Character,
     damage::{
         Damage,
@@ -16,11 +16,12 @@ use core::{
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
+    fmt::Debug,
     sync::Arc,
 };
 
-pub struct Simulation<'a, T: BossBehavior + Clone, const N: usize> {
-    pub students: Vec<Student>,
+pub struct Simulation<'a, T: Debug + Send + Sync + PartialEq, const N: usize> {
+    pub students: [Student; N],
     pub boss: Boss<T>,
 
     limit_ticks: u16,
@@ -31,7 +32,7 @@ pub struct Simulation<'a, T: BossBehavior + Clone, const N: usize> {
     allocator: typed_arena::Arena<State<'a, N>>,
 }
 
-impl<T: BossBehavior + Clone, const N: usize> Simulator for Simulation<'_, T, N> {
+impl<T: Debug + Send + Sync + PartialEq, const N: usize> Simulator for Simulation<'_, T, N> {
     type S<'a> = State<'a, N>;
     fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<Arc<dyn Skill>> {
         let cost = state.cost();
