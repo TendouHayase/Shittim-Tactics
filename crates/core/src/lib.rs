@@ -1,3 +1,11 @@
+//! # core
+//!
+//! 타 크레이트를 구현하는데 필요한 핵심 요소들을 모아둔 크레이트입니다.
+//!
+//! ## 주요 모듈
+//! - 'damage' : 데미지 관련
+//! * 데미지를 학생들 스킬 발동 여부로 O(1)에 구하도록 구현
+
 pub mod actions;
 pub mod agent;
 pub mod base;
@@ -13,65 +21,5 @@ pub mod terrains;
 pub mod types;
 pub mod utils;
 
-pub const TPS: u16 = 30;
-pub const MAX_STUDENT_COUNT: usize = 10;
-
-#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Hash)]
-pub struct Position {
-    pub x: OrderedFloat<f32>,
-    pub y: OrderedFloat<f32>,
-}
-
-impl From<(f32, f32)> for Position {
-    fn from(value: (f32, f32)) -> Self {
-        Self {
-            x: OrderedFloat(value.0),
-            y: OrderedFloat(value.1),
-        }
-    }
-}
-
-impl From<(f64, f64)> for Position {
-    fn from(value: (f64, f64)) -> Self {
-        Self {
-            x: OrderedFloat(value.0 as f32),
-            y: OrderedFloat(value.1 as f32),
-        }
-    }
-}
-
-impl From<(i32, i32)> for Position {
-    fn from(value: (i32, i32)) -> Self {
-        Self {
-            x: OrderedFloat(value.0 as f32),
-            y: OrderedFloat(value.1 as f32),
-        }
-    }
-}
-
-impl Add<Position> for Position {
-    type Output = Position;
-    fn add(self, rhs: Self) -> Self::Output {
-        Position {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl Sub<Position> for Position {
-    type Output = Position;
-    fn sub(self, rhs: Position) -> Self::Output {
-        Position {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-        }
-    }
-}
-
 pub use std::default;
 pub use std::marker;
-use std::ops::Add;
-use std::ops::Sub;
-
-use ordered_float::OrderedFloat;

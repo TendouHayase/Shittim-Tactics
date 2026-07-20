@@ -5,40 +5,117 @@ use std::{
 };
 
 use crate::{
-    Position,
     character::Character,
     damage::{
         Damage,
         cache::DamageCache,
         key::{DamageKey, SkillsBitMask},
     },
+    utils::Position,
 };
 
-#[repr(align(64))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct State<'a, const N: usize> {
-    pub students: [StateData<'a>; N],
-    pub cost: i8,
-    pub frames: u16,
-    pub boss: StateData<'a>,
+#[macro_export]
+macro_rules! create_state {
+    ($boss_type:ty,  $($student_type:ty),+ $(,)?) => {
+        #[repr(C, align(64))]
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        struct State<'a> {
+            pub students: ($(StateData<'a, $student_type>),+),
+            pub boss: StateData<'a, $boss_type>,
+            pub frames: u16,
+            pub cost: i8,
+        }
+
+        impl<'a, const N: usize> Stateful<'a> for State<'a> {
+            fn students<'b: 'c, 'c>(&'b self) -> &'b [StateData<'a>] {
+                &self.students
+            }
+
+            fn students_mut<'b, 'c>(&'b mut self) -> &'c mut [StateData<'a>]
+            where
+                'a: 'b,
+                'b: 'c,
+            {
+                &mut self.students
+            }
+
+            fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a> {
+                &self.boss
+            }
+
+            fn boss_mut<'b, 'c>(&'b mut self) -> &'c mut StateData<'a>
+            where
+                'a: 'b,
+                'b: 'c,
+            {
+                &mut self.boss
+            }
+
+            fn cost(&self) -> i8 {
+                self.cost
+            }
+
+            fn frames(&self) -> u16 {
+                self.frames
+            }
+
+            fn is_goal(&self, threshold_percent: f64) -> bool {
+                self.boss
+                    .accumulated_damage_cache
+                    .get_or_compute(&self.boss.damage_list())
+                    .as_ref()
+                    .is_some_and(|x| x.query_range(0, self.boss.character.stats().hp) >= threshold_percent)
+            }
+
+            fn is_terminated(&self) -> bool {
+                let mut result = true;
+
+                for student in &self.students {
+                    if student
+                        .accumulated_damage_cache
+                        .get_or_compute(&self.boss.damage_list())
+                        .as_ref()
+                        .is_some_and(|x| x.max < student.character.stats().hp)
+                    {
+                        result = false;
+                        break;
+                    }
+                }
+
+                result
+            }
+
+            fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32) -> Option<&'c StateData<'a>> {
+                if id == self.boss.character.id() {
+                    return Some(&self.boss);
+                }
+
+                for student in &self.students {
+                    if id == student.character.id() {
+                        return Some(student);
+                    }
+                }
+
+                None
+            }
+        }
+    };
 }
 
-#[repr(align(64))]
+#[repr(C, align(64))]
 #[derive(Debug, Clone)]
-pub struct StateData<'a> {
-    pub character: &'a dyn Character,
-
-    /// These are the student's coordinates.
-    pub coordinate: Position,
-    pub accumulated_damage_cache: DamageCache,
+pub struct StateData<'a, T: Default + Clone + Send + Sync = ()> {
     pub cooldowns: Vec<u16>,
-    pub effects: DamageKey<'a>,
-
-    /// (남은 지속틱, 해당 비트)
     pub remained_effects: BinaryHeap<Reverse<RemainedEffects>>,
-
-    /// (데미지, 지속 틱)
     pub accumulated_damage: Vec<AccumulatedDamage<'a>>,
+
+    pub character: &'a dyn Character,
+    pub effects: DamageKey<'a>,
+    pub accumulated_damage_cache: DamageCache,
+
+    pub coordinate: Position,
+
+    pub extras: T,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,7 +130,8 @@ pub struct AccumulatedDamage<'a> {
     pub ticks: u16,
 }
 
-pub trait Stateful<'a>: Clone + Send + Sync {
+pub trait Stateful<'a>: Clone + Send + Sync + Eq + Hash {
+    fn new(students: &[StateData<'a>], boss: StateData<'a>, elased_frames: u16, cost: i8) -> Self;
     fn students<'b: 'c, 'c>(&'b self) -> &'c [StateData<'a>];
     fn students_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut [StateData<'a>];
     fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a>;
@@ -74,80 +152,6 @@ impl PartialOrd for RemainedEffects {
 impl Ord for RemainedEffects {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.ticks.cmp(&other.ticks)
-    }
-}
-
-impl<'a, const N: usize> Stateful<'a> for State<'a, N> {
-    fn students<'b: 'c, 'c>(&'b self) -> &'b [StateData<'a>] {
-        &self.students
-    }
-
-    fn students_mut<'b, 'c>(&'b mut self) -> &'c mut [StateData<'a>]
-    where
-        'a: 'b,
-        'b: 'c,
-    {
-        &mut self.students
-    }
-
-    fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a> {
-        &self.boss
-    }
-
-    fn boss_mut<'b, 'c>(&'b mut self) -> &'c mut StateData<'a>
-    where
-        'a: 'b,
-        'b: 'c,
-    {
-        &mut self.boss
-    }
-
-    fn cost(&self) -> i8 {
-        self.cost
-    }
-
-    fn frames(&self) -> u16 {
-        self.frames
-    }
-
-    fn is_goal(&self, threshold_percent: f64) -> bool {
-        self.boss
-            .accumulated_damage_cache
-            .get_or_compute(&self.boss.damage_list())
-            .as_ref()
-            .is_some_and(|x| x.query_range(0, self.boss.character.stats().hp) >= threshold_percent)
-    }
-
-    fn is_terminated(&self) -> bool {
-        let mut result = true;
-
-        for student in &self.students {
-            if student
-                .accumulated_damage_cache
-                .get_or_compute(&self.boss.damage_list())
-                .as_ref()
-                .is_some_and(|x| x.max < student.character.stats().hp)
-            {
-                result = false;
-                break;
-            }
-        }
-
-        result
-    }
-
-    fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32) -> Option<&'c StateData<'a>> {
-        if id == self.boss.character.id() {
-            return Some(&self.boss);
-        }
-
-        for student in &self.students {
-            if id == student.character.id() {
-                return Some(student);
-            }
-        }
-
-        None
     }
 }
 
@@ -188,6 +192,7 @@ impl<'a> StateData<'a> {
             remained_effects: BinaryHeap::new(),
             accumulated_damage: Vec::new(),
             accumulated_damage_cache: Default::default(),
+            extras: Default::default(),
         }
     }
 
@@ -211,6 +216,7 @@ impl<'a> StateData<'a> {
             effects: effects.clone(),
             remained_effects: remained_effects.clone(),
             accumulated_damage: accumulated_damage.to_vec(),
+            extras: Default::default(),
         }
     }
 
@@ -228,6 +234,7 @@ impl<'a> StateData<'a> {
             effects,
             remained_effects,
             accumulated_damage: self.accumulated_damage.clone(),
+            extras: Default::default(),
         }
     }
 

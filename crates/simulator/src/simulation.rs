@@ -1,5 +1,4 @@
 use core::{
-    TPS,
     actions::ActionContext::{self},
     boss::Boss,
     character::Character,
@@ -9,18 +8,20 @@ use core::{
     },
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget::Land},
-    state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
+    state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
     student::Student,
+    utils::TPS,
     utils::is_inside,
 };
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
     fmt::Debug,
+    marker::PhantomData,
     sync::Arc,
 };
 
-pub struct Simulation<'a, T: Debug + Send + Sync + PartialEq, const N: usize> {
+pub struct Simulation<'a, T: Debug + Send + Sync + PartialEq, const N: usize, S: Stateful<'a>> {
     pub students: [Student; N],
     pub boss: Boss<T>,
 
@@ -29,11 +30,13 @@ pub struct Simulation<'a, T: Debug + Send + Sync + PartialEq, const N: usize> {
     damage_list: HashMap<SkillsBitMask, Damage>,
     cost_charge_time: HashMap<SkillsBitMask, u16>,
 
-    allocator: typed_arena::Arena<State<'a, N>>,
+    _marker: PhantomData<&'a S>,
 }
 
-impl<T: Debug + Send + Sync + PartialEq, const N: usize> Simulator for Simulation<'_, T, N> {
-    type S<'a> = State<'a, N>;
+impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>> Simulator
+    for Simulation<'_, T, N, S>
+{
+    type S<'a> = S;
     fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<Arc<dyn Skill>> {
         let cost = state.cost();
         let mut result = vec![];
@@ -248,21 +251,20 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize> Simulator for Simulatio
                 effects: DamageKey::from_mask(effects_mask.into(), &student.effects),
                 remained_effects: new_remain_effects,
                 accumulated_damage: acc_damage,
+                extras: Default::default(),
             }
         });
 
         let new_students: [StateData<'a>; N] =
             std::array::from_fn(|_| student_effects_lambda.next().unwrap());
-        Ok(State {
-            students: new_students,
-            cost: (state.cost() + (delta_ticks * cost_per_second / TPS) as i8).min(10),
-            boss: state.boss().clone_matching(
-                cooldowns_lambda,
-                boss_effects,
-                new_boss_remain_effects,
-            ),
-            frames: state.frames() + delta_ticks,
-        })
+        Ok(Self::S::new(
+            &new_students,
+            state
+                .boss()
+                .clone_matching(cooldowns_lambda, boss_effects, new_boss_remain_effects),
+            state.frames() + delta_ticks,
+            (state.cost() + (delta_ticks * cost_per_second / TPS) as i8).min(10),
+        ))
     }
 
     fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16 {
