@@ -305,8 +305,8 @@ impl Damage {
         let prefix_sum = build_prefix_sum(&counts);
 
         IrwinHall {
-            prefix_sum: Arc::new(prefix_sum),
-            uniforms: Arc::new(RwLock::new(vec![])),
+            prefix_sum: prefix_sum,
+            uniforms: vec![],
             n: 1,
             min: lo,
             max: hi,

@@ -1,15 +1,7 @@
 use core::{
-    TPS,
-    character::Character,
-    damage::key::DamageKey,
-    skill::{
-        BuffType::{self},
-        EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillType,
-    },
-    state::{AccumulatedDamage, RemainedEffects, StateData},
-    student::Student,
-    types::AttackType,
-    utils::is_inside,
+    character::Character, damage::key::DamageKey, skill::{
+        BuffType::{self, Def}, EffectKind, EffectKindOther, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillType,
+    }, state::{AccumulatedDamage, RemainedEffects, StateData, Stateful}, student::Student, types::AttackType, utils::{TPS, is_inside},
 };
 use std::{
     cmp::Reverse,
@@ -41,6 +33,12 @@ pub struct SubSkill {
     id: (u32, u8),
     name: String,
     accumulated_damage: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SubSkillState {
+    /// 서브 스킬 효과로 누적된 데미지
+    pub acc_damage: u64,
 }
 
 impl Skill for ExSkill {
@@ -145,6 +143,7 @@ impl Skill for ExSkill {
                             ),
                             remained_effects,
                             accumulated_damage: target.accumulated_damage.clone(),
+                            extras: Default::default(),
                         });
                     }
                 }
@@ -251,7 +250,7 @@ impl BasicSkill {
     }
 }
 
-impl Skill for SubSkill {
+impl Skill<SubSkillState> for SubSkill {
     fn name(&self) -> &str {
         &self.name
     }
@@ -287,18 +286,24 @@ impl Skill for SubSkill {
                 interval_frames: 0,
                 duration_frames: self.duration(),
             },
-            targets: vec![SkillEffectTarget::Student {
-                kind: EffectKind::Other,
-                count: 5,
-            }],
+            targets: vec![
+                SkillEffectTarget::Student {
+                    kind: EffectKind::Other(SubSkill::effect_apply),
+                    count: 6,
+                },
+                SkillEffectTarget::Boss {
+                    kind: EffectKind::Other(SubSkill::effect_apply),
+                },
+            ],
         }]
     }
 
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b StateData<'a>,
+        caster: &'b StateData<'a, SubSkillState>,
         targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>> {
+        let 
     }
 }
 
@@ -311,5 +316,9 @@ impl SubSkill {
             name: name.to_string(),
             accumulated_damage: 0,
         }
+    }
+
+    pub fn effect_apply<'a, S: Stateful<'a>>(state: S) -> S {
+        state
     }
 }

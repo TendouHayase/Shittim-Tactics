@@ -1,11 +1,13 @@
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 use std::sync::Weak;
 
-use crate::Position;
 use crate::character::Character;
-use crate::state::StateData;
+use crate::state::{StateData, Stateful};
 use crate::types::AttackType;
+use crate::utils::Position;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BuffType {
@@ -42,8 +44,18 @@ pub enum EffectTiming {
     },
 }
 
+/// 적용된 스킬 또는 상태효과의 종류를 나타냅니다.
+///
+/// # Warning
+/// `Other` 변형의 함수 포인터 주소를 기준으로 `Eq`와 `Hash`를 비교합니다.
+/// 컴파일 시 소스코드 상에선 다르더라도 생성되는 기계어가 같으면 같다고 취급될 수 있지만,
+/// 로직상 `Other`의 함수는 같은 기능을 하면 같은 것이므로 이 위험을 배제합니다.
+#[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EffectKind {
+pub enum EffectKind<S = ()>
+where
+    S: for<'a> Stateful<'a>,
+{
     Damage,
     Heal,
     Buff {
@@ -59,7 +71,7 @@ pub enum EffectKind {
         amount: u32,
     },
     Move,
-    Other,
+    Other(fn(S) -> S),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -107,7 +119,7 @@ pub enum SkillType {
     NormalAttack,
 }
 
-pub trait Skill: Debug + Send + Sync {
+pub trait Skill<T: Send + Sync + Clone + Default = ()>: Debug + Send + Sync {
     fn name(&self) -> &str;
     fn owner(&self) -> Weak<dyn Character>;
     fn cost(&self) -> u8;
@@ -118,7 +130,7 @@ pub trait Skill: Debug + Send + Sync {
     fn skill_effects<'a>(&'a self) -> Vec<SkillEffect>;
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b StateData<'a>,
+        caster: &'b StateData<'a, T>,
         targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>>;
 }

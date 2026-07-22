@@ -9,3 +9,4 @@ typed-builder = "0.23.2"
 ordered-float = "5.3.0"
 stochastic = {path = "../stochastic"}
 error = {path="../error"}
+macros = {path = "../macros"}

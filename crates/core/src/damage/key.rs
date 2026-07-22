@@ -6,7 +6,7 @@ use std::{
 
 use crate::damage::Damage;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct DamageKey<'a> {
     pub mask: SkillsBitMask,
     skill_list: &'a HashMap<SkillsBitMask, Damage>,

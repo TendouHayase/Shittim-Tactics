@@ -18,8 +18,8 @@ mod tests {
         let counts = vec![1u128; (max - min + 1) as usize];
         let prefix = build_prefix_sum(&counts);
         IrwinHall {
-            prefix_sum: Arc::new(prefix),
-            uniforms: Arc::new(RwLock::new(vec![Uniform { min, max }])),
+            prefix_sum: prefix,
+            uniforms: vec![Uniform { min, max }],
             n: 1,
             min,
             max,
@@ -303,7 +303,7 @@ mod tests {
             .compose(&Uniform { min: 2, max: 8 })
             .compose(&Uniform { min: 1, max: 3 });
 
-        let guard = composed.uniforms.read().unwrap();
+        let guard = composed.uniforms;
         assert_eq!(guard.len(), 3);
         assert_eq!(guard[0].min, 0);
         assert_eq!(guard[0].max, 5);

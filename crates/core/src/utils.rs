@@ -1,6 +1,65 @@
 use ordered_float::OrderedFloat;
 
-use crate::{Position, skill::Region};
+use crate::skill::Region;
+
+pub const TPS: u16 = 30;
+pub const MAX_STUDENT_COUNT: usize = 10;
+
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Hash)]
+pub struct Position {
+    pub x: OrderedFloat<f32>,
+    pub y: OrderedFloat<f32>,
+}
+
+impl From<(f32, f32)> for Position {
+    fn from(value: (f32, f32)) -> Self {
+        Self {
+            x: OrderedFloat(value.0),
+            y: OrderedFloat(value.1),
+        }
+    }
+}
+
+impl From<(f64, f64)> for Position {
+    fn from(value: (f64, f64)) -> Self {
+        Self {
+            x: OrderedFloat(value.0 as f32),
+            y: OrderedFloat(value.1 as f32),
+        }
+    }
+}
+
+impl From<(i32, i32)> for Position {
+    fn from(value: (i32, i32)) -> Self {
+        Self {
+            x: OrderedFloat(value.0 as f32),
+            y: OrderedFloat(value.1 as f32),
+        }
+    }
+}
+
+impl Add<Position> for Position {
+    type Output = Position;
+    fn add(self, rhs: Self) -> Self::Output {
+        Position {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Sub<Position> for Position {
+    type Output = Position;
+    fn sub(self, rhs: Position) -> Self::Output {
+        Position {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+use std::ops::Add;
+use std::ops::Sub;
 
 #[inline]
 pub fn euclidean_distance(lhs: Position, rhs: Position) -> f64 {
@@ -93,4 +152,18 @@ pub fn is_inside(p: Position, region: Region, bias: Position) -> bool {
                 && radian.to_degrees() <= end_angle_degree as f32
         }
     }
+}
+
+macro_rules! count_token_trees {
+    () => {
+        0usize
+    };
+
+    ($head:tt $($tail:tt)*) => (1usize + count_token_trees!($($tail)*))
+}
+
+macro_rules! count_types {
+    ($($ty:ty),* $(,)?) => {
+        count_token_trees!($({$ty})*)
+    };
 }

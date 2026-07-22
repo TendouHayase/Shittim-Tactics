@@ -17,8 +17,8 @@ pub struct Uniform {
 
 #[derive(Debug, Clone)]
 pub struct IrwinHall {
-    pub prefix_sum: Arc<Vec<u128>>,
-    pub uniforms: Arc<RwLock<Vec<Uniform>>>,
+    pub prefix_sum: Vec<u128>,
+    pub uniforms: Vec<Uniform>,
     pub n: u32,
     pub min: u64,
     pub max: u64,
@@ -61,8 +61,8 @@ impl Eq for IrwinHall {}
 impl Default for IrwinHall {
     fn default() -> Self {
         Self {
-            prefix_sum: Arc::new(Vec::new()),
-            uniforms: Arc::new(RwLock::new(Vec::new())),
+            prefix_sum: Default::default(),
+            uniforms: Default::default(),
             n: 0,
             min: 0,
             max: 0,
@@ -75,8 +75,8 @@ impl IrwinHall {
     pub fn from_uniform(uniform: Uniform, n: u32) -> Self {
         let domain = uniform.max - uniform.min + 1;
         Self {
-            prefix_sum: Arc::new(vec![domain as u128; domain as usize]),
-            uniforms: Arc::new(RwLock::new(vec![uniform])),
+            prefix_sum: vec![domain as u128; domain as usize],
+            uniforms: vec![uniform],
             n,
             min: uniform.min,
             max: uniform.max,
@@ -84,7 +84,7 @@ impl IrwinHall {
         }
     }
 
-    pub fn build_pmf(distr: &[Uniform]) -> Arc<Vec<u128>> {
+    pub fn build_pmf(distr: &[Uniform]) -> Vec<u128> {
         assert!(!distr.is_empty(), "distr must not be empty");
 
         let first = &distr[0];
@@ -96,7 +96,7 @@ impl IrwinHall {
             prefix = build_prefix_sum(&new_counts);
         }
 
-        Arc::new(prefix)
+        prefix
     }
 
     fn convolve_via_prefix(old_prefix: &[u128], umin: u64, umax: u64) -> Vec<u128> {
@@ -124,10 +124,9 @@ impl IrwinHall {
         self.total_combinations *= (uniform.max - uniform.min + 1) as u128;
         self.n += 1;
 
-        self.prefix_sum = Arc::new(new_prefix);
+        self.prefix_sum = new_prefix;
 
-        let mut guard = self.uniforms.write().unwrap();
-        guard.push(uniform);
+        self.uniforms.push(uniform);
     }
 
     pub fn query_range(&self, start: u64, end: u64) -> f64 {
@@ -156,11 +155,10 @@ impl IrwinHall {
     }
 
     pub fn normal_approx(&self) -> Normal {
-        let guard = self.uniforms.read().unwrap();
         let mut mean = 0.0f64;
         let mut variance = 0.0f64;
 
-        for u in guard.iter() {
+        for u in &self.uniforms {
             let a = u.min as f64;
             let b = u.max as f64;
             mean += (a + b) / 2.0;
@@ -180,7 +178,7 @@ impl AddAssign<&Uniform> for IrwinHall {
 
 impl AddAssign<&IrwinHall> for IrwinHall {
     fn add_assign(&mut self, rhs: &IrwinHall) {
-        let rhs_uniforms = rhs.uniforms.read().unwrap().clone();
+        let rhs_uniforms = rhs.uniforms.clone();
 
         for u in rhs_uniforms {
             *self += &u;
@@ -212,15 +210,15 @@ impl<'a> Composite for Uniform {
     type Output = IrwinHall;
     fn compose(&self, rhs: &Self) -> Self::Output {
         let mut result = IrwinHall {
-            prefix_sum: Arc::new(vec![]),
-            uniforms: Arc::new(RwLock::new(vec![*self, *rhs])),
+            prefix_sum: vec![],
+            uniforms: vec![*self, *rhs],
             n: 1,
             max: self.max,
             min: self.min,
             total_combinations: (self.max - self.min + 1) as u128,
         };
 
-        result.prefix_sum = IrwinHall::build_pmf(&result.uniforms.read().unwrap());
+        result.prefix_sum = IrwinHall::build_pmf(&result.uniforms);
         result
     }
 }
@@ -243,15 +241,15 @@ impl<'a> Composite<Uniform> for IrwinHall {
         let new_total = self.total_combinations * (rhs.max - rhs.min + 1) as u128;
         let new_n = self.n + 1;
 
-        let mut new_uniforms = self.uniforms.read().unwrap().clone();
+        let mut new_uniforms = self.uniforms.clone();
         new_uniforms.push(Uniform {
             min: rhs.min,
             max: rhs.max,
         });
 
         IrwinHall {
-            prefix_sum: Arc::new(new_prefix),
-            uniforms: Arc::new(RwLock::new(new_uniforms)),
+            prefix_sum: new_prefix,
+            uniforms: new_uniforms,
             n: new_n,
             min: new_min,
             max: new_max,

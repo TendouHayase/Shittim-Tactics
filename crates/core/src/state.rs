@@ -4,6 +4,8 @@ use std::{
     hash::Hash,
 };
 
+use macros::unreachable_impl;
+
 use crate::{
     character::Character,
     damage::{
@@ -130,7 +132,8 @@ pub struct AccumulatedDamage<'a> {
     pub ticks: u16,
 }
 
-pub trait Stateful<'a>: Clone + Send + Sync + Eq + Hash {
+#[unreachable_impl]
+pub trait Stateful<'a>: Clone + Send + Sync + Eq + Ord + Hash {
     fn new(students: &[StateData<'a>], boss: StateData<'a>, elased_frames: u16, cost: i8) -> Self;
     fn students<'b: 'c, 'c>(&'b self) -> &'c [StateData<'a>];
     fn students_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut [StateData<'a>];
