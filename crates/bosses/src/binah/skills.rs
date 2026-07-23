@@ -186,7 +186,7 @@ impl Skill for FiresofSeverity1 {
         let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
 
         for &target in targets.iter() {
-            let d = caster.effects.damage();
+            let d = caster.damage_with_effects();
 
             let mut ac_dmg = target.accumulated_damage.clone();
             let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
@@ -194,8 +194,8 @@ impl Skill for FiresofSeverity1 {
             if let Some(damage) = d {
                 ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
                 ac_dmg.push(AccumulatedDamage {
-                    damage: target.effects.clone(),
                     ticks: self.duration(),
+                    damage: target.damage_map.get(&target.effects.into()).copied(),
                 });
             }
 
@@ -207,6 +207,7 @@ impl Skill for FiresofSeverity1 {
                 &target.remained_effects,
                 &ac_dmg,
                 ac_dmg_cache,
+                target.damage_map,
             ));
         }
 
@@ -302,7 +303,7 @@ impl Skill for FireofSeverity2 {
         let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
 
         for (i, &target) in targets.iter().enumerate() {
-            let d = caster.effects.damage();
+            let d = caster.damage_with_effects();
 
             let mut ac_dmg = target.accumulated_damage.clone();
             let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
@@ -310,8 +311,8 @@ impl Skill for FireofSeverity2 {
             if let Some(damage) = d {
                 ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
                 ac_dmg.push(AccumulatedDamage {
-                    damage: target.effects.clone(),
                     ticks: self.duration(),
+                    damage: target.damage_map.get(&target.effects.into()).copied(),
                 });
             }
 
@@ -323,6 +324,7 @@ impl Skill for FireofSeverity2 {
                 &target.remained_effects,
                 &ac_dmg,
                 ac_dmg_cache,
+                target.damage_map,
             ));
 
             if i == 0 {
@@ -408,7 +410,7 @@ impl Skill for PurifyingStorm {
         let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
 
         for &target in targets.iter() {
-            let d = caster.effects.damage();
+            let d = caster.damage_with_effects();
 
             let mut ac_dmg = target.accumulated_damage.clone();
             let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
@@ -416,7 +418,7 @@ impl Skill for PurifyingStorm {
             if let Some(damage) = d {
                 ac_dmg_cache.append(&(damage * 3));
                 ac_dmg.push(AccumulatedDamage {
-                    damage: target.effects.clone(),
+                    damage: target.damage_map.get(&target.effects.into()).copied(),
                     ticks: self.duration(),
                 });
             }
@@ -429,6 +431,7 @@ impl Skill for PurifyingStorm {
                 &target.remained_effects,
                 &ac_dmg,
                 ac_dmg_cache,
+                target.damage_map,
             ));
         }
 

@@ -8,11 +8,7 @@ use macros::unreachable_impl;
 
 use crate::{
     character::Character,
-    damage::{
-        Damage,
-        cache::DamageCache,
-        key::{DamageKey, SkillsBitMask},
-    },
+    damage::{Damage, cache::DamageCache, key::SkillsBitMask},
     utils::Position,
 };
 
@@ -109,10 +105,11 @@ macro_rules! create_state {
 pub struct StateData<'a, T: Default + Clone + Send + Sync = ()> {
     pub cooldowns: Vec<u16>,
     pub remained_effects: BinaryHeap<Reverse<RemainedEffects>>,
-    pub accumulated_damage: Vec<AccumulatedDamage<'a>>,
+    pub accumulated_damage: Vec<AccumulatedDamage>,
 
+    pub damage_map: &'a HashMap<SkillsBitMask, Damage>,
     pub character: &'a dyn Character,
-    pub effects: DamageKey<'a>,
+    pub effects: SkillsBitMask,
     pub accumulated_damage_cache: DamageCache,
 
     pub coordinate: Position,
@@ -120,16 +117,16 @@ pub struct StateData<'a, T: Default + Clone + Send + Sync = ()> {
     pub extras: T,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct RemainedEffects {
     pub ticks: u16,
     pub bit: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AccumulatedDamage<'a> {
-    pub damage: DamageKey<'a>,
+pub struct AccumulatedDamage {
     pub ticks: u16,
+    pub damage: Option<Damage>,
 }
 
 #[unreachable_impl]
@@ -191,11 +188,12 @@ impl<'a> StateData<'a> {
             character,
             coordinate: Default::default(),
             cooldowns: vec![0; character.skill_list().len()],
-            effects: DamageKey::new(skill_list),
+            effects: 0.into(),
             remained_effects: BinaryHeap::new(),
             accumulated_damage: Vec::new(),
             accumulated_damage_cache: Default::default(),
             extras: Default::default(),
+            damage_map: skill_list,
         }
     }
 
@@ -203,10 +201,11 @@ impl<'a> StateData<'a> {
         character: &'a dyn Character,
         coordinate: Position,
         cooldowns: &[u16],
-        effects: &'b DamageKey<'a>,
+        effects: &'b SkillsBitMask,
         remained_effects: &'b BinaryHeap<Reverse<RemainedEffects>>,
-        accumulated_damage: &'b [AccumulatedDamage<'a>],
+        accumulated_damage: &'b [AccumulatedDamage],
         accumulated_damage_cache: DamageCache,
+        skill_list: &'a HashMap<SkillsBitMask, Damage>,
     ) -> Self
     where
         'a: 'b,
@@ -220,13 +219,14 @@ impl<'a> StateData<'a> {
             remained_effects: remained_effects.clone(),
             accumulated_damage: accumulated_damage.to_vec(),
             extras: Default::default(),
+            damage_map: skill_list,
         }
     }
 
     pub fn clone_matching(
         &self,
         cooldowns_condition: impl Fn(&u16) -> u16,
-        effects: DamageKey<'a>,
+        effects: SkillsBitMask,
         remained_effects: BinaryHeap<Reverse<RemainedEffects>>,
     ) -> Self {
         StateData {
@@ -237,6 +237,7 @@ impl<'a> StateData<'a> {
             effects,
             remained_effects,
             accumulated_damage: self.accumulated_damage.clone(),
+            damage_map: self.damage_map,
             extras: Default::default(),
         }
     }
@@ -244,11 +245,15 @@ impl<'a> StateData<'a> {
     pub fn damage_list(&self) -> Vec<Damage> {
         let mut result = Vec::with_capacity(self.accumulated_damage.len());
         for d in &self.accumulated_damage {
-            if let Some(x) = d.damage.damage() {
+            if let Some(x) = d.damage {
                 result.push(x)
             }
         }
 
         result
+    }
+
+    pub fn damage_with_effects(&self) -> Option<Damage> {
+        self.damage_map.get(&self.effects).copied()
     }
 }

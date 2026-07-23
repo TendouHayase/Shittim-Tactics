@@ -2,10 +2,7 @@ use core::{
     actions::ActionContext::{self},
     boss::Boss,
     character::Character,
-    damage::{
-        Damage,
-        key::{DamageKey, SkillsBitMask},
-    },
+    damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget::Land},
     state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
@@ -138,11 +135,13 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
     ) -> Result<Self::S<'a>, error::Error> {
         let mut skill_mask = 0u64;
 
+        let damage_map = state.boss().damage_map;
+
         for student in state.students() {
-            skill_mask |= student.effects.mask.data();
+            skill_mask |= student.effects.data();
         }
 
-        skill_mask |= state.boss().effects.mask.data();
+        skill_mask |= state.boss().effects.data();
 
         let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()];
 
@@ -150,31 +149,25 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
         let boss_remain_effects_ref = &state.boss().remained_effects;
         let mut new_boss_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
             BinaryHeap::with_capacity(boss_effects_len);
-        let mut boss_effects_mask = state.boss().effects.clone().mask.data();
+        let mut boss_effects_mask = state.boss().effects.clone().data();
         let mut boss_acc_damage = state.boss().accumulated_damage.clone();
-        let damage = state.boss().effects.damage();
+        let damage = state.boss().damage_with_effects();
         for item in boss_remain_effects_ref {
             let bit = 1u64 << item.0.bit;
 
             if item.0.ticks <= delta_ticks {
                 if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
-                        damage: DamageKey::from_mask(
-                            boss_effects_mask.into(),
-                            &state.boss().effects,
-                        ),
                         ticks: item.0.ticks,
+                        damage: damage_map.get(&boss_effects_mask.into()).copied(),
                     });
                 }
                 boss_effects_mask &= !bit;
             } else {
                 if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
-                        damage: DamageKey::from_mask(
-                            boss_effects_mask.into(),
-                            &state.boss().effects,
-                        ),
                         ticks: delta_ticks,
+                        damage: damage_map.get(&boss_effects_mask.into()).copied(),
                     });
                 }
                 new_boss_remain_effects.push(Reverse(RemainedEffects {
@@ -184,34 +177,34 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
             }
         }
 
-        let boss_effects = DamageKey::from_mask(boss_effects_mask.into(), &state.boss().effects);
+        let boss_effects = boss_effects_mask.into();
 
         let cooldowns_lambda = |t: &u16| t - delta_ticks;
 
         let mut student_effects_lambda = state.students().iter().map(|student: &StateData<'a>| {
-            let damage = student.effects.damage();
+            let damage = student.damage_with_effects();
             let mut acc_damage = student.accumulated_damage.clone();
 
             let effects_len = student.remained_effects.len();
             let mut new_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
                 BinaryHeap::with_capacity(effects_len);
-            let mut effects_mask = student.effects.clone().mask.data();
+            let mut effects_mask = student.effects.clone().data();
             for item in &student.remained_effects {
                 let bit = 1u64 << item.0.bit;
 
                 if item.0.ticks <= delta_ticks {
                     if damage.is_some() {
                         acc_damage.push(AccumulatedDamage {
-                            damage: DamageKey::from_mask(effects_mask.into(), &student.effects),
                             ticks: item.0.ticks,
+                            damage: damage_map.get(&effects_mask.into()).copied(),
                         });
                     }
                     effects_mask &= !bit;
                 } else {
                     if damage.is_some() {
                         acc_damage.push(AccumulatedDamage {
-                            damage: DamageKey::from_mask(effects_mask.into(), &student.effects),
                             ticks: delta_ticks,
+                            damage: damage_map.get(&effects_mask.into()).copied(),
                         });
                     }
 
@@ -248,10 +241,11 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
                 coordinate: student.coordinate,
                 accumulated_damage_cache: student.accumulated_damage_cache.clone(),
                 cooldowns: student.cooldowns.iter().map(|i| i - delta_ticks).collect(),
-                effects: DamageKey::from_mask(effects_mask.into(), &student.effects),
+                effects: effects_mask.into(),
                 remained_effects: new_remain_effects,
                 accumulated_damage: acc_damage,
                 extras: Default::default(),
+                damage_map,
             }
         });
 
@@ -272,7 +266,7 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
 
         for student in state.students() {
             for (i, time) in student.cooldowns.iter().enumerate() {
-                let cost = *time / self.cost_charge_time[&student.effects.mask];
+                let cost = *time / self.cost_charge_time[&student.effects];
                 if student.character.skill_list()[i].cost() as u16 >= cost {
                     result = result.min(*time);
                 }
@@ -285,7 +279,7 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
 
         for (i, time) in state.boss().cooldowns.iter().enumerate() {
             if state.boss().character.skill_list()[i].cost() as u16
-                >= *time / self.cost_charge_time[&state.boss().effects.mask]
+                >= *time / self.cost_charge_time[&state.boss().effects]
             {
                 result = result.min(*time);
             }

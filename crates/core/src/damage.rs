@@ -9,7 +9,7 @@ pub mod cache;
 pub mod key;
 
 /// 데미지 분포를 저장하는 구조체입니다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Damage {
     pub normal: Uniform,
     pub crit: Uniform,

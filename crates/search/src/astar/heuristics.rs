@@ -8,11 +8,16 @@ pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {
         Vec::with_capacity(boss.accumulated_damage.len());
 
     for d in &boss.accumulated_damage {
-        if d.damage.damage().is_none() {
-            continue;
-        }
-        for _ in 0..d.ticks {
-            boss_accumulated_damage.push(d.damage.damage().unwrap());
+        match d.damage {
+            Some(damage) => boss_accumulated_damage.push(damage),
+            None => {
+                if d.damage.is_none() {
+                    continue;
+                }
+                for _ in 0..d.ticks {
+                    boss_accumulated_damage.push(d.damage.unwrap());
+                }
+            }
         }
     }
     let boss_accumulated_damage_guard = state
@@ -35,7 +40,7 @@ pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {
     let mut max_damage_cast_frames = 0;
 
     for student in students {
-        let damage = student.effects.damage();
+        let damage = student.damage_with_effects();
 
         all_ex_damage += damage.unwrap_or_default().crit.max;
 
