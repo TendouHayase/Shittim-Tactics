@@ -1,7 +1,4 @@
-use std::{
-    ops::{Div, Mul},
-    sync::{Arc, RwLock},
-};
+use std::ops::{Div, Mul};
 
 use stochastic::{
     distributions::{IrwinHall, Uniform},
@@ -11,12 +8,14 @@ use stochastic::{
 pub mod cache;
 pub mod key;
 
+/// 데미지 분포를 저장하는 구조체입니다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Damage {
     pub normal: Uniform,
     pub crit: Uniform,
     pub crit_num: u32,
     pub crit_den: u32,
+    pub flags: u32,
 }
 
 impl Ord for Damage {
@@ -38,11 +37,36 @@ impl Default for Damage {
             crit: Uniform { min: 0, max: 0 },
             crit_num: 0,
             crit_den: 1,
+            flags: 0,
         }
     }
 }
 
 impl Damage {
+    pub fn new(
+        normal_max: u64,
+        normal_min: u64,
+        crit_max: u64,
+        crit_min: u64,
+        crit_num: u32,
+        crit_den: u32,
+        flags: u32,
+    ) -> Self {
+        Self {
+            normal: Uniform {
+                min: normal_min,
+                max: normal_max,
+            },
+            crit: Uniform {
+                min: crit_min,
+                max: crit_max,
+            },
+            crit_num,
+            crit_den,
+            flags,
+        }
+    }
+
     //     pub fn from_state_data<'a>(
     //         src: &StateData,
     //         tgt: &StateData,
@@ -326,6 +350,7 @@ impl Mul<u64> for Damage {
             crit: self.crit,
             crit_num: self.crit_num,
             crit_den: self.crit_den,
+            flags: self.flags,
         }
     }
 }
@@ -341,6 +366,7 @@ impl Div<u64> for Damage {
             crit: self.crit,
             crit_num: self.crit_num,
             crit_den: self.crit_den,
+            flags: self.flags,
         }
     }
 }
