@@ -67,6 +67,46 @@ impl Damage {
         }
     }
 
+    pub fn expected_value(&self) -> u64 {
+        let normal_avg = (self.normal.max + self.normal.min) / 2;
+        let crit_avg = (self.crit.max + self.crit.min) / 2;
+
+        (normal_avg * (self.crit_den - self.crit_num) as u64 + crit_avg * self.crit_num as u64)
+            / self.crit_den as u64
+    }
+
+    pub fn to_irwin_hall(&self) -> IrwinHall {
+        let normal_len = self.normal.max - self.normal.min + 1;
+        let crit_len = self.crit.max - self.crit.min + 1;
+
+        let weight_normal = (self.crit_den - self.crit_num) as u128 * crit_len as u128;
+        let weight_crit = self.crit_num as u128 * normal_len as u128;
+
+        let lo = self.normal.min.min(self.crit.min);
+        let hi = self.normal.max.max(self.crit.max);
+        let len = (hi - lo + 1) as usize;
+
+        let mut counts = vec![0u128; len];
+        for v in self.normal.min..=self.normal.max {
+            counts[(v - lo) as usize] += weight_normal;
+        }
+        for v in self.crit.min..=self.crit.max {
+            counts[(v - lo) as usize] += weight_crit;
+        }
+
+        let total_combinations = normal_len as u128 * crit_len as u128;
+        let prefix_sum = build_prefix_sum(&counts);
+
+        IrwinHall {
+            prefix_sum: prefix_sum,
+            uniforms: vec![],
+            n: 1,
+            min: lo,
+            max: hi,
+            total_combinations,
+        }
+    }
+
     //     pub fn from_state_data<'a>(
     //         src: &StateData,
     //         tgt: &StateData,
@@ -305,38 +345,6 @@ impl Damage {
     //             crit_den: final_crit_deno,
     //         }
     //     }
-
-    pub fn to_irwin_hall(&self) -> IrwinHall {
-        let normal_len = self.normal.max - self.normal.min + 1;
-        let crit_len = self.crit.max - self.crit.min + 1;
-
-        let weight_normal = (self.crit_den - self.crit_num) as u128 * crit_len as u128;
-        let weight_crit = self.crit_num as u128 * normal_len as u128;
-
-        let lo = self.normal.min.min(self.crit.min);
-        let hi = self.normal.max.max(self.crit.max);
-        let len = (hi - lo + 1) as usize;
-
-        let mut counts = vec![0u128; len];
-        for v in self.normal.min..=self.normal.max {
-            counts[(v - lo) as usize] += weight_normal;
-        }
-        for v in self.crit.min..=self.crit.max {
-            counts[(v - lo) as usize] += weight_crit;
-        }
-
-        let total_combinations = normal_len as u128 * crit_len as u128;
-        let prefix_sum = build_prefix_sum(&counts);
-
-        IrwinHall {
-            prefix_sum: prefix_sum,
-            uniforms: vec![],
-            n: 1,
-            min: lo,
-            max: hi,
-            total_combinations,
-        }
-    }
 }
 
 impl Mul<u64> for Damage {

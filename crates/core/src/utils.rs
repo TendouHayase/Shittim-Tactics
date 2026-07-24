@@ -154,6 +154,7 @@ pub fn is_inside(p: Position, region: Region, bias: Position) -> bool {
     }
 }
 
+#[macro_export]
 macro_rules! count_token_trees {
     () => {
         0usize
@@ -162,8 +163,33 @@ macro_rules! count_token_trees {
     ($head:tt $($tail:tt)*) => (1usize + count_token_trees!($($tail)*))
 }
 
+#[macro_export]
 macro_rules! count_types {
     ($($ty:ty),* $(,)?) => {
         count_token_trees!($({$ty})*)
+    };
+}
+
+#[macro_export]
+macro_rules! tuple_for {
+    ($var:ident in $tuple:expr; [$($idx:tt),+ $(,)?] => $body:block) => {
+        $(
+            {
+                let $var = &$tuple.$idx;
+                $body
+            }
+        )+
+    };
+}
+
+#[macro_export]
+macro_rules! tuple_for_move {
+    ($var:ident in $tuple:expr; [$($idx:tt),+ $(,)?] => $body:block) => {
+        $(
+            {
+                let $var = $tuple.$idx;
+                $body
+            }
+        )+
     };
 }

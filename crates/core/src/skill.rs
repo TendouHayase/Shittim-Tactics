@@ -4,6 +4,8 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::sync::Weak;
 
+use macros::unreachable_impl_for_empty;
+
 use crate::character::Character;
 use crate::state::{StateData, Stateful};
 use crate::types::AttackType;
@@ -53,8 +55,9 @@ pub enum EffectTiming {
 /// 로직상 `Other`의 함수는 같은 기능을 하면 같은 것이므로 이 위험을 배제합니다.
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EffectKind<S = ()>
+pub enum EffectKind<T = (), S = ()>
 where
+    T: Skill,
     S: for<'a> Stateful<'a>,
 {
     Damage,
@@ -72,7 +75,7 @@ where
         amount: u32,
     },
     Move,
-    Other(fn(S) -> S),
+    Other(fn(&T, S) -> S),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -120,6 +123,7 @@ pub enum SkillType {
     NormalAttack,
 }
 
+#[unreachable_impl_for_empty]
 pub trait Skill<T: Send + Sync + Clone + Default = ()>: Debug + Send + Sync {
     fn name(&self) -> &str;
     fn owner(&self) -> Weak<dyn Character>;
@@ -131,7 +135,7 @@ pub trait Skill<T: Send + Sync + Clone + Default = ()>: Debug + Send + Sync {
     fn skill_effects<'a>(&'a self) -> Vec<SkillEffect>;
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b StateData<'a, T>,
+        caster: &'b StateData<'a>,
         targets: &'b [&'c StateData<'a>],
     ) -> Vec<StateData<'a>>;
 }

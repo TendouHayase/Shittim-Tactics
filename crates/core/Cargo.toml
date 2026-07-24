@@ -10,3 +10,5 @@ ordered-float = "5.3.0"
 stochastic = {path = "../stochastic"}
 error = {path="../error"}
 macros = {path = "../macros"}
+paste = "1.0.15"
+seq-macro = "0.3.6"

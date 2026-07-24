@@ -5,7 +5,7 @@ use quote::quote;
 use syn::{ItemTrait, TraitItem, parse_macro_input};
 
 #[proc_macro_attribute]
-pub fn unreachable_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn unreachable_impl_for_empty(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_trait = parse_macro_input!(item as ItemTrait);
 
     let trait_vis = &input_trait.vis;

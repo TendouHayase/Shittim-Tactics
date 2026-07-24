@@ -244,21 +244,22 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
                 effects: effects_mask.into(),
                 remained_effects: new_remain_effects,
                 accumulated_damage: acc_damage,
-                extras: Default::default(),
                 damage_map,
+                extra: student.extra,
             }
         });
 
         let new_students: [StateData<'a>; N] =
             std::array::from_fn(|_| student_effects_lambda.next().unwrap());
-        Ok(Self::S::new(
+        let new_state = Self::S::new(
             &new_students,
             state
                 .boss()
                 .clone_matching(cooldowns_lambda, boss_effects, new_boss_remain_effects),
             state.frames() + delta_ticks,
             (state.cost() + (delta_ticks * cost_per_second / TPS) as i8).min(10),
-        ))
+        );
+        Ok(new_state)
     }
 
     fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16 {
