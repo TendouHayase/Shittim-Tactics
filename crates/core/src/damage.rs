@@ -98,7 +98,7 @@ impl Damage {
         let prefix_sum = build_prefix_sum(&counts);
 
         IrwinHall {
-            prefix_sum: prefix_sum,
+            prefix_sum,
             uniforms: vec![],
             n: 1,
             min: lo,

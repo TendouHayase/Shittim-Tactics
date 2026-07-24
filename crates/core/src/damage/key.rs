@@ -86,7 +86,7 @@ impl SkillsBitMask {
 
     #[inline]
     pub fn clone_with_tag(&self, is_boss: bool, is_self: bool, is_enemy: bool) -> Self {
-        let mut mask = self.clone();
+        let mut mask = *self;
 
         // 조건이 true시 전항의 값은 0xFFFFFFFF, false시 0x00000000
         // 후항은 해당하는 비트 제외 모두 1
@@ -95,6 +95,6 @@ impl SkillsBitMask {
         mask &= (0u64).wrapping_sub(is_self.into()) | !SkillsBitMask::SELF_BIT;
         mask &= (0u64).wrapping_sub(is_enemy.into()) | !SkillsBitMask::ENEMY_BIT;
 
-        mask.into()
+        mask
     }
 }

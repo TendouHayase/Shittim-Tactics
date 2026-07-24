@@ -1,7 +1,6 @@
 use std::{
     any::type_name,
     ops::{Add, AddAssign},
-    sync::{Arc, RwLock},
 };
 
 use distrs::Normal as distrsNormal;
@@ -16,6 +15,7 @@ pub struct Uniform {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct IrwinHall {
     pub prefix_sum: Vec<u128>,
     pub uniforms: Vec<Uniform>,
@@ -58,18 +58,6 @@ impl PartialEq for IrwinHall {
 
 impl Eq for IrwinHall {}
 
-impl Default for IrwinHall {
-    fn default() -> Self {
-        Self {
-            prefix_sum: Default::default(),
-            uniforms: Default::default(),
-            n: 0,
-            min: 0,
-            max: 0,
-            total_combinations: 0,
-        }
-    }
-}
 
 impl IrwinHall {
     pub fn from_uniform(uniform: Uniform, n: u32) -> Self {
@@ -301,8 +289,8 @@ impl<K: ToPrimitive + PartialEq + PartialOrd> RangeProbability<K> for Normal {
             .to_f64()
             .unwrap_or_else(|| panic!("convert {} to f64 failed", type_name::<K>()));
 
-        let a_cdf = distrsNormal::cdf(a_f64 as f64, self.avg, self.var.sqrt());
-        let b_cdf = distrsNormal::cdf(b_f64 as f64, self.avg, self.var.sqrt());
+        let a_cdf = distrsNormal::cdf(a_f64, self.avg, self.var.sqrt());
+        let b_cdf = distrsNormal::cdf(b_f64, self.avg, self.var.sqrt());
 
         b_cdf - a_cdf
     }

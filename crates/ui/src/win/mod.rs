@@ -43,16 +43,14 @@ impl eframe::App for ShittimTacticsApp {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            match self.selected_tab {
-                Tab::Configuration => {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        self.config.show(ui);
-                    });
-                }
-                Tab::Results => {
-                    self.result.show(ui);
-                }
+        egui::CentralPanel::default().show(ctx, |ui| match self.selected_tab {
+            Tab::Configuration => {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    self.config.show(ui);
+                });
+            }
+            Tab::Results => {
+                self.result.show(ui);
             }
         });
     }

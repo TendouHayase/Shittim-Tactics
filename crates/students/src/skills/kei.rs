@@ -1,8 +1,8 @@
 use core::{
     character::Character,
-    damage::{Damage, key::SkillsBitMask},
+    damage::Damage,
     skill::{
-        BuffType::{self, Def},
+        BuffType::{self},
         EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillType,
     },
     state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
@@ -11,11 +11,8 @@ use core::{
     utils::{TPS, is_inside},
 };
 use std::{
-    any::Any,
     cmp::Reverse,
-    collections::HashMap,
-    rc,
-    sync::{Arc, Mutex, Weak},
+    sync::{Arc, Weak},
 };
 
 #[derive(Debug)]
@@ -238,15 +235,14 @@ impl Skill for BasicSkill {
 
         let damage_key = &caster.effects;
 
-        let mut result: Vec<StateData<'_>> = targets.iter().map(|x| *x).cloned().collect();
+        let mut result: Vec<StateData<'_>> = targets.iter().copied().cloned().collect();
 
         result[0].accumulated_damage.push(AccumulatedDamage {
             ticks: 1,
             damage: caster
                 .damage_map
                 .get(
-                    &(damage_key.clone_with_tag(true, false, true) | self.skill_mask_offset as u64)
-                        .into(),
+                    &(damage_key.clone_with_tag(true, false, true) | self.skill_mask_offset as u64),
                 )
                 .copied(),
         });
@@ -295,7 +291,7 @@ impl Skill<SubSkillState> for SubSkill {
         self.skill_mask_offset
     }
 
-    fn skill_effects<'a>(&'a self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Persistent {
@@ -354,11 +350,11 @@ impl SubSkill {
     }
 
     pub fn effect_apply<'a, T: Skill, S: Stateful<'a>>(skill: &T, state: S) -> S {
-        let kei;
-        match skill.owner().upgrade() {
-            Some(k) => kei = k,
+        
+        let kei = match skill.owner().upgrade() {
+            Some(k) => k,
             None => panic!("cannot found Kei"),
-        }
+        };
 
         let mut state_clone = state.clone();
 
@@ -369,10 +365,7 @@ impl SubSkill {
         let ex = kei_state.extra_as_mut::<SubSkillState>();
         let prior_idx = ex.recording_start_len;
         for i in prior_idx..state.boss().accumulated_damage.len() {
-            match state.boss().accumulated_damage[i].damage {
-                Some(d) => ex.acc_damage += d.expected_value(),
-                None => (),
-            }
+            if let Some(d) = state.boss().accumulated_damage[i].damage { ex.acc_damage += d.expected_value() }
         }
 
         state_clone

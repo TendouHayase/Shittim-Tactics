@@ -1,7 +1,5 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
 use std::sync::Weak;
 
 use macros::unreachable_impl_for_empty;
@@ -132,7 +130,7 @@ pub trait Skill<T: Send + Sync + Clone + Default = ()>: Debug + Send + Sync {
     fn duration(&self) -> u16;
     fn skill_mask_offset(&self) -> usize;
     fn skill_type(&self) -> SkillType;
-    fn skill_effects<'a>(&'a self) -> Vec<SkillEffect>;
+    fn skill_effects(&self) -> Vec<SkillEffect>;
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'b StateData<'a>,

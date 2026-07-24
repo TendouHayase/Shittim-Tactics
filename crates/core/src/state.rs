@@ -325,7 +325,7 @@ impl<'a> StateData<'a> {
             coordinate,
             accumulated_damage_cache,
             cooldowns: cooldowns.to_vec(),
-            effects: effects.clone(),
+            effects: *effects,
             remained_effects: remained_effects.clone(),
             accumulated_damage: accumulated_damage.to_vec(),
             damage_map: skill_list,

@@ -195,7 +195,7 @@ impl Skill for FiresofSeverity1 {
                 ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
                 ac_dmg.push(AccumulatedDamage {
                     ticks: self.duration(),
-                    damage: target.damage_map.get(&target.effects.into()).copied(),
+                    damage: target.damage_map.get(&target.effects).copied(),
                 });
             }
 
@@ -312,7 +312,7 @@ impl Skill for FireofSeverity2 {
                 ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
                 ac_dmg.push(AccumulatedDamage {
                     ticks: self.duration(),
-                    damage: target.damage_map.get(&target.effects.into()).copied(),
+                    damage: target.damage_map.get(&target.effects).copied(),
                 });
             }
 
@@ -418,7 +418,7 @@ impl Skill for PurifyingStorm {
             if let Some(damage) = d {
                 ac_dmg_cache.append(&(damage * 3));
                 ac_dmg.push(AccumulatedDamage {
-                    damage: target.damage_map.get(&target.effects.into()).copied(),
+                    damage: target.damage_map.get(&target.effects).copied(),
                     ticks: self.duration(),
                 });
             }

@@ -119,7 +119,10 @@ impl ConfigPanel {
         });
 
         ui.add_space(4.0);
-        ui.label(format!("Configure up to {} students for the raid.", MAX_STUDENT_COUNT));
+        ui.label(format!(
+            "Configure up to {} students for the raid.",
+            MAX_STUDENT_COUNT
+        ));
 
         egui::Grid::new("team_grid")
             .num_columns(4)

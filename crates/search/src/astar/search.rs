@@ -5,10 +5,10 @@ use crate::{
 use core::{
     actions::ActionContext,
     simulator::Simulator,
-    skill::{Region, Skill, SkillEffectTarget},
+    skill::{Skill, SkillEffectTarget},
     state::Stateful,
     utils::Position,
-    utils::{cross_product, euclidean_distance, is_inside},
+    utils::{euclidean_distance, is_inside},
 };
 use std::{
     cmp::Reverse,
@@ -89,12 +89,12 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
                             for target in skill_effect.targets {
                                 match target {
                                     // 자신이 타깃이면 자신 추가
-                                    SkillEffectTarget::Oneself { kind } => {
+                                    SkillEffectTarget::Oneself { kind: _ } => {
                                         targets.push(caster.upgrade().unwrap().id())
                                     }
 
                                     // 타깃이 학생들이면 타겟팅할 학생 수만큼 캐스터에서 가까운 순으로 추가
-                                    SkillEffectTarget::Student { kind, count: num } => {
+                                    SkillEffectTarget::Student { kind: _, count: num } => {
                                         let _caster_arc = caster.upgrade().unwrap();
 
                                         // 캐스터가 아닌 학생 목록 불러옴
@@ -130,11 +130,11 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
                                             targets.push(students[i as usize].1);
                                         }
                                     }
-                                    SkillEffectTarget::Boss { kind } => {
+                                    SkillEffectTarget::Boss { kind: _ } => {
                                         targets.push(advanced.boss().character.id())
                                     }
                                     // 장판기일 경우 범위 내부에 있는 대상 추가
-                                    SkillEffectTarget::Land { kind, region } => {
+                                    SkillEffectTarget::Land { kind: _, region } => {
                                         let mut caster_coord = Default::default();
                                         if advanced.boss().character.id() == caster_id {
                                             caster_coord = advanced.boss().coordinate

@@ -213,17 +213,16 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
                         for skill_effect in sk.skill_effects() {
                             for target in skill_effect.targets {
                                 // 장판스킬일 경우 범위 안에 있는지 고려
-                                if let Land { kind, region } = target {
+                                if let Land { kind: _, region } = target {
                                     let caster_state =
                                         state.state_data_by_id(sk.owner().upgrade().unwrap().id());
-                                    if let Some(data) = caster_state {
-                                        if is_inside(student.coordinate, region, data.coordinate) {
+                                    if let Some(data) = caster_state
+                                        && is_inside(student.coordinate, region, data.coordinate) {
                                             new_remain_effects.push(Reverse(RemainedEffects {
                                                 ticks: item.0.ticks - delta_ticks,
                                                 bit: item.0.bit,
                                             }));
                                         }
-                                    }
                                 } else {
                                     new_remain_effects.push(Reverse(RemainedEffects {
                                         ticks: item.0.ticks - delta_ticks,
