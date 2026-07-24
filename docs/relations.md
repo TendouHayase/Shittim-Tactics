@@ -252,51 +252,51 @@ class ActionContext {
     Wait Use
 }
 
-%% ═════════════════════ MEMBER FIELDS (owns) ═══════════════════
+%% ═══════════════════════ TRAIT IMPLS ═══════════════════════
 
-BossStats ..|> BaseStats : "base_stats"
-Boss ..|> BossStats : "stats"
-Boss ..|> Skill : "skills[]"
-Boss ..|> Character : "impl"
+Character <|.. Boss : implements
+Character <|.. Student : implements
 
-StudentSpec ..|> BaseStats : "(via StudentStats)"
-StudentStats ..|> StudentSpec : "student_stats"
-StudentStats ..|> BaseStats : "base_stats"
-Student ..|> StudentStats : "stats"
-Student ..|> Skill : "skills[]"
-Student ..|> Character : "impl"
+%% ═══════════════════════ COMPOSITION (*--) ═══════════════════
 
-StateData ..|> RemainedEffects : "remained_effects[]"
-StateData ..|> AccumulatedDamage : "accumulated_damage[]"
-StateData ..|> DamageCache : "accumulated_damage_cache"
-StateData ..|> SkillsBitMask : "effects damage_map"
-StateData ..|> Position : "coordinate"
-StateData ..|> Character : "character"
-AccumulatedDamage ..|> Damage : "damage"
+BossStats *-- BaseStats : base_stats
+Boss *-- BossStats : stats
+BossStats *-- Terrain : terrain
+StudentStats *-- StudentSpec : student_stats
+StudentStats *-- BaseStats : base_stats
+Student *-- StudentStats : stats
+StateData *-- Position : coordinate
+StateData *-- DamageCache : accumulated_damage_cache
+StateData *-- SkillsBitMask : effects
+AccumulatedDamage *-- Damage : damage
+SkillEffect *-- EffectTiming : timing
+SkillEffectTarget *-- EffectKind : kind
+SkillEffectTarget *-- Region : region
+EffectKind *-- BuffType : Buff_variant
+EffectKind *-- DebuffType : Debuff_variant
+ActionContext *-- Action : Use_variant
+Action *-- Skill : skill
+Damage *-- stochastic_Uniform : normal_crit
+DamageCache *-- stochastic_IrwinHall : cached
+BaseStats *-- AttackType : attack_type
+BaseStats *-- ArmorType : armor_type
+TerrainCombatPower *-- TCPS : street_outdoor_indoor
 
-SkillEffect ..|> EffectTiming : "timing"
-SkillEffect ..|> SkillEffectTarget : "targets[]"
-SkillEffectTarget ..|> EffectKind : "kind"
-SkillEffectTarget ..|> Region : "region(for Land)"
-EffectKind ..|> BuffType : "Buff variant"
-EffectKind ..|> DebuffType : "Debuff variant"
+%% ═══════════════════════ AGGREGATION (o--) ═══════════════════
 
-Damage ..|> stochastic_Uniform : "normal crit"
-DamageCache ..|> stochastic_IrwinHall : "cached"
+Boss o-- Skill : skills_vec
+Student o-- Skill : skills_vec
+StateData o-- RemainedEffects : remained_effects_heap
+StateData o-- AccumulatedDamage : accumulated_damage_vec
+SkillEffect o-- SkillEffectTarget : targets_vec
 
-ActionContext ..|> Action : "Use variant"
-Action ..|> Skill : "skill"
+%% ═══════════════════════ DEPENDENCY (-->) ═══════════════════
 
-BaseStats ..|> AttackType : "attack_type"
-BaseStats ..|> ArmorType : "armor_type"
-BossStats ..|> Terrain : "terrain"
-TerrainCombatPower ..|> TCPS : "street outdoor indoor"
-
-Stateful ..|> StateData : "returns"
-Simulator ..|> Stateful : "generic S"
-Simulator ..|> Skill : "returns actions"
-Agent ..|> Skill : "returns"
-Agent ..|> Stateful : "generic S"
+StateData --> Character : character_ref
+Simulator --> Stateful : generic_S
+Simulator --> Skill : returns_actions
+Agent --> Skill : returns
+Agent --> Stateful : generic_S
 ```
 
 ---
