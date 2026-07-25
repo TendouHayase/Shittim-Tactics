@@ -4,11 +4,10 @@ use core::{
     character::Character,
     damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
-    skill::{Skill, SkillEffectTarget::Land},
+    skill::{EffectKind, Skill, SkillEffectTarget::Land},
     state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
     student::Student,
-    utils::TPS,
-    utils::is_inside,
+    utils::{TPS, is_inside},
 };
 use std::{
     cmp::Reverse,
@@ -213,16 +212,20 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
                         for skill_effect in sk.skill_effects() {
                             for target in skill_effect.targets {
                                 // 장판스킬일 경우 범위 안에 있는지 고려
-                                if let Land { kind: _, region } = target {
+                                if let Land { kind, region } = target {
+                                    if let EffectKind::Other(f) = kind {
+                                        f(sk, state);
+                                    }
                                     let caster_state =
                                         state.state_data_by_id(sk.owner().upgrade().unwrap().id());
                                     if let Some(data) = caster_state
-                                        && is_inside(student.coordinate, region, data.coordinate) {
-                                            new_remain_effects.push(Reverse(RemainedEffects {
-                                                ticks: item.0.ticks - delta_ticks,
-                                                bit: item.0.bit,
-                                            }));
-                                        }
+                                        && is_inside(student.coordinate, region, data.coordinate)
+                                    {
+                                        new_remain_effects.push(Reverse(RemainedEffects {
+                                            ticks: item.0.ticks - delta_ticks,
+                                            bit: item.0.bit,
+                                        }));
+                                    }
                                 } else {
                                     new_remain_effects.push(Reverse(RemainedEffects {
                                         ticks: item.0.ticks - delta_ticks,

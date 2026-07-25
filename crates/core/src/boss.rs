@@ -15,37 +15,36 @@ pub struct BossStats {
     pub groggy_duration: u8,
 }
 
-#[derive(Debug, Clone)]
-pub struct Boss<T: PartialEq + Send + Sync> {
+#[derive(Debug)]
+pub struct Boss {
     pub stats: BossStats,
-    pub other_stats: T,
-    pub skills: Vec<Arc<dyn Skill>>,
+    pub skills: Vec<Skill>,
 }
 
-impl<T: PartialEq + Send + Sync> PartialEq for Boss<T> {
+impl PartialEq for Boss {
     fn eq(&self, other: &Self) -> bool {
-        self.stats == other.stats && self.other_stats == other.other_stats
+        self.stats == other.stats
     }
 }
 
-impl<T: PartialEq + Send + Sync> Eq for Boss<T> {}
+impl Eq for Boss {}
 
-impl<T: PartialEq + Send + Sync> Hash for Boss<T> {
+impl Hash for Boss {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.stats.id.hash(state);
     }
 }
 
-impl<T: PartialEq + Send + Sync + Debug> Character for Boss<T> {
-    fn id(&self) -> u32 {
+impl Boss {
+    pub fn id(&self) -> u32 {
         self.stats.id
     }
 
-    fn stats(&self) -> &BaseStats {
+    pub fn stats(&self) -> &BaseStats {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> &Vec<Arc<dyn Skill>> {
+    pub fn skill_list(&self) -> &[Skill] {
         &self.skills
     }
 }

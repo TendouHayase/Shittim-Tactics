@@ -14,8 +14,7 @@ pub struct Uniform {
     pub max: u64,
 }
 
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct IrwinHall {
     pub prefix_sum: Vec<u128>,
     pub uniforms: Vec<Uniform>,
@@ -57,7 +56,6 @@ impl PartialEq for IrwinHall {
 }
 
 impl Eq for IrwinHall {}
-
 
 impl IrwinHall {
     pub fn from_uniform(uniform: Uniform, n: u32) -> Self {

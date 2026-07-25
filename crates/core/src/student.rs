@@ -1,4 +1,4 @@
-use std::{fmt::Debug, hash::Hash, sync::Arc};
+use std::{fmt::Debug, hash::Hash, marker::PhantomPinned, ptr::NonNull, sync::Arc};
 
 use typed_builder::TypedBuilder;
 
@@ -35,7 +35,7 @@ pub struct StudentSpec {
 
 #[derive(Debug, Clone)]
 pub struct StudentStats {
-    pub student_stats: Box<StudentSpec>,
+    pub student_stats: StudentSpec,
     pub base_stats: BaseStats,
 }
 
@@ -53,12 +53,14 @@ impl Hash for StudentStats {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Student {
     pub stats: StudentStats,
 
     /// These are the student's Ex Skills, Basic Skills, Enhanced Skills, and Sub Skills.
-    pub skills: Vec<Arc<dyn Skill>>,
+    pub skills: [Skill; 3],
+
+    _pin: PhantomPinned,
 }
 
 impl PartialEq for Student {
@@ -67,16 +69,16 @@ impl PartialEq for Student {
     }
 }
 
-impl Character for Student {
-    fn id(&self) -> u32 {
+impl Student {
+    pub fn id(&self) -> u32 {
         self.stats.student_stats.id
     }
 
-    fn stats(&self) -> &BaseStats {
+    pub fn stats(&self) -> &BaseStats {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> &Vec<Arc<dyn Skill>> {
+    pub fn skill_list(&self) -> &[Skill] {
         &self.skills
     }
 }

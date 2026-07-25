@@ -94,7 +94,10 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
                                     }
 
                                     // 타깃이 학생들이면 타겟팅할 학생 수만큼 캐스터에서 가까운 순으로 추가
-                                    SkillEffectTarget::Student { kind: _, count: num } => {
+                                    SkillEffectTarget::Student {
+                                        kind: _,
+                                        count: num,
+                                    } => {
                                         let _caster_arc = caster.upgrade().unwrap();
 
                                         // 캐스터가 아닌 학생 목록 불러옴

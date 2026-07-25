@@ -7,8 +7,10 @@ use std::{
 use macros::unreachable_impl_for_empty;
 
 use crate::{
+    boss::Boss,
     character::Character,
     damage::{Damage, cache::DamageCache, key::SkillsBitMask},
+    student::Student,
     utils::Position,
 };
 
@@ -31,7 +33,7 @@ macro_rules! create_state {
 
         impl<'a, const N: usize> Stateful<'a> for [<$name State>]<'a> {
             fn new(students: &[StateData<'a>], boss: StateData<'a>, frames: u16, cost: i8) -> Self {
-                let mut new_students: [StateData<'a, MAX_EXTRA_SIZE>; N] =
+                let mut new_students: [StateData<'a, Student, MAX_EXTRA_SIZE>; N] =
                     ::std::array::from_fn(|i| students[i].with_zero_extra());
 
                 let mut _idx = 0usize;
@@ -168,7 +170,7 @@ pub struct StateData<'a, const EXTRA_BYTES: usize = 0> {
     pub accumulated_damage: Vec<AccumulatedDamage>,
 
     pub damage_map: &'a HashMap<SkillsBitMask, Damage>,
-    pub character: &'a dyn Character,
+    pub character: &'a Character,
     pub effects: SkillsBitMask,
     pub accumulated_damage_cache: DamageCache,
 
@@ -189,7 +191,6 @@ pub struct AccumulatedDamage {
     pub damage: Option<Damage>,
 }
 
-#[unreachable_impl_for_empty]
 pub trait Stateful<'a>: Clone + Send + Sync + Eq + Ord + Hash {
     fn new(students: &[StateData<'a>], boss: StateData<'a>, elased_frames: u16, cost: i8) -> Self;
     fn students<'b: 'c, 'c>(&'b self) -> &'c [StateData<'a>];
@@ -230,7 +231,7 @@ impl<const E: usize> Eq for StateData<'_, E> {}
 impl<const E: usize> Hash for StateData<'_, E> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         (
-            (self.character as *const dyn Character) as *const usize as usize,
+            (self.character as *const Character) as *const usize as usize,
             &self.cooldowns,
             &self.effects,
             &self.accumulated_damage,
@@ -290,10 +291,7 @@ impl<'a, const E: usize> StateData<'a, E> {
 }
 
 impl<'a> StateData<'a> {
-    pub fn new(
-        character: &'a dyn Character,
-        skill_list: &'a HashMap<SkillsBitMask, Damage>,
-    ) -> Self {
+    pub fn new(character: &'a Character, skill_list: &'a HashMap<SkillsBitMask, Damage>) -> Self {
         StateData {
             character,
             coordinate: Default::default(),
@@ -308,7 +306,7 @@ impl<'a> StateData<'a> {
     }
 
     pub fn from_parts<'b>(
-        character: &'a dyn Character,
+        character: &'a Character,
         coordinate: Position,
         cooldowns: &[u16],
         effects: &'b SkillsBitMask,

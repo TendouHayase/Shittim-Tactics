@@ -1,6 +1,5 @@
-use ordered_float::OrderedFloat;
-
 use crate::skill::Region;
+use ordered_float::OrderedFloat;
 
 pub const TPS: u16 = 30;
 pub const MAX_STUDENT_COUNT: usize = 10;
@@ -191,5 +190,100 @@ macro_rules! tuple_for_move {
                 $body
             }
         )+
+    };
+}
+
+#[macro_export]
+macro_rules! variant_accessor {
+    // Unit variant
+    ($enum:ty, $variant:ident, $name:ident) => {
+        paste::paste! {
+            impl $enum {
+                #[inline]
+                pub fn [<is_ $name>](&self) -> bool {
+                    matches!(self, $enum::$variant)
+                }
+            }
+        }
+    };
+
+    // 단일 필드 tuple variant: 타입만 명시
+    ($enum:ty, $variant:ident($ty:ty), $name:ident) => {
+        paste::paste! {
+            impl $enum {
+                #[inline]
+                pub fn [<is_ $name>](&self) -> bool {
+                    matches!(self, $enum::$variant(_))
+                }
+
+                #[inline]
+                pub fn [<as_ $name>](&self) -> Option<&$ty> {
+                    match self {
+                        $enum::$variant(v) => Some(v),
+                        _ => None,
+                    }
+                }
+            }
+        }
+    };
+
+    // 다중 필드 tuple variant: 바인더 이름을 함께 명시
+    ($enum:ty, $variant:ident($($field:ident : $ty:ty),+ $(,)?), $name:ident) => {
+        paste::paste! {
+            impl $enum {
+                #[inline]
+                pub fn [<is_ $name>](&self) -> bool {
+                    matches!(self, $enum::$variant(..))
+                }
+
+                #[inline]
+                pub fn [<as_ $name>](&self) -> Option<($(&$ty),+)> {
+                    match self {
+                        $enum::$variant($($field),+) => Some(($($field),+)),
+                        _ => None,
+                    }
+                }
+
+                $(
+                    #[inline]
+                    pub fn [<as_ $name _ $field>](&self) -> Option<&$ty> {
+                        match self {
+                            $enum::$variant($($field),+) => Some($field),
+                            _ => None,
+                        }
+                    }
+                )+
+            }
+        }
+    };
+
+    // named struct variant
+    ($enum:ty, $variant:ident { $($field:ident : $ty:ty),+ $(,)?}, $name:ident) => {
+        paste::paste! {
+            impl $enum {
+                #[inline]
+                pub fn [<is_ $name>](&self) -> bool {
+                    matches!(self, $enum::$variant { .. })
+                }
+
+                #[inline]
+                pub fn [<as_ $name>](&self) -> Option<($(&$ty),+)> {
+                    match self {
+                        $enum::$variant { $($field),+ } => Some(($($field),+)),
+                        _ => None,
+                    }
+                }
+
+                $(
+                    #[inline]
+                    pub fn [<as_ $name _ $field>](&self) -> Option<&$ty> {
+                        match self {
+                            $enum::$variant { $field, .. } => Some($field),
+                            _ => None,
+                        }
+                    }
+                )+
+            }
+        }
     };
 }
