@@ -21,15 +21,15 @@ pub struct Astar<'a, const N: usize, S: Stateful<'a>> {
     _marker: PhantomData<&'a S>,
 }
 
-impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> {
+impl<'d, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'d, N, S> {
     type S<'a> = S;
 
-    fn search<'a>(
-        &self,
-        simulator: &impl core::simulator::Simulator<S<'a> = Self::S<'a>>,
+    fn search<'a: 'b, 'b>(
+        &'b self,
+        simulator: &'a impl core::simulator::Simulator<S<'a> = Self::S<'a>>,
         initial: Self::S<'a>,
         threshold: f64,
-    ) -> Vec<std::sync::Arc<dyn core::skill::Skill>> {
+    ) -> Vec<(&Skill, u16)> {
         // 결과 노드
         let mut result_node = None;
 
@@ -78,7 +78,7 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
                         let caster = action.owner();
                         let caster_id;
                         {
-                            caster_id = caster.upgrade().unwrap().id();
+                            caster_id = caster.id();
                         }
 
                         // 현재 행동의 스킬 효과
@@ -90,7 +90,7 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
                                 match target {
                                     // 자신이 타깃이면 자신 추가
                                     SkillEffectTarget::Oneself { kind: _ } => {
-                                        targets.push(caster.upgrade().unwrap().id())
+                                        targets.push(caster.id())
                                     }
 
                                     // 타깃이 학생들이면 타겟팅할 학생 수만큼 캐스터에서 가까운 순으로 추가
@@ -98,8 +98,6 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
                                         kind: _,
                                         count: num,
                                     } => {
-                                        let _caster_arc = caster.upgrade().unwrap();
-
                                         // 캐스터가 아닌 학생 목록 불러옴
                                         let mut students: Vec<(Position, u32)> = advanced
                                             .students()
@@ -171,7 +169,7 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
                         }
 
                         // 액션 컨텍스트 생성
-                        let action_context: ActionContext<dyn Skill> =
+                        let action_context: ActionContext =
                             ActionContext::Use(core::actions::Action {
                                 caster: caster_id,
                                 targets,
@@ -200,18 +198,18 @@ impl<'b, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'b, N, S> 
 
         // 역추적으로 스킬 순서 계산
         if let Some(reverse_node) = result_node {
-            let mut node = Arc::new(reverse_node);
+            let mut node = reverse_node.clone();
             let mut result = vec![];
             if let Some(skill) = node.get_action() {
-                result.push(skill);
+                result.push((skill, node.state.frames()));
             }
 
             while let Some(next_node) = node.get_parent() {
                 if let Some(skill) = next_node.get_action() {
-                    result.push(skill);
+                    result.push((skill, node.state.frames()));
                 }
 
-                node = next_node.into();
+                node = next_node;
             }
 
             result.reverse();

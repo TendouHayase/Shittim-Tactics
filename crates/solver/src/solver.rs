@@ -16,7 +16,7 @@ where
 {
     type S<'a> = S;
 
-    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<Arc<dyn Skill>> {
+    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<(&Skill, u16)> {
         self.algorithm.search(&self.sim, initial.clone(), threshold)
     }
 }

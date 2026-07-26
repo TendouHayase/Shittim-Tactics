@@ -291,7 +291,10 @@ fn max_extra_state_size_const(state_structs: &[(Ident, String)]) -> String {
     )
 }
 
-fn ensure_mods_declared(lib_rs: &Path, mod_names: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+fn ensure_mods_declared(
+    lib_rs: &Path,
+    mod_names: &[&str],
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut content = fs::read_to_string(lib_rs)?;
     let mut changed = false;
 

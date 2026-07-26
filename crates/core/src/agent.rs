@@ -5,7 +5,7 @@ use crate::{actions::ActionContext, skill::Skill, state::Stateful};
 pub trait Agent {
     type S<'a>: Stateful<'a>;
 
-    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<Skill>;
+    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<(&Skill, u16)>;
 }
 
 pub trait RLAgent: Agent {

@@ -10,7 +10,7 @@ use crate::{
     states::MAX_EXTRA_STATE_SIZE,
     student::Student,
     types::AttackType,
-    utils::{is_inside, TPS},
+    utils::{TPS, is_inside},
 };
 use std::{cmp::Reverse, ptr::NonNull};
 #[derive(Debug)]

@@ -11,7 +11,7 @@ pub struct Node<'a, S: Stateful<'a>> {
     pub g: u64,
     pub f: u64,
     record: Option<Arc<Node<'a, S>>>,
-    action: Option<ActionContext<dyn Skill>>,
+    action: Option<ActionContext<'a>>,
     _marker: PhantomData<&'a S>,
 }
 
@@ -52,7 +52,7 @@ impl<'a, S: Stateful<'a>> Node<'a, S> {
         g: u64,
         h: u64,
         parent_node: Arc<Node<'a, S>>,
-        action: ActionContext<dyn Skill>,
+        action: ActionContext<'a>,
     ) -> Self {
         Node {
             state,
@@ -68,10 +68,13 @@ impl<'a, S: Stateful<'a>> Node<'a, S> {
         self.record.clone()
     }
 
-    pub fn get_action(&self) -> Option<Arc<dyn Skill>> {
+    pub fn get_action<'b>(&'b self) -> Option<&'a Skill>
+    where
+        'a: 'b,
+    {
         match self.action.as_ref()? {
             Wait => None,
-            Use(a) => Some(a.skill.clone()),
+            Use(a) => Some(a.skill),
         }
     }
 }
