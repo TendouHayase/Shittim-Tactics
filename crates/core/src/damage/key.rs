@@ -57,12 +57,12 @@ impl DerefMut for SkillsBitMask {
 }
 
 impl SkillsBitMask {
-    pub const BOSS_BIT: u64 = 1u64 << 63;
-    pub const SELF_BIT: u64 = 1u64 << 62;
-    pub const ENEMY_BIT: u64 = 1u64 << 61;
-    pub const DATA_MASK: u64 = (1u64 << Self::DATA_BITS_COUNT) - 1;
+    pub const BOSS_BIT: u64 = 1u64;
+    pub const SELF_BIT: u64 = 1u64 << 1;
+    pub const ENEMY_BIT: u64 = 1u64 << 2;
+    pub const DATA_MASK: u64 = !((1u64 << Self::DATA_BITS_COUNT) - 1);
 
-    const DATA_BITS_COUNT: u64 = 61;
+    const DATA_BITS_COUNT: u64 = 3;
 
     #[inline]
     pub const fn is_boss(&self) -> bool {

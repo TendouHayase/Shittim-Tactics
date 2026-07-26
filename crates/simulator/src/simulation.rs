@@ -150,7 +150,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         let mut boss_acc_damage = state.boss().accumulated_damage.clone();
         let damage = state.boss().damage_with_effects();
         for item in boss_remain_effects_ref {
-            let bit = 1u64 << item.0.bit;
+            let bit = 1u64 << item.0.offset;
 
             if item.0.ticks <= delta_ticks {
                 if damage.is_some() {
@@ -169,7 +169,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
                 }
                 new_boss_remain_effects.push(Reverse(RemainedEffects {
                     ticks: item.0.ticks - delta_ticks,
-                    bit: item.0.bit,
+                    offset: item.0.offset,
                 }));
             }
         }
@@ -187,7 +187,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
                 BinaryHeap::with_capacity(effects_len);
             let mut effects_mask = student.effects.clone().data();
             for item in &student.remained_effects {
-                let bit = 1u64 << item.0.bit;
+                let bit = 1u64 << item.0.offset;
 
                 if item.0.ticks <= delta_ticks {
                     if damage.is_some() {
@@ -205,7 +205,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
                         });
                     }
 
-                    let skill_type = self.lookup_skill(item.0.bit.into());
+                    let skill_type = self.lookup_skill(item.0.offset.into());
                     if let Ok(sk) = skill_type {
                         for skill_effect in sk.skill_effects() {
                             for target in skill_effect.targets {
@@ -220,13 +220,13 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
                                     {
                                         new_remain_effects.push(Reverse(RemainedEffects {
                                             ticks: item.0.ticks - delta_ticks,
-                                            bit: item.0.bit,
+                                            offset: item.0.offset,
                                         }));
                                     }
                                 } else {
                                     new_remain_effects.push(Reverse(RemainedEffects {
                                         ticks: item.0.ticks - delta_ticks,
-                                        bit: item.0.bit,
+                                        offset: item.0.offset,
                                     }));
                                 }
                             }

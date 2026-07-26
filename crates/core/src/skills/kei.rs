@@ -7,10 +7,9 @@ use crate::{
         EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillType,
     },
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
-    states::MAX_EXTRA_STATE_SIZE,
     student::Student,
     types::AttackType,
-    utils::{TPS, is_inside},
+    utils::{is_inside, TPS},
 };
 use std::{cmp::Reverse, ptr::NonNull};
 #[derive(Debug)]
@@ -70,7 +69,7 @@ impl KeiExSkill {
     pub fn frames(&self) -> u16 {
         123
     }
-    pub fn owner(&self) -> Character {
+    pub fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
     pub fn skill_mask_offset(&self) -> usize {
@@ -118,16 +117,16 @@ impl KeiExSkill {
         let mut result: Vec<StateData<'_>> = vec![];
         for &target in targets {
             if is_inside(target.coordinate, Self::REGION, caster_coord) {
-                let already_applied = (target.effects.0 & self.skill_mask_offset() as u64) != 0;
+                let already_applied =
+                    (target.effects.0 & (0x80u64 >> self.skill_mask_offset())) != 0;
                 if already_applied {
                     result.push(target.clone());
                 } else {
-                    if target.character.id() == caster.character.id() {
-                    } else {
+                    if target.character.id() != caster.character.id() {
                         let mut remained_effects = target.remained_effects.clone();
                         remained_effects.push(Reverse(RemainedEffects {
                             ticks: self.duration(),
-                            bit: self.skill_mask_offset as u8,
+                            offset: self.skill_mask_offset as u8,
                         }));
                         result.push(StateData {
                             character: target.character,
@@ -169,7 +168,7 @@ impl KeiBasicSkill {
     pub fn frames(&self) -> u16 {
         141
     }
-    pub fn owner(&self) -> Character {
+    pub fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
     pub fn skill_mask_offset(&self) -> usize {
@@ -200,7 +199,8 @@ impl KeiBasicSkill {
             damage: caster
                 .damage_map
                 .get(
-                    &(damage_key.clone_with_tag(true, false, true) | self.skill_mask_offset as u64),
+                    &(damage_key.clone_with_tag(true, false, true)
+                        | (0x80u64 >> self.skill_mask_offset)),
                 )
                 .copied(),
         });
@@ -216,10 +216,7 @@ impl KeiSubSkill {
             name: name.to_string(),
         }
     }
-    pub fn effect_apply<'a>(
-        skill: &Skill,
-        mut state: State<'a, MAX_EXTRA_STATE_SIZE>,
-    ) -> State<'a, MAX_EXTRA_STATE_SIZE> {
+    pub fn effect_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
         let len = state.boss().accumulated_damage.len();
         let kei = skill.owner();
         let prior_idx = state
@@ -244,7 +241,7 @@ impl KeiSubSkill {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn owner(&self) -> Character {
+    pub fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
     pub fn cost(&self) -> u8 {

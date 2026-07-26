@@ -1,11 +1,9 @@
 use crate::character::Character;
-use crate::state::{State, StateData, Stateful};
-use crate::states::MAX_EXTRA_STATE_SIZE;
-use crate::student::Student;
+use crate::state::{State, StateData};
 use crate::types::AttackType;
 use crate::utils::Position;
 use crate::variant_accessor;
-use macros::{EnumAccessors, unreachable_impl_for_empty};
+use macros::{unreachable_impl_for_empty, EnumAccessors};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Weak;
@@ -138,9 +136,7 @@ effect_kind_field!(
 effect_kind_field!(Move, mov);
 impl EffectKind {
     #[inline]
-    pub fn new_other<'a>(
-        func: fn(&Skill, State<'a, MAX_EXTRA_STATE_SIZE>) -> State<'a, MAX_EXTRA_STATE_SIZE>,
-    ) -> Self {
+    pub fn new_other<'a>(func: fn(&Skill, State<'a>) -> State<'a>) -> Self {
         EffectKind(EffectKindInner::Other(func as *const u8))
     }
     #[inline]
@@ -152,10 +148,7 @@ impl EffectKind {
         }
     }
     #[inline]
-    pub fn as_other<'a>(
-        &self,
-    ) -> Option<fn(&Skill, State<'a, MAX_EXTRA_STATE_SIZE>) -> State<'a, MAX_EXTRA_STATE_SIZE>>
-    {
+    pub fn as_other<'a>(&self) -> Option<fn(&Skill, State<'a>) -> State<'a>> {
         match self.0 {
             EffectKindInner::Other(ptr) => unsafe {
                 if ptr.is_null() {

@@ -7,7 +7,6 @@ use core::{
         EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillType,
     },
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
-    states::MAX_EXTRA_STATE_SIZE,
     student::Student,
     types::AttackType,
     utils::{TPS, is_inside},
@@ -81,7 +80,7 @@ impl ExSkill {
         123
     }
 
-    pub fn owner(&self) -> Character {
+    pub fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
 
@@ -137,30 +136,27 @@ impl ExSkill {
 
         for &target in targets {
             if is_inside(target.coordinate, Self::REGION, caster_coord) {
-                let already_applied = (target.effects.0 & self.skill_mask_offset() as u64) != 0;
+                let already_applied =
+                    (target.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
                 if already_applied {
                     result.push(target.clone());
                 } else {
-                    if target.character.id() == caster.character.id() {
-                    } else {
-                        let mut remained_effects = target.remained_effects.clone();
-                        remained_effects.push(Reverse(RemainedEffects {
-                            ticks: self.duration(),
-                            bit: self.skill_mask_offset as u8,
-                        }));
-                        result.push(StateData {
-                            character: target.character,
-                            coordinate: target.coordinate,
-                            accumulated_damage_cache: target.accumulated_damage_cache.clone(),
-                            cooldowns: target.cooldowns.clone(),
-                            effects: (target.effects.0 | (0x80u64 >> self.skill_mask_offset))
-                                .into(),
-                            remained_effects,
-                            accumulated_damage: target.accumulated_damage.clone(),
-                            damage_map: target.damage_map,
-                            extra: target.extra,
-                        });
-                    }
+                    let mut remained_effects = target.remained_effects.clone();
+                    remained_effects.push(Reverse(RemainedEffects {
+                        ticks: self.duration(),
+                        offset: self.skill_mask_offset as u8,
+                    }));
+                    result.push(StateData {
+                        character: target.character,
+                        coordinate: target.coordinate,
+                        accumulated_damage_cache: target.accumulated_damage_cache.clone(),
+                        cooldowns: target.cooldowns.clone(),
+                        effects: (target.effects.0 | (0x01u64 << self.skill_mask_offset)).into(),
+                        remained_effects,
+                        accumulated_damage: target.accumulated_damage.clone(),
+                        damage_map: target.damage_map,
+                        extra: target.extra,
+                    });
                 }
             }
         }
@@ -195,7 +191,7 @@ impl BasicSkill {
         141
     }
 
-    pub fn owner(&self) -> Character {
+    pub fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
 
@@ -233,7 +229,8 @@ impl BasicSkill {
             damage: caster
                 .damage_map
                 .get(
-                    &(damage_key.clone_with_tag(true, false, true) | self.skill_mask_offset as u64),
+                    &(damage_key.clone_with_tag(true, false, true)
+                        | (0x01u64 << self.skill_mask_offset)),
                 )
                 .copied(),
         });
@@ -252,10 +249,7 @@ impl SubSkill {
         }
     }
 
-    pub fn effect_apply<'a>(
-        skill: &Skill,
-        mut state: State<'a, MAX_EXTRA_STATE_SIZE>,
-    ) -> State<'a, MAX_EXTRA_STATE_SIZE> {
+    pub fn effect_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
         let len = state.boss().accumulated_damage.len();
         let kei = skill.owner();
         let prior_idx = state
@@ -284,7 +278,7 @@ impl SubSkill {
         &self.name
     }
 
-    pub fn owner(&self) -> Character {
+    pub fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
 

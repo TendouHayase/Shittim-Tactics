@@ -207,6 +207,7 @@ impl FiresofSeverity1 {
                 &ac_dmg,
                 ac_dmg_cache,
                 target.damage_map,
+                target.extra,
             ));
         }
 
@@ -324,6 +325,7 @@ impl FireofSeverity2 {
                 &ac_dmg,
                 ac_dmg_cache,
                 target.damage_map,
+                target.extra,
             ));
 
             if i == 0 {
@@ -426,6 +428,7 @@ impl PurifyingStorm {
                 &ac_dmg,
                 ac_dmg_cache,
                 target.damage_map,
+                target.extra,
             ));
         }
 

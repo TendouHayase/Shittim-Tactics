@@ -7,48 +7,40 @@ use std::{
 use crate::{
     character::Character,
     damage::{Damage, cache::DamageCache, key::SkillsBitMask},
+    states::MAX_EXTRA_STATE_SIZE,
     utils::Position,
 };
 
-pub trait Stateful<'a, const MAX_EXTRA_SIZE: usize = 0>: Clone + Send + Sync + Eq + Hash {
-    fn new(
-        students: &[StateData<'a, MAX_EXTRA_SIZE>],
-        boss: StateData<'a, MAX_EXTRA_SIZE>,
-        elased_frames: u16,
-        cost: i8,
-    ) -> Self;
-    fn students<'b: 'c, 'c>(&'b self) -> &'c [StateData<'a, MAX_EXTRA_SIZE>];
-    fn students_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut [StateData<'a, MAX_EXTRA_SIZE>];
-    fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a, MAX_EXTRA_SIZE>;
-    fn boss_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut StateData<'a, MAX_EXTRA_SIZE>;
+pub trait Stateful<'a>: Clone + Send + Sync + Eq + Hash {
+    fn new(students: &[StateData<'a>], boss: StateData<'a>, elased_frames: u16, cost: i8) -> Self;
+    fn students<'b: 'c, 'c>(&'b self) -> &'c [StateData<'a>];
+    fn students_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut [StateData<'a>];
+    fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a>;
+    fn boss_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut StateData<'a>;
     fn cost(&self) -> i8;
     fn frames(&self) -> u16;
     fn is_terminated(&self) -> bool;
     fn is_goal(&self, threshold_percent: f64) -> bool;
-    fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32)
-    -> Option<&'c StateData<'a, MAX_EXTRA_SIZE>>;
-    fn state_data_by_id_mut<'b: 'c, 'c>(
-        &'b mut self,
-        id: u32,
-    ) -> Option<&'c mut StateData<'a, MAX_EXTRA_SIZE>>;
+    fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32) -> Option<&'c StateData<'a>>;
+    fn state_data_by_id_mut<'b: 'c, 'c>(&'b mut self, id: u32) -> Option<&'c mut StateData<'a>>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct State<'a, const MAX_EXTRA_SIZE: usize> {
-    pub students: StudentState<'a, MAX_EXTRA_SIZE>,
-    pub boss: StateData<'a, MAX_EXTRA_SIZE>,
+pub struct State<'a> {
+    pub students: StudentState<'a>,
+    pub boss: StateData<'a>,
     pub frames: u16,
     pub cost: i8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum StudentState<'a, const MAX_EXTRA_SIZE: usize> {
-    TotalAssault([StateData<'a, MAX_EXTRA_SIZE>; 6]),
-    FinalRestrictionRelease([StateData<'a, MAX_EXTRA_SIZE>; 10]),
+pub enum StudentState<'a> {
+    TotalAssault([StateData<'a>; 6]),
+    FinalRestrictionRelease([StateData<'a>; 10]),
 }
 
-impl<'a, const E: usize> Stateful<'a, E> for State<'a, E> {
-    fn new(students: &[StateData<'a, E>], boss: StateData<'a, E>, frames: u16, cost: i8) -> Self {
+impl<'a> Stateful<'a> for State<'a> {
+    fn new(students: &[StateData<'a>], boss: StateData<'a>, frames: u16, cost: i8) -> Self {
         match students.len() {
             6 => Self {
                 students: StudentState::TotalAssault(std::array::from_fn(|i| students[i].clone())),
@@ -68,14 +60,14 @@ impl<'a, const E: usize> Stateful<'a, E> for State<'a, E> {
         }
     }
 
-    fn students<'b: 'c, 'c>(&'b self) -> &'c [StateData<'a, E>] {
+    fn students<'b: 'c, 'c>(&'b self) -> &'c [StateData<'a>] {
         match &self.students {
             StudentState::TotalAssault(arr) => arr,
             StudentState::FinalRestrictionRelease(arr) => arr,
         }
     }
 
-    fn students_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut [StateData<'a, E>]
+    fn students_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut [StateData<'a>]
     where
         'a: 'b,
         'b: 'c,
@@ -86,11 +78,11 @@ impl<'a, const E: usize> Stateful<'a, E> for State<'a, E> {
         }
     }
 
-    fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a, E> {
+    fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a> {
         &self.boss
     }
 
-    fn boss_mut<'b, 'c>(&'b mut self) -> &'c mut StateData<'a, E>
+    fn boss_mut<'b, 'c>(&'b mut self) -> &'c mut StateData<'a>
     where
         'a: 'b,
         'b: 'c,
@@ -132,7 +124,7 @@ impl<'a, const E: usize> Stateful<'a, E> for State<'a, E> {
         result
     }
 
-    fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32) -> Option<&'c StateData<'a, E>> {
+    fn state_data_by_id<'b: 'c, 'c>(&'b self, id: u32) -> Option<&'c StateData<'a>> {
         if id == self.boss.character.id() {
             return Some(&self.boss);
         }
@@ -146,7 +138,7 @@ impl<'a, const E: usize> Stateful<'a, E> for State<'a, E> {
         None
     }
 
-    fn state_data_by_id_mut<'b: 'c, 'c>(&'b mut self, id: u32) -> Option<&'c mut StateData<'a, E>> {
+    fn state_data_by_id_mut<'b: 'c, 'c>(&'b mut self, id: u32) -> Option<&'c mut StateData<'a>> {
         if id == self.boss.character.id() {
             return Some(&mut self.boss);
         }
@@ -161,8 +153,9 @@ impl<'a, const E: usize> Stateful<'a, E> for State<'a, E> {
     }
 }
 
+#[repr(C)]
 #[derive(Debug, Clone)]
-pub struct StateData<'a, const EXTRA_BYTES: usize = 0> {
+pub struct StateData<'a> {
     pub cooldowns: Vec<u16>,
     pub remained_effects: BinaryHeap<Reverse<RemainedEffects>>,
     pub accumulated_damage: Vec<AccumulatedDamage>,
@@ -174,13 +167,13 @@ pub struct StateData<'a, const EXTRA_BYTES: usize = 0> {
 
     pub coordinate: Position,
 
-    pub extra: [u8; EXTRA_BYTES],
+    pub extra: [u8; MAX_EXTRA_STATE_SIZE],
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct RemainedEffects {
     pub ticks: u16,
-    pub bit: u8,
+    pub offset: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -201,7 +194,7 @@ impl Ord for RemainedEffects {
     }
 }
 
-impl<const E: usize> PartialEq for StateData<'_, E> {
+impl PartialEq for StateData<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.cooldowns == other.cooldowns
             && self.effects == other.effects
@@ -210,9 +203,9 @@ impl<const E: usize> PartialEq for StateData<'_, E> {
     }
 }
 
-impl<const E: usize> Eq for StateData<'_, E> {}
+impl Eq for StateData<'_> {}
 
-impl<const E: usize> Hash for StateData<'_, E> {
+impl Hash for StateData<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         (
             (self.character as *const Character) as *const usize as usize,
@@ -225,57 +218,31 @@ impl<const E: usize> Hash for StateData<'_, E> {
     }
 }
 
-impl<'a, const E: usize> StateData<'a, E> {
-    pub fn with_extra<const NEW_E: usize>(self) -> StateData<'a, NEW_E> {
-        let Self {
-            cooldowns,
-            remained_effects,
-            accumulated_damage,
-            damage_map,
-            character,
-            effects,
-            accumulated_damage_cache,
-            coordinate,
-            extra: old_extra,
-        } = self;
-
-        let mut new_extra = [0u8; NEW_E];
-        let copy_len = E.min(NEW_E);
-        new_extra[..copy_len].copy_from_slice(&old_extra[..copy_len]);
-
-        StateData {
-            cooldowns,
-            remained_effects,
-            accumulated_damage,
-            damage_map,
-            character,
-            effects,
-            accumulated_damage_cache,
-            coordinate,
-            extra: new_extra,
-        }
-    }
-
-    #[allow(unsafe_code)]
-    pub fn with_zero_extra(self) -> StateData<'a> {
-        self.with_extra::<0>()
-    }
-
+impl<'a> StateData<'a> {
     #[allow(unsafe_code)]
     pub fn extra_as<T>(&self) -> &T {
-        const { assert!(::std::mem::size_of::<T>() <= E) };
+        const {
+            assert!(::std::mem::size_of::<T>() <= MAX_EXTRA_STATE_SIZE);
+            assert!(::std::mem::offset_of!(Self, extra) % ::std::mem::align_of::<T>() == 0);
+        };
         unsafe { &*(self.extra.as_ptr() as *const T) }
     }
 
     #[allow(unsafe_code)]
     pub fn extra_as_mut<T>(&mut self) -> &mut T {
-        const { assert!(::std::mem::size_of::<T>() <= E) };
+        const {
+            assert!(::std::mem::size_of::<T>() <= MAX_EXTRA_STATE_SIZE);
+            assert!(::std::mem::offset_of!(Self, extra) % ::std::mem::align_of::<T>() == 0);
+        };
         unsafe { &mut *(self.extra.as_mut_ptr() as *mut T) }
     }
 }
 
-impl<'a, const E: usize> StateData<'a, E> {
-    pub fn new(character: &'a Character, skill_list: &'a HashMap<SkillsBitMask, Damage>) -> Self {
+impl<'a> StateData<'a> {
+    pub fn new(
+        character: &'a Character<'_>,
+        skill_list: &'a HashMap<SkillsBitMask, Damage>,
+    ) -> Self {
         StateData {
             character,
             coordinate: Default::default(),
@@ -285,7 +252,7 @@ impl<'a, const E: usize> StateData<'a, E> {
             accumulated_damage: Vec::new(),
             accumulated_damage_cache: Default::default(),
             damage_map: skill_list,
-            extra: [0u8; E],
+            extra: [0u8; MAX_EXTRA_STATE_SIZE],
         }
     }
 
@@ -298,6 +265,7 @@ impl<'a, const E: usize> StateData<'a, E> {
         accumulated_damage: &'b [AccumulatedDamage],
         accumulated_damage_cache: DamageCache,
         skill_list: &'a HashMap<SkillsBitMask, Damage>,
+        extra: [u8; MAX_EXTRA_STATE_SIZE],
     ) -> Self
     where
         'a: 'b,
@@ -311,7 +279,7 @@ impl<'a, const E: usize> StateData<'a, E> {
             remained_effects: remained_effects.clone(),
             accumulated_damage: accumulated_damage.to_vec(),
             damage_map: skill_list,
-            extra: [0u8; E],
+            extra,
         }
     }
 
@@ -330,7 +298,7 @@ impl<'a, const E: usize> StateData<'a, E> {
             remained_effects,
             accumulated_damage: self.accumulated_damage.clone(),
             damage_map: self.damage_map,
-            extra: [0u8; E],
+            extra: self.extra,
         }
     }
 
