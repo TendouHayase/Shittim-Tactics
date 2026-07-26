@@ -22,7 +22,7 @@ pub struct Binah {
     stats: BossStats,
     pub difficulty: Difficulty,
     pub phase_switching_hp: [u64; 2],
-    pub skills: Box<Vec<Arc<dyn Skill>>>,
+    pub skills: Vec<Skill>,
     #[builder(default)]
     pub effects: Vec<SkillEffect>,
 }
@@ -37,7 +37,7 @@ struct DifficultyWrapper {
     phase_switching_hp: [u64; 2],
 }
 
-impl Character for Binah {
+impl Binah {
     fn id(&self) -> u32 {
         self.stats.id
     }
@@ -46,7 +46,7 @@ impl Character for Binah {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> &Vec<Arc<dyn Skill>> {
+    fn skill_list(&self) -> &Vec<Skill> {
         &self.skills
     }
 }
@@ -132,7 +132,7 @@ impl Binah {
             ))?
             .phase_switching_hp;
 
-        let tmp_skills: Box<Vec<Arc<dyn Skill>>> = Box::new(vec![]);
+        let tmp_skills: Vec<Skill> = vec![];
 
         // 최종 객체
         let mut result = Binah::builder()

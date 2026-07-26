@@ -7,7 +7,10 @@ use core::{
     },
     state::{AccumulatedDamage, StateData},
 };
-use std::sync::{Arc, Weak};
+use std::{
+    ptr::NonNull,
+    sync::{Arc, Weak},
+};
 
 use crate::binah::Binah;
 
@@ -15,12 +18,12 @@ use crate::binah::Binah;
 
 #[derive(Debug)]
 pub struct AtsilutsLight {
-    parent: Weak<Binah>,
+    parent: NonNull<Binah>,
     index: usize,
     id: (u32, u8),
 }
 
-impl Skill for AtsilutsLight {
+impl AtsilutsLight {
     fn name(&self) -> &str {
         "Atsilut's Light"
     }
@@ -96,8 +99,8 @@ impl Skill for AtsilutsLight {
         todo!()
     }
 
-    fn owner(&self) -> Weak<dyn Character> {
-        self.parent.clone()
+    fn owner(&self) -> &Character {
+        &self.parent
     }
 
     fn skill_type(&self) -> core::skill::SkillType {

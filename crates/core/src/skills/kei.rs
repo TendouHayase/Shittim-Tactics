@@ -6,10 +6,11 @@ use crate::{
         BuffType::{self},
         EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillType,
     },
-    state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
+    state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
+    states::MAX_EXTRA_STATE_SIZE,
     student::Student,
     types::AttackType,
-    utils::{TPS, is_inside},
+    utils::{is_inside, TPS},
 };
 use std::{
     cmp::Reverse,
@@ -221,20 +222,30 @@ impl KeiSubSkill {
             accumulated_damage: 0,
         }
     }
-    pub fn effect_apply<'a, S: Stateful<'a>>(skill: &Skill, state: S) -> S {
+    pub fn effect_apply<'a>(
+        skill: &Skill,
+        mut state: State<'a, MAX_EXTRA_STATE_SIZE>,
+    ) -> State<'a, MAX_EXTRA_STATE_SIZE> {
+        let len = state.boss().accumulated_damage.len();
         let kei = skill.owner();
-        let mut state_clone = state.clone();
-        let kei_state = state_clone
-            .state_data_by_id_mut(kei.id())
-            .expect("cannot found kei");
-        let ex = kei_state.extra_as_mut::<SubSkillState>();
-        let prior_idx = ex.recording_start_len;
-        for i in prior_idx..state.boss().accumulated_damage.len() {
+        let prior_idx = state
+            .state_data_by_id(kei.id())
+            .expect("cannot found kei")
+            .extra_as::<SubSkillState>()
+            .recording_start_len;
+        let mut acc = 0;
+        for i in prior_idx..len {
             if let Some(d) = state.boss().accumulated_damage[i].damage {
-                ex.acc_damage += d.expected_value();
+                acc += d.expected_value();
             }
         }
-        state_clone
+        let ex = state
+            .state_data_by_id_mut(kei.id())
+            .expect("cannot found kei")
+            .extra_as_mut::<SubSkillState>();
+        ex.acc_damage += acc;
+        ex.recording_start_len = len;
+        state
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -265,7 +276,7 @@ impl KeiSubSkill {
                 duration_frames: self.duration(),
             },
             targets: vec![SkillEffectTarget::Boss {
-                kind: EffectKind::new_other(KeiSubSkill::effect_apply),
+                kind: EffectKind::new_other(Self::effect_apply),
             }],
         }]
     }

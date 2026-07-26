@@ -1,5 +1,6 @@
 use crate::character::Character;
-use crate::state::{StateData, Stateful};
+use crate::state::{State, StateData, Stateful};
+use crate::states::MAX_EXTRA_STATE_SIZE;
 use crate::student::Student;
 use crate::types::AttackType;
 use crate::utils::Position;
@@ -137,7 +138,9 @@ effect_kind_field!(
 effect_kind_field!(Move, mov);
 impl EffectKind {
     #[inline]
-    pub fn new_other<'a, S: Stateful<'a>>(func: fn(&Skill, S) -> S) -> Self {
+    pub fn new_other<'a>(
+        func: fn(&Skill, State<'a, MAX_EXTRA_STATE_SIZE>) -> State<'a, MAX_EXTRA_STATE_SIZE>,
+    ) -> Self {
         EffectKind(EffectKindInner::Other(func as *const u8))
     }
     #[inline]
@@ -149,7 +152,10 @@ impl EffectKind {
         }
     }
     #[inline]
-    pub fn as_other<'a, S: Stateful<'a>>(&self) -> Option<fn(Skill, S) -> S> {
+    pub fn as_other<'a>(
+        &self,
+    ) -> Option<fn(&Skill, State<'a, MAX_EXTRA_STATE_SIZE>) -> State<'a, MAX_EXTRA_STATE_SIZE>>
+    {
         match self.0 {
             EffectKindInner::Other(ptr) => unsafe {
                 if ptr.is_null() {

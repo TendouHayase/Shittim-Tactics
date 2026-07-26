@@ -13,6 +13,16 @@
 //! `students/src/**`가 소스이고 `core/src/{skills,states}/**`는 매번 재생성되는
 //! 산출물이다. `students` 쪽 파일은 건드리지 않는다.
 //!
+//! `core/src/states.rs`에는 mod 선언과 함께 `MAX_EXTRA_STATE_SIZE` 상수를 생성한다.
+//! 이 값은 모든 state 구조체를 담을 수 있는 `StateData::extra`의 최소 크기이므로
+//! state 구조체 전체를 봐야 정해진다. xtask는 레이아웃을 모르니 `size_of`를 직접
+//! 계산하지 않고, 컴파일러가 const 평가로 최댓값을 구하도록 코드를 뱉는다.
+//!
+//! 이 상수를 `states.rs`가 아닌 곳에 손으로 적어두면 안 된다. 이 파일들은 매번
+//! 통째로 덮어써지므로 손으로 넣은 정의는 다음 실행 때 사라진다.
+//! `students` 쪽에서 참조할 때는 `core::states::MAX_EXTRA_STATE_SIZE`로 쓴다
+//! (복제 시 `core::` -> `crate::`로 치환되어 양쪽 크레이트에서 모두 성립한다).
+//!
 //! skills와 states의 처리 방식 차이:
 //! - skills: 모든 학생의 스킬 구조체가 하나의 `Skill` enum으로 합쳐지므로 이름이 충돌한다
 //!   (파일마다 `ExSkill`, `BasicSkill` 같은 범용 이름을 쓴다). 그래서 파일명을 접두어로
@@ -45,12 +55,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let core_src = workspace_root.join("crates/core/src");
 
     // states를 먼저 만든다: skills 쪽이 `crate::states::...`를 참조하기 때문.
-    let (state_modules, _) = process_tree(
+    let (state_modules, state_structs) = process_tree(
         &students_src.join("states"),
         &core_src.join("states"),
         Prefixing::Off,
     )?;
-    write_mod_aggregator(&core_src.join("states.rs"), &state_modules)?;
+    write_states_aggregator(&core_src.join("states.rs"), &state_modules, &state_structs)?;
 
     let (skill_modules, skill_structs) = process_tree(
         &students_src.join("skills"),
@@ -228,16 +238,57 @@ impl VisitMut for RelocateVisitor {
     }
 }
 
-fn write_mod_aggregator(
-    path: &Path,
-    module_names: &[String],
-) -> Result<(), Box<dyn std::error::Error>> {
+fn mod_declarations(module_names: &[String]) -> String {
     let mut content = String::new();
     for name in module_names {
         content.push_str(&format!("pub mod {name};\n"));
     }
-    fs::write(path, content)?;
+    content
+}
+
+fn write_mod_aggregator(
+    path: &Path,
+    module_names: &[String],
+) -> Result<(), Box<dyn std::error::Error>> {
+    fs::write(path, mod_declarations(module_names))?;
     Ok(())
+}
+
+/// `core/src/states.rs`를 생성한다. mod 선언에 더해 `MAX_EXTRA_STATE_SIZE`를 넣는다.
+fn write_states_aggregator(
+    path: &Path,
+    module_names: &[String],
+    state_structs: &[(Ident, String)],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut content = mod_declarations(module_names);
+    content.push('\n');
+    content.push_str(&max_extra_state_size_const(state_structs));
+    fs::write(path, content)?;
+    let _ = Command::new("rustfmt").arg(path).output();
+    Ok(())
+}
+
+/// `MAX_EXTRA_STATE_SIZE` 정의를 만든다.
+///
+/// 크기 계산은 컴파일러에게 맡긴다. xtask는 필드 레이아웃과 정렬을 알 수 없으므로
+/// 여기서 숫자를 직접 박으면 틀린다. state 구조체가 하나도 없으면 0이 된다.
+fn max_extra_state_size_const(state_structs: &[(Ident, String)]) -> String {
+    let mut body = String::new();
+    for (ident, module) in state_structs {
+        body.push_str(&format!(
+            "    {{\n        \
+             let size = ::std::mem::size_of::<{module}::{ident}>();\n        \
+             if size > max {{\n            max = size;\n        }}\n    }}\n"
+        ));
+    }
+
+    format!(
+        "/// 모든 state 구조체를 담을 수 있는 `StateData::extra`의 최소 크기.\n\
+         ///\n\
+         /// xtask가 `students/src/states/**`를 보고 생성한다. 손으로 고치지 말 것.\n\
+         pub const MAX_EXTRA_STATE_SIZE: usize = {{\n    \
+         let mut max = 0usize;\n{body}    max\n}};\n"
+    )
 }
 
 fn ensure_mods_declared(lib_rs: &Path, mod_names: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
