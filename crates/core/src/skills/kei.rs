@@ -12,11 +12,7 @@ use crate::{
     types::AttackType,
     utils::{is_inside, TPS},
 };
-use std::{
-    cmp::Reverse,
-    ptr::NonNull,
-    sync::{Arc, Weak},
-};
+use std::{cmp::Reverse, ptr::NonNull};
 #[derive(Debug)]
 pub struct KeiExSkill {
     kei: NonNull<Student>,
@@ -39,7 +35,6 @@ pub struct KeiSubSkill {
     skill_mask_offset: usize,
     id: (u32, u8),
     name: String,
-    accumulated_damage: u64,
 }
 impl KeiExSkill {
     const REGION: Region = Region::Arc {
@@ -75,8 +70,8 @@ impl KeiExSkill {
     pub fn frames(&self) -> u16 {
         123
     }
-    pub fn owner(&self) -> &Student {
-        unsafe { self.kei.as_ref() }
+    pub fn owner(&self) -> Character {
+        unsafe { Character::Student(self.kei.as_ref()) }
     }
     pub fn skill_mask_offset(&self) -> usize {
         self.skill_mask_offset
@@ -174,8 +169,8 @@ impl KeiBasicSkill {
     pub fn frames(&self) -> u16 {
         141
     }
-    pub fn owner(&self) -> &Student {
-        unsafe { self.kei.as_ref() }
+    pub fn owner(&self) -> Character {
+        unsafe { Character::Student(self.kei.as_ref()) }
     }
     pub fn skill_mask_offset(&self) -> usize {
         self.skill_mask_offset
@@ -219,7 +214,6 @@ impl KeiSubSkill {
             skill_mask_offset,
             id: (owner.id(), 2),
             name: name.to_string(),
-            accumulated_damage: 0,
         }
     }
     pub fn effect_apply<'a>(
@@ -250,8 +244,8 @@ impl KeiSubSkill {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn owner(&self) -> &Student {
-        unsafe { self.kei.as_ref() }
+    pub fn owner(&self) -> Character {
+        unsafe { Character::Student(self.kei.as_ref()) }
     }
     pub fn cost(&self) -> u8 {
         0

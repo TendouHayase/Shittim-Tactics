@@ -81,8 +81,8 @@ impl ExSkill {
         123
     }
 
-    pub fn owner(&self) -> &Student {
-        unsafe { self.kei.as_ref() }
+    pub fn owner(&self) -> Character {
+        unsafe { Character::Student(self.kei.as_ref()) }
     }
 
     pub fn skill_mask_offset(&self) -> usize {
@@ -195,8 +195,8 @@ impl BasicSkill {
         141
     }
 
-    pub fn owner(&self) -> &Student {
-        unsafe { self.kei.as_ref() }
+    pub fn owner(&self) -> Character {
+        unsafe { Character::Student(self.kei.as_ref()) }
     }
 
     pub fn skill_mask_offset(&self) -> usize {
@@ -284,8 +284,8 @@ impl SubSkill {
         &self.name
     }
 
-    pub fn owner(&self) -> &Student {
-        unsafe { self.kei.as_ref() }
+    pub fn owner(&self) -> Character {
+        unsafe { Character::Student(self.kei.as_ref()) }
     }
 
     pub fn cost(&self) -> u8 {

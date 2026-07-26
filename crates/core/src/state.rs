@@ -168,7 +168,7 @@ pub struct StateData<'a, const EXTRA_BYTES: usize = 0> {
     pub accumulated_damage: Vec<AccumulatedDamage>,
 
     pub damage_map: &'a HashMap<SkillsBitMask, Damage>,
-    pub character: &'a Character,
+    pub character: &'a Character<'a>,
     pub effects: SkillsBitMask,
     pub accumulated_damage_cache: DamageCache,
 

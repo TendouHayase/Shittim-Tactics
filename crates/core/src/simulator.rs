@@ -17,7 +17,7 @@ pub trait Simulator {
     type S<'a>: Stateful<'a>;
 
     /// 에이전트가 현재 `state`에서 할 수 있는 액션(스킬) 목록을 반환합니다.
-    fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<Arc<Skill>>;
+    fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<&Skill>;
 
     /// 실행한 `action`을 `state`에 적용하여 새로운 `state`를 반환합니다.
     fn apply<'a: 'b, 'b, 'c>(
@@ -43,8 +43,8 @@ pub trait Simulator {
     fn is_time_over(&self, ticks: u16) -> bool;
 
     /// `SkillBitMask`에서 주어진 인덱스에 해당하는 스킬을 반환합니다.
-    fn lookup_skill(&self, index: usize) -> Result<Arc<Skill>, error::Error>;
+    fn lookup_skill(&self, index: usize) -> Result<&Skill, error::Error>;
 
     /// 주어진 `id`에 맞는 캐릭터가 존재하면 반환하고 아니면 `None`을 반환합니다.
-    fn character_by_id(&self, id: u32) -> Option<&Character>;
+    fn character_by_id(&self, id: u32) -> Option<Character<'_>>;
 }

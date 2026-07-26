@@ -3,12 +3,12 @@ use std::{fmt::Debug, sync::Arc};
 use crate::{base::BaseStats, boss::Boss, skill::Skill, student::Student};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub enum Character {
-    Student(Student),
-    Boss(Boss),
+pub enum Character<'a> {
+    Student(&'a Student),
+    Boss(&'a Boss),
 }
 
-impl Character {
+impl<'a> Character<'a> {
     pub fn id(&self) -> u32 {
         match self {
             Self::Student(s) => s.id(),

@@ -17,9 +17,9 @@ use std::{
     sync::Arc,
 };
 
-pub struct Simulation<'a, T: Debug + Send + Sync + PartialEq, const N: usize, S: Stateful<'a>> {
+pub struct Simulation<'a, const N: usize, S: Stateful<'a>> {
     pub students: [Student; N],
-    pub boss: Boss<T>,
+    pub boss: Boss,
 
     limit_ticks: u16,
 
@@ -29,16 +29,14 @@ pub struct Simulation<'a, T: Debug + Send + Sync + PartialEq, const N: usize, S:
     _marker: PhantomData<&'a S>,
 }
 
-impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>> Simulator
-    for Simulation<'_, T, N, S>
-{
+impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S> {
     type S<'a> = S;
-    fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<Arc<dyn Skill>> {
+    fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<&Skill> {
         let cost = state.cost();
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
             for (j, cooltime) in stat.cooldowns.iter().enumerate() {
-                let skill = self.students[i].skills[j].clone();
+                let skill = &self.students[i].skills[j];
                 if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
                     result.push(skill);
                 }
@@ -51,7 +49,7 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
     fn apply<'a: 'b, 'b, 'c>(
         &self,
         state: &'b Self::S<'a>,
-        action: &'b core::actions::ActionContext<dyn Skill + 'c>,
+        action: &'b core::actions::ActionContext,
     ) -> Self::S<'a> {
         let action = match action {
             ActionContext::Wait => return (*state).clone(),
@@ -213,11 +211,10 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
                             for target in skill_effect.targets {
                                 // 장판스킬일 경우 범위 안에 있는지 고려
                                 if let Land { kind, region } = target {
-                                    if let EffectKind::Other(f) = kind {
-                                        f(sk, state);
+                                    if kind.is_other() {
+                                        todo!()
                                     }
-                                    let caster_state =
-                                        state.state_data_by_id(sk.owner().upgrade().unwrap().id());
+                                    let caster_state = state.state_data_by_id(sk.owner().id());
                                     if let Some(data) = caster_state
                                         && is_inside(student.coordinate, region, data.coordinate)
                                     {
@@ -299,7 +296,7 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
         self.limit_ticks <= ticks
     }
 
-    fn lookup_skill(&self, index: usize) -> Result<Arc<dyn Skill>, error::Error> {
+    fn lookup_skill(&self, index: usize) -> Result<&Skill, error::Error> {
         let total_skill_count = 3 + N * 3 + self.boss.skill_list().len();
         let student_skill_offset = 3;
         let boss_skill_offset = 3 + 3 * N;
@@ -311,8 +308,7 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
         }
 
         if index < boss_skill_offset {
-            Ok(self
-                .students
+            self.students
                 .get((index - student_skill_offset) / 3)
                 .ok_or(error::Error::Unknown(format!(
                     "index {} can't find skill",
@@ -325,29 +321,24 @@ impl<T: Debug + Send + Sync + PartialEq, const N: usize, S: for<'z> Stateful<'z>
                     "index {} can't find skill",
                     index
                 )))
-                .unwrap()
-                .clone())
         } else {
-            Ok(self
-                .boss
+            self.boss
                 .skills
                 .get(index - boss_skill_offset)
                 .ok_or(error::Error::Unknown(format!(
                     "index {} can't find skill",
                     index
                 )))
-                .unwrap()
-                .clone())
         }
     }
 
-    fn character_by_id(&self, id: u32) -> Option<&dyn Character> {
+    fn character_by_id(&self, id: u32) -> Option<Character> {
         if id == self.boss.id() {
-            Some(&self.boss)
+            Some(Character::Boss(&self.boss))
         } else {
             for student in &self.students {
                 if id == student.id() {
-                    return Some(student);
+                    return Some(Character::Student(student));
                 }
             }
 

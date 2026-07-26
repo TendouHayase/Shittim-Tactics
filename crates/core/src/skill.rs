@@ -5,7 +5,7 @@ use crate::student::Student;
 use crate::types::AttackType;
 use crate::utils::Position;
 use crate::variant_accessor;
-use macros::{unreachable_impl_for_empty, EnumAccessors};
+use macros::{EnumAccessors, unreachable_impl_for_empty};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Weak;
@@ -218,7 +218,7 @@ macro_rules! define_skill {
 
         impl Skill {
             dispatch_method!(Skill, fn name(&self) -> &str, $($skill_name),*);
-            dispatch_method!(Skill, fn owner(&self) -> &Student, $($skill_name),*);
+            dispatch_method!(Skill, fn owner(&self) -> Character<'_>, $($skill_name),*);
             dispatch_method!(Skill, fn cost(&self) -> u8, $($skill_name),*);
             dispatch_method!(Skill, fn duration(&self) -> u16, $($skill_name),*);
             dispatch_method!(Skill, fn skill_mask_offset(&self) -> usize, $($skill_name),*);

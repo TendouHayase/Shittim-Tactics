@@ -1,4 +1,5 @@
 use core::{
+    boss::Boss,
     character::Character,
     difficulty::Difficulty,
     skill::{
@@ -7,18 +8,13 @@ use core::{
     },
     state::{AccumulatedDamage, StateData},
 };
-use std::{
-    ptr::NonNull,
-    sync::{Arc, Weak},
-};
-
-use crate::binah::Binah;
+use std::ptr::NonNull;
 
 // TODO! 스킬 이름 런타임에 선택한 언어로 반환 구현 필요
 
 #[derive(Debug)]
 pub struct AtsilutsLight {
-    parent: NonNull<Binah>,
+    parent: NonNull<Boss>,
     index: usize,
     id: (u32, u8),
 }
@@ -46,7 +42,7 @@ impl AtsilutsLight {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         let duration: u16;
 
-        match self.parent.upgrade().unwrap().difficulty {
+        match unsafe { self.parent.read().stats.difficulty } {
             Difficulty::Torment => duration = 15 * 30,
             Difficulty::Lunatic => duration = 120 * 30,
             _ => duration = 0,
@@ -57,7 +53,7 @@ impl AtsilutsLight {
                 id: self.id,
                 timing: EffectTiming::Instant,
                 targets: vec![SkillEffectTarget::Land {
-                    kind: EffectKind::Damage,
+                    kind: EffectKind::new_damage(),
                     region: Region::Polygon {
                         vertex: [
                             (-150, 2200).into(),
@@ -76,7 +72,7 @@ impl AtsilutsLight {
                     duration_frames: duration,
                 },
                 targets: vec![SkillEffectTarget::Land {
-                    kind: EffectKind::Damage,
+                    kind: EffectKind::new_damage(),
                     region: Region::Polygon {
                         vertex: [
                             (-150f32, 2200f32).into(),
@@ -99,8 +95,8 @@ impl AtsilutsLight {
         todo!()
     }
 
-    fn owner(&self) -> &Character {
-        &self.parent
+    fn owner(&self) -> Character {
+        unsafe { Character::Boss(self.parent.as_ref()) }
     }
 
     fn skill_type(&self) -> core::skill::SkillType {
@@ -112,9 +108,9 @@ impl AtsilutsLight {
     const SKILL_1: &str = "Atsilut's Light 1";
     const SKILL_2: &str = "Atsilut's Light 2";
 
-    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
+    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
         AtsilutsLight {
-            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             id: (binah.id(), 0),
         }
@@ -123,12 +119,12 @@ impl AtsilutsLight {
 
 #[derive(Debug)]
 pub struct FiresofSeverity1 {
-    parent: Weak<Binah>,
+    parent: NonNull<Boss>,
     index: usize,
     id: (u32, u8),
 }
 
-impl Skill for FiresofSeverity1 {
+impl FiresofSeverity1 {
     fn name(&self) -> &str {
         "Fire of Severity"
     }
@@ -144,8 +140,8 @@ impl Skill for FiresofSeverity1 {
         todo!()
     }
 
-    fn owner(&self) -> Weak<dyn Character> {
-        self.parent.clone()
+    fn owner(&self) -> Character {
+        unsafe { Character::Boss(self.parent.as_ref()) }
     }
 
     fn skill_mask_offset(&self) -> usize {
@@ -161,7 +157,7 @@ impl Skill for FiresofSeverity1 {
             id: self.id,
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Student {
-                kind: EffectKind::Damage,
+                kind: EffectKind::new_damage(),
                 count: 4,
             }],
         }]
@@ -175,7 +171,7 @@ impl Skill for FiresofSeverity1 {
         let dmg_num;
         let dmg_den;
 
-        match self.parent.upgrade().unwrap().difficulty {
+        match unsafe { self.parent.read().stats.difficulty } {
             Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
                 dmg_num = 3;
                 dmg_den = 2;
@@ -221,9 +217,9 @@ impl Skill for FiresofSeverity1 {
 impl FiresofSeverity1 {
     const NAME: &str = "Fire of Severity 1";
 
-    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
+    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
         FiresofSeverity1 {
-            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             id: (binah.id(), 1),
         }
@@ -232,19 +228,19 @@ impl FiresofSeverity1 {
 
 #[derive(Debug)]
 pub struct FireofSeverity2 {
-    parent: Weak<Binah>,
+    parent: NonNull<Boss>,
     index: usize,
     name: String,
     id: (u32, u8),
 }
 
-impl Skill for FireofSeverity2 {
+impl FireofSeverity2 {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn owner(&self) -> Weak<dyn Character> {
-        self.parent.clone()
+    fn owner(&self) -> Character {
+        unsafe { Character::Boss(self.parent.as_ref()) }
     }
 
     fn cost(&self) -> u8 {
@@ -268,7 +264,7 @@ impl Skill for FireofSeverity2 {
             id: self.id,
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Student {
-                kind: EffectKind::Damage,
+                kind: EffectKind::new_damage(),
                 count: 4,
             }],
         }]
@@ -286,7 +282,7 @@ impl Skill for FireofSeverity2 {
         let dmg_num;
         let mut dmg_den;
 
-        match self.parent.upgrade().unwrap().difficulty {
+        match unsafe { self.parent.read().stats.difficulty } {
             Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
                 dmg_num = 15;
                 dmg_den = 2;
@@ -344,9 +340,9 @@ impl Skill for FireofSeverity2 {
 impl FireofSeverity2 {
     const NAME: &str = "Fires of Severity 2";
 
-    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
+    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
         Self {
-            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             name: Self::NAME.to_string(),
             id: (binah.id(), 2),
@@ -356,12 +352,12 @@ impl FireofSeverity2 {
 
 #[derive(Debug)]
 pub struct PurifyingStorm {
-    parent: Weak<Binah>,
+    parent: NonNull<Boss>,
     index: usize,
     id: (u32, u8),
 }
 
-impl Skill for PurifyingStorm {
+impl PurifyingStorm {
     fn name(&self) -> &str {
         "Purifying Storm"
     }
@@ -381,8 +377,8 @@ impl Skill for PurifyingStorm {
         self.index
     }
 
-    fn owner(&self) -> Weak<dyn Character> {
-        self.parent.clone()
+    fn owner(&self) -> Character {
+        unsafe { Character::Boss(self.parent.as_ref()) }
     }
 
     fn skill_type(&self) -> core::skill::SkillType {
@@ -394,12 +390,7 @@ impl Skill for PurifyingStorm {
             id: self.id,
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Student {
-                kind: EffectKind::Debuff {
-                    ty: Def,
-                    duration: 90,
-                    scale: 50,
-                    amount: 0,
-                },
+                kind: EffectKind::new_debuff(Def, 90, 50, 0),
                 count: 4,
             }],
         }]
@@ -443,9 +434,9 @@ impl Skill for PurifyingStorm {
 }
 
 impl PurifyingStorm {
-    pub fn new(binah: &Binah, skill_mask_index: usize) -> Self {
+    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
         Self {
-            parent: Arc::downgrade(&unsafe { Arc::from_raw(binah as *const Binah) }),
+            parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             id: (binah.id(), 3),
         }
