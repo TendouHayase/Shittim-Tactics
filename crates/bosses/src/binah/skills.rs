@@ -1,37 +1,17 @@
-﻿use core::{
+use crate::create_boss_skill;
+use core::{
     boss::Boss,
     character::Character,
     difficulty::Difficulty,
     skill::{
-        DebuffType::Def, EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget,
-        SkillOps, SkillType,
+        DebuffType::Def, EffectKind, EffectTiming, Region, SkillEffect, SkillEffectTarget, SkillOps,
+        SkillType,
     },
     state::{AccumulatedDamage, StateData},
 };
 use std::ptr::NonNull;
-#[derive(Debug)]
-pub struct AtsilutsLight {
-    parent: NonNull<Boss>,
-    index: usize,
-    id: (u32, u8),
-    name: String,
-}
-impl SkillOps for AtsilutsLight {
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn cost(&self) -> u8 {
-        0
-    }
-    fn duration(&self) -> u16 {
-        0
-    }
-    fn frames(&self) -> u16 {
-        todo!()
-    }
-    fn skill_mask_offset(&self) -> usize {
-        self.index
-    }
+
+create_boss_skill!(AtsilutsLight, 0, 0, todo!(), SkillType::Ex, 0, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         let duration: u16;
         match unsafe { self.parent.read().stats.difficulty } {
@@ -77,6 +57,7 @@ impl SkillOps for AtsilutsLight {
             },
         ]
     }
+
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
         caster: &'c mut StateData<'a>,
@@ -84,54 +65,14 @@ impl SkillOps for AtsilutsLight {
     ) {
         todo!()
     }
-    fn owner(&self) -> Character<'_> {
-        unsafe { Character::Boss(self.parent.as_ref()) }
-    }
-    fn skill_type(&self) -> SkillType {
-        SkillType::Ex
-    }
-}
+});
+
 impl AtsilutsLight {
     const SKILL_1: &str = "Atsilut's Light 1";
     const SKILL_2: &str = "Atsilut's Light 2";
-    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        Self {
-            parent: NonNull::from_ref(binah),
-            index: skill_mask_index,
-            id: (binah.id(), 0),
-            name: binah.stats.name.to_string(),
-        }
-    }
 }
-#[derive(Debug)]
-pub struct FiresofSeverity1 {
-    parent: NonNull<Boss>,
-    index: usize,
-    id: (u32, u8),
-    name: String,
-}
-impl SkillOps for FiresofSeverity1 {
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn cost(&self) -> u8 {
-        0
-    }
-    fn duration(&self) -> u16 {
-        0
-    }
-    fn frames(&self) -> u16 {
-        todo!()
-    }
-    fn owner(&self) -> Character<'_> {
-        unsafe { Character::Boss(self.parent.as_ref()) }
-    }
-    fn skill_mask_offset(&self) -> usize {
-        self.index
-    }
-    fn skill_type(&self) -> SkillType {
-        SkillType::Ex
-    }
+
+create_boss_skill!(FiresofSeverity1, 0, 0, todo!(), SkillType::Ex, 1, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
@@ -173,44 +114,13 @@ impl SkillOps for FiresofSeverity1 {
             }
         }
     }
-}
+});
+
 impl FiresofSeverity1 {
     const NAME: &str = "Fire of Severity 1";
-    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        Self {
-            parent: NonNull::from_ref(binah),
-            index: skill_mask_index,
-            id: (binah.id(), 1),
-            name: binah.stats.name.to_string(),
-        }
-    }
 }
-#[derive(Debug)]
-pub struct FireofSeverity2 {
-    parent: NonNull<Boss>,
-    index: usize,
-    name: String,
-    id: (u32, u8),
-}
-impl SkillOps for FireofSeverity2 {
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn owner(&self) -> Character<'_> {
-        unsafe { Character::Boss(self.parent.as_ref()) }
-    }
-    fn cost(&self) -> u8 {
-        0
-    }
-    fn duration(&self) -> u16 {
-        0
-    }
-    fn frames(&self) -> u16 {
-        todo!()
-    }
-    fn skill_mask_offset(&self) -> usize {
-        self.index
-    }
+
+create_boss_skill!(FireofSeverity2, 0, 0, todo!(), SkillType::Ex, 2, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
@@ -220,9 +130,6 @@ impl SkillOps for FireofSeverity2 {
                 count: 4,
             }],
         }]
-    }
-    fn skill_type(&self) -> SkillType {
-        SkillType::Ex
     }
 
     fn apply<'a: 'b, 'b, 'c: 'b>(
@@ -266,47 +173,13 @@ impl SkillOps for FireofSeverity2 {
             }
         }
     }
-}
+});
+
 impl FireofSeverity2 {
     const NAME: &str = "Fires of Severity 2";
-    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        Self {
-            parent: NonNull::from_ref(binah),
-            index: skill_mask_index,
-            name: Self::NAME.to_string(),
-            id: (binah.id(), 2),
-        }
-    }
 }
-#[derive(Debug)]
-pub struct PurifyingStorm {
-    parent: NonNull<Boss>,
-    index: usize,
-    id: (u32, u8),
-    name: String,
-}
-impl SkillOps for PurifyingStorm {
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn cost(&self) -> u8 {
-        3
-    }
-    fn duration(&self) -> u16 {
-        30
-    }
-    fn frames(&self) -> u16 {
-        todo!()
-    }
-    fn skill_mask_offset(&self) -> usize {
-        self.index
-    }
-    fn owner(&self) -> Character<'_> {
-        unsafe { Character::Boss(self.parent.as_ref()) }
-    }
-    fn skill_type(&self) -> SkillType {
-        SkillType::Ex
-    }
+
+create_boss_skill!(PurifyingStorm, 3, 30, todo!(), SkillType::Ex, 3, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
@@ -334,14 +207,4 @@ impl SkillOps for PurifyingStorm {
             }
         }
     }
-}
-impl PurifyingStorm {
-    pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        Self {
-            parent: NonNull::from_ref(binah),
-            index: skill_mask_index,
-            id: (binah.id(), 3),
-            name: binah.stats.name.to_string(),
-        }
-    }
-}
+});
