@@ -4,7 +4,7 @@ use crate::{
     difficulty::Difficulty,
     skill::{
         DebuffType::Def, EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget,
-        SkillType::Ex,
+        SkillType,
     },
     state::{AccumulatedDamage, StateData},
 };
@@ -77,25 +77,25 @@ impl BinahAtsilutsLight {
             },
         ]
     }
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        _caster: &'b StateData<'a>,
-        _targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         todo!()
     }
     pub fn owner(&self) -> Character {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-    pub fn skill_type(&self) -> crate::skill::SkillType {
-        crate::skill::SkillType::Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
 }
 impl BinahAtsilutsLight {
     const SKILL_1: &str = "Atsilut's Light 1";
     const SKILL_2: &str = "Atsilut's Light 2";
     pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        BinahAtsilutsLight {
+        Self {
             parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             id: (binah.id(), 0),
@@ -129,8 +129,8 @@ impl BinahFiresofSeverity1 {
     pub fn skill_mask_offset(&self) -> usize {
         self.index
     }
-    pub fn skill_type(&self) -> crate::skill::SkillType {
-        crate::skill::SkillType::Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
     pub fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
@@ -142,11 +142,11 @@ impl BinahFiresofSeverity1 {
             }],
         }]
     }
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         let dmg_num;
         let dmg_den;
         match unsafe { self.parent.read().stats.difficulty } {
@@ -159,37 +159,25 @@ impl BinahFiresofSeverity1 {
                 dmg_den = 4;
             }
         }
-        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
-        for &target in targets.iter() {
+        for target in targets.iter_mut() {
             let d = caster.damage_with_effects();
-            let mut ac_dmg = target.accumulated_damage.clone();
-            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
             if let Some(damage) = d {
-                ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
-                ac_dmg.push(AccumulatedDamage {
+                target
+                    .accumulated_damage_cache
+                    .append(&(damage * dmg_num / dmg_den));
+                target.accumulated_damage.push(AccumulatedDamage {
                     ticks: self.duration(),
                     damage: target.damage_map.get(&target.effects).copied(),
                 });
             }
-            result.push(StateData::from_parts(
-                target.character,
-                target.coordinate,
-                &target.cooldowns,
-                &target.effects,
-                &target.remained_effects,
-                &ac_dmg,
-                ac_dmg_cache,
-                target.damage_map,
-                target.extra,
-            ));
         }
-        result
+        targets
     }
 }
 impl BinahFiresofSeverity1 {
     const NAME: &str = "Fire of Severity 1";
     pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        BinahFiresofSeverity1 {
+        Self {
             parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             id: (binah.id(), 1),
@@ -233,14 +221,14 @@ impl BinahFireofSeverity2 {
             }],
         }]
     }
-    pub fn skill_type(&self) -> crate::skill::SkillType {
-        Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         let dmg_num;
         let mut dmg_den;
         match unsafe { self.parent.read().stats.difficulty } {
@@ -258,36 +246,24 @@ impl BinahFireofSeverity2 {
             4,
             "Fire of Severity 2 Skill is not a target of 4 people"
         );
-        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
-        for (i, &target) in targets.iter().enumerate() {
+        for (i, target) in targets.iter_mut().enumerate() {
             let d = caster.damage_with_effects();
-            let mut ac_dmg = target.accumulated_damage.clone();
-            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
             if let Some(damage) = d {
-                ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
-                ac_dmg.push(AccumulatedDamage {
+                target
+                    .accumulated_damage_cache
+                    .append(&(damage * dmg_num / dmg_den));
+                target.accumulated_damage.push(AccumulatedDamage {
                     ticks: self.duration(),
                     damage: target.damage_map.get(&target.effects).copied(),
                 });
             }
-            result.push(StateData::from_parts(
-                target.character,
-                target.coordinate,
-                &target.cooldowns,
-                &target.effects,
-                &target.remained_effects,
-                &ac_dmg,
-                ac_dmg_cache,
-                target.damage_map,
-                target.extra,
-            ));
             if i == 0 {
                 dmg_den *= 2;
             } else if i == 2 {
                 dmg_den *= 2;
             }
         }
-        result
+        targets
     }
 }
 impl BinahFireofSeverity2 {
@@ -327,8 +303,8 @@ impl BinahPurifyingStorm {
     pub fn owner(&self) -> Character {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-    pub fn skill_type(&self) -> crate::skill::SkillType {
-        crate::skill::SkillType::Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
     pub fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
@@ -340,36 +316,22 @@ impl BinahPurifyingStorm {
             }],
         }]
     }
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
-        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
-        for &target in targets.iter() {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
+        for target in targets.iter_mut() {
             let d = caster.damage_with_effects();
-            let mut ac_dmg = target.accumulated_damage.clone();
-            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
             if let Some(damage) = d {
-                ac_dmg_cache.append(&(damage * 3));
-                ac_dmg.push(AccumulatedDamage {
+                target.accumulated_damage_cache.append(&(damage * 3));
+                target.accumulated_damage.push(AccumulatedDamage {
                     damage: target.damage_map.get(&target.effects).copied(),
                     ticks: self.duration(),
                 });
             }
-            result.push(StateData::from_parts(
-                target.character,
-                target.coordinate,
-                &target.cooldowns,
-                &target.effects,
-                &target.remained_effects,
-                &ac_dmg,
-                ac_dmg_cache,
-                target.damage_map,
-                target.extra,
-            ));
         }
-        result
+        targets
     }
 }
 impl BinahPurifyingStorm {

@@ -4,14 +4,11 @@
     difficulty::Difficulty,
     skill::{
         DebuffType::Def, EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget,
-        SkillType::Ex,
+        SkillType,
     },
     state::{AccumulatedDamage, StateData},
 };
 use std::ptr::NonNull;
-
-// TODO! 스킬 이름 런타임에 선택한 언어로 반환 구현 필요
-
 #[derive(Debug)]
 pub struct AtsilutsLight {
     parent: NonNull<Boss>,
@@ -19,7 +16,6 @@ pub struct AtsilutsLight {
     id: (u32, u8),
     name: String,
 }
-
 impl AtsilutsLight {
     pub fn name(&self) -> &str {
         &self.name
@@ -27,28 +23,22 @@ impl AtsilutsLight {
     pub fn cost(&self) -> u8 {
         0
     }
-
     pub fn duration(&self) -> u16 {
         0
     }
-
     pub fn frames(&self) -> u16 {
         todo!()
     }
-
     pub fn skill_mask_offset(&self) -> usize {
         self.index
     }
-
     pub fn skill_effects(&self) -> Vec<SkillEffect> {
         let duration: u16;
-
         match unsafe { self.parent.read().stats.difficulty } {
             Difficulty::Torment => duration = 15 * 30,
             Difficulty::Lunatic => duration = 120 * 30,
             _ => duration = 0,
         }
-
         vec![
             SkillEffect {
                 id: self.id,
@@ -87,30 +77,25 @@ impl AtsilutsLight {
             },
         ]
     }
-
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        _caster: &'b StateData<'a>,
-        _targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         todo!()
     }
-
     pub fn owner(&self) -> Character {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-
-    pub fn skill_type(&self) -> core::skill::SkillType {
-        core::skill::SkillType::Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
 }
-
 impl AtsilutsLight {
     const SKILL_1: &str = "Atsilut's Light 1";
     const SKILL_2: &str = "Atsilut's Light 2";
-
     pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        AtsilutsLight {
+        Self {
             parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             id: (binah.id(), 0),
@@ -118,7 +103,6 @@ impl AtsilutsLight {
         }
     }
 }
-
 #[derive(Debug)]
 pub struct FiresofSeverity1 {
     parent: NonNull<Boss>,
@@ -126,7 +110,6 @@ pub struct FiresofSeverity1 {
     id: (u32, u8),
     name: String,
 }
-
 impl FiresofSeverity1 {
     pub fn name(&self) -> &str {
         &self.name
@@ -134,27 +117,21 @@ impl FiresofSeverity1 {
     pub fn cost(&self) -> u8 {
         0
     }
-
     pub fn duration(&self) -> u16 {
         0
     }
-
     pub fn frames(&self) -> u16 {
         todo!()
     }
-
     pub fn owner(&self) -> Character {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-
     pub fn skill_mask_offset(&self) -> usize {
         self.index
     }
-
-    pub fn skill_type(&self) -> core::skill::SkillType {
-        core::skill::SkillType::Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
-
     pub fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
@@ -165,15 +142,13 @@ impl FiresofSeverity1 {
             }],
         }]
     }
-
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         let dmg_num;
         let dmg_den;
-
         match unsafe { self.parent.read().stats.difficulty } {
             Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
                 dmg_num = 3;
@@ -184,45 +159,25 @@ impl FiresofSeverity1 {
                 dmg_den = 4;
             }
         }
-
-        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
-
-        for &target in targets.iter() {
+        for target in targets.iter_mut() {
             let d = caster.damage_with_effects();
-
-            let mut ac_dmg = target.accumulated_damage.clone();
-            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
-
             if let Some(damage) = d {
-                ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
-                ac_dmg.push(AccumulatedDamage {
+                target
+                    .accumulated_damage_cache
+                    .append(&(damage * dmg_num / dmg_den));
+                target.accumulated_damage.push(AccumulatedDamage {
                     ticks: self.duration(),
                     damage: target.damage_map.get(&target.effects).copied(),
                 });
             }
-
-            result.push(StateData::from_parts(
-                target.character,
-                target.coordinate,
-                &target.cooldowns,
-                &target.effects,
-                &target.remained_effects,
-                &ac_dmg,
-                ac_dmg_cache,
-                target.damage_map,
-                target.extra,
-            ));
         }
-
-        result
+        targets
     }
 }
-
 impl FiresofSeverity1 {
     const NAME: &str = "Fire of Severity 1";
-
     pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
-        FiresofSeverity1 {
+        Self {
             parent: NonNull::from_ref(binah),
             index: skill_mask_index,
             id: (binah.id(), 1),
@@ -230,7 +185,6 @@ impl FiresofSeverity1 {
         }
     }
 }
-
 #[derive(Debug)]
 pub struct FireofSeverity2 {
     parent: NonNull<Boss>,
@@ -238,32 +192,25 @@ pub struct FireofSeverity2 {
     name: String,
     id: (u32, u8),
 }
-
 impl FireofSeverity2 {
     pub fn name(&self) -> &str {
         &self.name
     }
-
     pub fn owner(&self) -> Character {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-
     pub fn cost(&self) -> u8 {
         0
     }
-
     pub fn duration(&self) -> u16 {
         0
     }
-
     pub fn frames(&self) -> u16 {
         todo!()
     }
-
     pub fn skill_mask_offset(&self) -> usize {
         self.index
     }
-
     pub fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
@@ -274,19 +221,16 @@ impl FireofSeverity2 {
             }],
         }]
     }
-
-    pub fn skill_type(&self) -> core::skill::SkillType {
-        Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
-
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         let dmg_num;
         let mut dmg_den;
-
         match unsafe { self.parent.read().stats.difficulty } {
             Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic => {
                 dmg_num = 15;
@@ -297,40 +241,22 @@ impl FireofSeverity2 {
                 dmg_den = 4;
             }
         }
-
         assert_eq!(
             targets.len(),
             4,
             "Fire of Severity 2 Skill is not a target of 4 people"
         );
-
-        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
-
-        for (i, &target) in targets.iter().enumerate() {
+        for (i, target) in targets.iter_mut().enumerate() {
             let d = caster.damage_with_effects();
-
-            let mut ac_dmg = target.accumulated_damage.clone();
-            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
-
             if let Some(damage) = d {
-                ac_dmg_cache.append(&(damage * dmg_num / dmg_den));
-                ac_dmg.push(AccumulatedDamage {
+                target
+                    .accumulated_damage_cache
+                    .append(&(damage * dmg_num / dmg_den));
+                target.accumulated_damage.push(AccumulatedDamage {
                     ticks: self.duration(),
                     damage: target.damage_map.get(&target.effects).copied(),
                 });
             }
-
-            result.push(StateData::from_parts(
-                target.character,
-                target.coordinate,
-                &target.cooldowns,
-                &target.effects,
-                &target.remained_effects,
-                &ac_dmg,
-                ac_dmg_cache,
-                target.damage_map,
-                target.extra,
-            ));
 
             if i == 0 {
                 dmg_den *= 2;
@@ -338,14 +264,11 @@ impl FireofSeverity2 {
                 dmg_den *= 2;
             }
         }
-
-        result
+        targets
     }
 }
-
 impl FireofSeverity2 {
     const NAME: &str = "Fires of Severity 2";
-
     pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
         Self {
             parent: NonNull::from_ref(binah),
@@ -355,7 +278,6 @@ impl FireofSeverity2 {
         }
     }
 }
-
 #[derive(Debug)]
 pub struct PurifyingStorm {
     parent: NonNull<Boss>,
@@ -363,7 +285,6 @@ pub struct PurifyingStorm {
     id: (u32, u8),
     name: String,
 }
-
 impl PurifyingStorm {
     pub fn name(&self) -> &str {
         &self.name
@@ -371,27 +292,21 @@ impl PurifyingStorm {
     pub fn cost(&self) -> u8 {
         3
     }
-
     pub fn duration(&self) -> u16 {
         30
     }
-
     pub fn frames(&self) -> u16 {
         todo!()
     }
-
     pub fn skill_mask_offset(&self) -> usize {
         self.index
     }
-
     pub fn owner(&self) -> Character {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-
-    pub fn skill_type(&self) -> core::skill::SkillType {
-        core::skill::SkillType::Ex
+    pub fn skill_type(&self) -> SkillType {
+        SkillType::Ex
     }
-
     pub fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
@@ -402,45 +317,24 @@ impl PurifyingStorm {
             }],
         }]
     }
-
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
-        let mut result: Vec<StateData> = Vec::with_capacity(targets.len());
-
-        for &target in targets.iter() {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
+        for target in targets.iter_mut() {
             let d = caster.damage_with_effects();
-
-            let mut ac_dmg = target.accumulated_damage.clone();
-            let mut ac_dmg_cache = target.accumulated_damage_cache.clone();
-
             if let Some(damage) = d {
-                ac_dmg_cache.append(&(damage * 3));
-                ac_dmg.push(AccumulatedDamage {
+                target.accumulated_damage_cache.append(&(damage * 3));
+                target.accumulated_damage.push(AccumulatedDamage {
                     damage: target.damage_map.get(&target.effects).copied(),
                     ticks: self.duration(),
                 });
             }
-
-            result.push(StateData::from_parts(
-                target.character,
-                target.coordinate,
-                &target.cooldowns,
-                &target.effects,
-                &target.remained_effects,
-                &ac_dmg,
-                ac_dmg_cache,
-                target.damage_map,
-                target.extra,
-            ));
         }
-
-        result
+        targets
     }
 }
-
 impl PurifyingStorm {
     pub fn new(binah: &Boss, skill_mask_index: usize) -> Self {
         Self {

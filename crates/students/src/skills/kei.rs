@@ -125,43 +125,39 @@ impl ExSkill {
         }]
     }
 
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b core::state::StateData<'a>,
-        targets: &'b [&'c core::state::StateData<'a>],
-    ) -> Vec<core::state::StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         let caster_coord = caster.coordinate;
 
-        let mut result: Vec<StateData<'_>> = vec![];
-
-        for &target in targets {
+        for target in targets.into_iter() {
             if is_inside(target.coordinate, Self::REGION, caster_coord) {
                 let already_applied =
                     (target.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
-                if already_applied {
-                    result.push(target.clone());
-                } else {
-                    let mut remained_effects = target.remained_effects.clone();
-                    remained_effects.push(Reverse(RemainedEffects {
+                if !already_applied {
+                    target.remained_effects.push(Reverse(RemainedEffects {
                         ticks: self.duration(),
                         offset: self.skill_mask_offset as u8,
                     }));
-                    result.push(StateData {
-                        character: target.character,
-                        coordinate: target.coordinate,
-                        accumulated_damage_cache: target.accumulated_damage_cache.clone(),
-                        cooldowns: target.cooldowns.clone(),
-                        effects: (target.effects.0 | (0x01u64 << self.skill_mask_offset)).into(),
-                        remained_effects,
-                        accumulated_damage: target.accumulated_damage.clone(),
-                        damage_map: target.damage_map,
-                        extra: target.extra,
-                    });
+
+                    target.effects =
+                        (target.effects.0 | (0x01u64 << self.skill_mask_offset)).into();
                 }
             }
         }
+        let already_applied = (caster.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
+        if !already_applied {
+            caster.remained_effects.push(Reverse(RemainedEffects {
+                ticks: self.duration(),
+                offset: self.skill_mask_offset as u8,
+            }));
 
-        result
+            caster.effects = (caster.effects.0 | (0x01u64 << self.skill_mask_offset)).into();
+        }
+
+        targets
     }
 }
 
@@ -213,29 +209,30 @@ impl BasicSkill {
         }]
     }
 
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b core::state::StateData<'a>,
-        targets: &'b [&'c core::state::StateData<'a>],
-    ) -> Vec<core::state::StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         assert_eq!(targets.len(), 1); // 대상이 1명이 아니면 오류
 
-        let damage_key = &caster.effects;
+        let damage_key = caster.effects;
 
-        let mut result: Vec<StateData<'_>> = targets.iter().copied().cloned().collect();
-
-        result[0].accumulated_damage.push(AccumulatedDamage {
-            ticks: 1,
-            damage: caster
-                .damage_map
-                .get(
-                    &(damage_key.clone_with_tag(true, false, true)
-                        | (0x01u64 << self.skill_mask_offset)),
-                )
-                .copied(),
-        });
-
-        result
+        for target in targets.into_iter() {
+            if target.character.is_boss() {
+                target.accumulated_damage.push(AccumulatedDamage {
+                    ticks: 1,
+                    damage: caster
+                        .damage_map
+                        .get(
+                            &(damage_key.clone_with_tag(true, false, true)
+                                | (0x01u64 << self.skill_mask_offset)),
+                        )
+                        .copied(),
+                });
+            }
+        }
+        targets
     }
 }
 
@@ -315,11 +312,11 @@ impl SubSkill {
         }]
     }
 
-    pub fn apply<'a: 'b, 'b, 'c: 'b>(
+    pub fn apply<'a: 'b, 'b>(
         &self,
-        caster: &'b StateData<'a>,
-        targets: &'b [&'c StateData<'a>],
-    ) -> Vec<StateData<'a>> {
+        caster: &'b mut StateData<'a>,
+        targets: &'b mut [StateData<'a>],
+    ) -> &'b mut [StateData<'a>] {
         let atk = caster.character.stats().atk * 50;
 
         let acc_damage = {
@@ -327,24 +324,15 @@ impl SubSkill {
             extras.acc_damage.min(atk.into())
         };
 
-        let mut result = vec![];
-
         let damage = Damage::new(acc_damage, acc_damage, acc_damage, acc_damage, 0, 1, 0);
 
-        for &target in targets {
-            if target.character.id() != caster.character.id() {
-                let mut target_clone = target.clone();
-                target_clone.accumulated_damage.push(AccumulatedDamage {
-                    ticks: 1,
-                    damage: Some(damage),
-                });
-                result.push(target_clone);
-            }
+        for target in targets.into_iter() {
+            target.accumulated_damage.push(AccumulatedDamage {
+                ticks: 1,
+                damage: Some(damage),
+            });
         }
-        let mut caster_clone = caster.clone();
-        caster_clone.extra_as_mut::<SubSkillState>().acc_damage = 0;
-        result.push(caster_clone);
-
-        result
+        caster.extra_as_mut::<SubSkillState>().acc_damage = 0;
+        targets
     }
 }

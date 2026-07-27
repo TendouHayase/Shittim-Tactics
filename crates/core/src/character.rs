@@ -27,4 +27,18 @@ impl<'a> Character<'a> {
             Self::Boss(b) => b.skill_list(),
         }
     }
+
+    pub fn is_boss(&self) -> bool {
+        match self {
+            Self::Boss(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_student(&self) -> bool {
+        match self {
+            Self::Student(_) => true,
+            _ => false,
+        }
+    }
 }

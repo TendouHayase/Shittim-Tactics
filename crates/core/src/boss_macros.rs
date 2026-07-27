@@ -1,8 +1,9 @@
 // === xtask gen-skills: copied from bosses/src/macros.rs, do not edit by hand ===
 
+/// create_boss_skill!(name: ident, cost: u8, duration: u16, frames: u16, skill_type: SkillType, skill_id: u8)
 #[macro_export]
 macro_rules! create_boss_skill {
-    ($name:ident, $cost:literal, $duration:literal, $frames:literal, $skill_type:path, $skill_id:literal) => {
+    ($name:ident, $cost:literal, $duration:expr, $frames:expr, $skill_type:path, $skill_id:literal) => {
         #[derive(Debug)]
         pub struct $name {
             parent: NonNull<Boss>,

@@ -217,7 +217,7 @@ macro_rules! define_skill {
             dispatch_method!(Skill, fn skill_mask_offset(&self) -> usize, $($skill_name),*);
             dispatch_method!(Skill, fn skill_type(&self) -> SkillType, $($skill_name),*);
             dispatch_method!(Skill, fn skill_effects(&self) -> Vec<SkillEffect>, $($skill_name),*);
-            dispatch_method!(Skill, fn apply<'a: 'b, 'b, 'c: 'b>(&self, caster: &'b StateData<'a>, targets: &'b [&'c StateData<'a>],) -> Vec<StateData<'a>>, $($skill_name),*);
+            dispatch_method!(Skill, fn apply<'a: 'b, 'b>(&self, caster: &'b mut StateData<'a>, targets: &'b mut [StateData<'a>],) -> &'b mut [StateData<'a>], $($skill_name),*);
         }
 
         // Skill은 생성이 끝난 뒤 내부 데이터 변경이 불가
@@ -229,7 +229,7 @@ macro_rules! define_skill {
 use crate::skills::binah::{
     BinahAtsilutsLight, BinahFireofSeverity2, BinahFiresofSeverity1, BinahPurifyingStorm,
 };
-use crate::skills::goz::GozNowYouSeeUs;
+use crate::skills::goz::{GozNowYouSeeUs, GozThreeLightMonte};
 use crate::skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill};
 
 define_skill!(
@@ -238,6 +238,7 @@ define_skill!(
     BinahFiresofSeverity1,
     BinahPurifyingStorm,
     GozNowYouSeeUs,
+    GozThreeLightMonte,
     KeiBasicSkill,
     KeiExSkill,
     KeiSubSkill
