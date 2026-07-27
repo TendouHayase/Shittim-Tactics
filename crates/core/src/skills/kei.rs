@@ -118,29 +118,26 @@ impl KeiExSkill {
         for &target in targets {
             if is_inside(target.coordinate, Self::REGION, caster_coord) {
                 let already_applied =
-                    (target.effects.0 & (0x80u64 >> self.skill_mask_offset())) != 0;
+                    (target.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
                 if already_applied {
                     result.push(target.clone());
                 } else {
-                    if target.character.id() != caster.character.id() {
-                        let mut remained_effects = target.remained_effects.clone();
-                        remained_effects.push(Reverse(RemainedEffects {
-                            ticks: self.duration(),
-                            offset: self.skill_mask_offset as u8,
-                        }));
-                        result.push(StateData {
-                            character: target.character,
-                            coordinate: target.coordinate,
-                            accumulated_damage_cache: target.accumulated_damage_cache.clone(),
-                            cooldowns: target.cooldowns.clone(),
-                            effects: (target.effects.0 | (0x80u64 >> self.skill_mask_offset))
-                                .into(),
-                            remained_effects,
-                            accumulated_damage: target.accumulated_damage.clone(),
-                            damage_map: target.damage_map,
-                            extra: target.extra,
-                        });
-                    }
+                    let mut remained_effects = target.remained_effects.clone();
+                    remained_effects.push(Reverse(RemainedEffects {
+                        ticks: self.duration(),
+                        offset: self.skill_mask_offset as u8,
+                    }));
+                    result.push(StateData {
+                        character: target.character,
+                        coordinate: target.coordinate,
+                        accumulated_damage_cache: target.accumulated_damage_cache.clone(),
+                        cooldowns: target.cooldowns.clone(),
+                        effects: (target.effects.0 | (0x01u64 << self.skill_mask_offset)).into(),
+                        remained_effects,
+                        accumulated_damage: target.accumulated_damage.clone(),
+                        damage_map: target.damage_map,
+                        extra: target.extra,
+                    });
                 }
             }
         }
@@ -200,7 +197,7 @@ impl KeiBasicSkill {
                 .damage_map
                 .get(
                     &(damage_key.clone_with_tag(true, false, true)
-                        | (0x80u64 >> self.skill_mask_offset)),
+                        | (0x01u64 << self.skill_mask_offset)),
                 )
                 .copied(),
         });

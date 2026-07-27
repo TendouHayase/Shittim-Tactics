@@ -25,3 +25,4 @@ pub use std::default;
 pub use std::marker;
 pub mod skills;
 pub mod states;
+pub mod boss_macros;

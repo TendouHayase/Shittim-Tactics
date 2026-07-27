@@ -226,6 +226,19 @@ macro_rules! define_skill {
 }
 
 // === xtask gen-skills: generated below, do not edit by hand ===
+use crate::skills::binah::{
+    BinahAtsilutsLight, BinahFireofSeverity2, BinahFiresofSeverity1, BinahPurifyingStorm,
+};
+use crate::skills::goz::GozNowYouSeeUs;
 use crate::skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill};
 
-define_skill!(KeiBasicSkill, KeiExSkill, KeiSubSkill);
+define_skill!(
+    BinahAtsilutsLight,
+    BinahFireofSeverity2,
+    BinahFiresofSeverity1,
+    BinahPurifyingStorm,
+    GozNowYouSeeUs,
+    KeiBasicSkill,
+    KeiExSkill,
+    KeiSubSkill
+);

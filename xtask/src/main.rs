@@ -10,8 +10,15 @@
 //! `core/src/skills/*.rs`, `core/src/states/*.rs`로 복제하고
 //! `core/src/skill.rs` 끝에 `define_skill!(...)` 호출을 생성해 넣는다.
 //!
-//! `students/src/**`가 소스이고 `core/src/{skills,states}/**`는 매번 재생성되는
-//! 산출물이다. `students` 쪽 파일은 건드리지 않는다.
+//! 보스 스킬도 같은 `Skill` enum에 들어가야 하므로 동일하게 복제한다. 다만 디렉터리
+//! 구조가 달라서(`bosses/src/<보스>/skills.rs`) 모듈 이름은 파일명이 아니라 보스
+//! 디렉터리 이름으로 잡는다: `bosses/src/binah/skills.rs` -> `core/src/skills/binah.rs`.
+//! 보스 스킬 파일이 쓰는 `create_boss_skill!`은 `bosses` 크레이트에 있고 `core`는
+//! `bosses`에 의존할 수 없으므로, `bosses/src/macros.rs`도 `core/src/boss_macros.rs`로
+//! 함께 복제한다(`#[macro_export]`라 복제 후 `crate::create_boss_skill`로 해석된다).
+//!
+//! `students/src/**`, `bosses/src/**`가 소스이고 `core/src/{skills,states}/**`,
+//! `core/src/boss_macros.rs`는 매번 재생성되는 산출물이다. 소스 쪽은 건드리지 않는다.
 //!
 //! `core/src/states.rs`에는 mod 선언과 함께 `MAX_EXTRA_STATE_SIZE` 상수를 생성한다.
 //! 이 값은 모든 state 구조체를 담을 수 있는 `StateData::extra`의 최소 크기이므로
@@ -24,9 +31,10 @@
 //! (복제 시 `core::` -> `crate::`로 치환되어 양쪽 크레이트에서 모두 성립한다).
 //!
 //! skills와 states의 처리 방식 차이:
-//! - skills: 모든 학생의 스킬 구조체가 하나의 `Skill` enum으로 합쳐지므로 이름이 충돌한다
-//!   (파일마다 `ExSkill`, `BasicSkill` 같은 범용 이름을 쓴다). 그래서 파일명을 접두어로
-//!   붙인다: `kei.rs`의 `ExSkill` -> `KeiExSkill`.
+//! - skills: 모든 학생/보스의 스킬 구조체가 하나의 `Skill` enum으로 합쳐지므로 이름이
+//!   충돌한다 (파일마다 `ExSkill`, `BasicSkill` 같은 범용 이름을 쓴다). 그래서 모듈명을
+//!   접두어로 붙인다: `kei.rs`의 `ExSkill` -> `KeiExSkill`,
+//!   `binah/skills.rs`의 `AtsilutsLight` -> `BinahAtsilutsLight`.
 //! - states: enum으로 합쳐지지 않고 모듈별로 그대로 남으므로 충돌하지 않는다. 이름을
 //!   바꾸지 않아야 `skills/kei.rs`의 `use crate::states::kei::SubSkillState;`가
 //!   복제 후에도 그대로 성립한다.
@@ -52,6 +60,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let workspace_root = workspace_root()?;
 
     let students_src = workspace_root.join("crates/students/src");
+    let bosses_src = workspace_root.join("crates/bosses/src");
     let core_src = workspace_root.join("crates/core/src");
 
     // states를 먼저 만든다: skills 쪽이 `crate::states::...`를 참조하기 때문.
@@ -62,14 +71,40 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     write_states_aggregator(&core_src.join("states.rs"), &state_modules, &state_structs)?;
 
-    let (skill_modules, skill_structs) = process_tree(
+    let skills_out = core_src.join("skills");
+    let (mut skill_modules, mut skill_structs) = process_tree(
         &students_src.join("skills"),
-        &core_src.join("skills"),
+        &skills_out,
         Prefixing::ByFileName,
     )?;
+
+    // 보스 스킬이 `create_boss_skill!`을 쓰므로 매크로 정의를 먼저 복제해둔다.
+    copy_boss_macros(&bosses_src.join("macros.rs"), &core_src.join("boss_macros.rs"))?;
+
+    let (boss_modules, boss_structs) = process_boss_tree(&bosses_src, &skills_out)?;
+
+    // 학생과 보스가 같은 `core/src/skills/` 아래로 들어가므로 모듈명이 겹치면
+    // 한쪽 파일이 조용히 덮어써진다. 겹치는 순간 실패시킨다.
+    for module in &boss_modules {
+        if skill_modules.contains(module) {
+            return Err(format!(
+                "module name `{module}` is used by both students/src/skills and bosses/src"
+            )
+            .into());
+        }
+    }
+
+    skill_modules.extend(boss_modules);
+    skill_structs.extend(boss_structs);
+    skill_modules.sort();
+    skill_structs.sort_by(|a, b| a.0.cmp(&b.0));
+
     write_mod_aggregator(&core_src.join("skills.rs"), &skill_modules)?;
 
-    ensure_mods_declared(&core_src.join("lib.rs"), &["states", "skills"])?;
+    ensure_mods_declared(
+        &core_src.join("lib.rs"),
+        &["states", "skills", "boss_macros"],
+    )?;
     rewrite_skill_rs(&core_src.join("skill.rs"), &skill_structs)?;
 
     println!(
@@ -140,6 +175,57 @@ fn process_tree(
     Ok((modules, structs))
 }
 
+/// `bosses/src/<보스>/skills.rs`를 전부 읽어 `core/src/skills/<보스>.rs`로 복제한다.
+///
+/// 학생 쪽과 달리 파일이 보스별 디렉터리 안에 있으므로, 모듈 이름(과 struct 접두어)은
+/// 파일명(`skills`)이 아니라 디렉터리 이름(`binah`, `goz`)에서 가져온다.
+/// 반환값 형식과 정렬 규칙은 [`process_tree`]와 같다.
+fn process_boss_tree(
+    bosses_src: &Path,
+    out_dir: &Path,
+) -> Result<(Vec<String>, Vec<(Ident, String)>), Box<dyn std::error::Error>> {
+    fs::create_dir_all(out_dir)?;
+
+    let mut modules = Vec::new();
+    let mut structs = Vec::new();
+
+    for entry in fs::read_dir(bosses_src)? {
+        let dir = entry?.path();
+        let skills_rs = dir.join("skills.rs");
+        if !dir.is_dir() || !skills_rs.is_file() {
+            continue;
+        }
+        let module_name = dir
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or("failed to read boss directory name")?
+            .to_string();
+
+        let (idents, source) = process_file(&skills_rs, &module_name, Prefixing::ByFileName)?;
+        write_formatted(&out_dir.join(format!("{module_name}.rs")), &source)?;
+
+        for ident in idents {
+            structs.push((ident, module_name.clone()));
+        }
+        modules.push(module_name);
+    }
+
+    modules.sort();
+    structs.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok((modules, structs))
+}
+
+/// `bosses/src/macros.rs`를 `core/src/boss_macros.rs`로 그대로 복제한다.
+///
+/// AST 왕복을 시키지 않는다: `skill.rs`와 같은 이유로 prettyplease가 `macro_rules!`
+/// 본문을 토큰 단위로만 찍어내 사람이 맞춰둔 formatting이 망가진다.
+fn copy_boss_macros(src: &Path, out: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let content = fs::read_to_string(src)?;
+    let header = "// === xtask gen-skills: copied from bosses/src/macros.rs, do not edit by hand ===\n\n";
+    fs::write(out, format!("{header}{content}"))?;
+    Ok(())
+}
+
 /// 파일 하나를 파싱해 struct 이름을 (필요하면) 리네이밍하고 `core::` 경로를 `crate::`로
 /// 바꾼 뒤, (최상위 struct ident 목록, 생성된 소스)를 반환한다.
 fn process_file(
@@ -155,6 +241,9 @@ fn process_file(
         .iter()
         .filter_map(|item| match item {
             Item::Struct(item_struct) => Some(item_struct.ident.to_string()),
+            // 보스 스킬 struct는 `create_boss_skill!(Name, ...)`이 만들어내므로
+            // `Item::Struct`로는 보이지 않는다. 호출부의 첫 인자가 struct 이름이다.
+            Item::Macro(item_macro) => boss_skill_macro_name(&item_macro.mac),
             _ => None,
         })
         .collect();
@@ -188,6 +277,25 @@ fn process_file(
         .collect();
 
     Ok((idents, quote! { #file }.to_string()))
+}
+
+/// `create_boss_skill!(Name, ...)` 호출이면 `Name`을 돌려준다.
+///
+/// `crate::create_boss_skill!`처럼 경로로 부를 수도 있으므로 마지막 세그먼트로 판단한다.
+fn boss_skill_macro_name(mac: &syn::Macro) -> Option<String> {
+    let is_boss_skill = mac
+        .path
+        .segments
+        .last()
+        .is_some_and(|seg| seg.ident == "create_boss_skill");
+    if !is_boss_skill {
+        return None;
+    }
+
+    match mac.tokens.clone().into_iter().next() {
+        Some(proc_macro2::TokenTree::Ident(ident)) => Some(ident.to_string()),
+        _ => None,
+    }
 }
 
 /// struct 식별자를 리네이밍하고, `core::` 경로 선두를 `crate::`로 바꾼다.

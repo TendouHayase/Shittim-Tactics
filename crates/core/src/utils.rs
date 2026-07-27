@@ -287,3 +287,7 @@ macro_rules! variant_accessor {
         }
     };
 }
+
+pub const fn time_to_ticks(time_num: u16, time_den: u16) -> u16 {
+    time_num * TPS / time_den
+}
