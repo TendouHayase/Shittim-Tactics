@@ -20,16 +20,17 @@ pub trait Simulator {
     fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<&Skill>;
 
     /// 실행한 `action`을 `state`에 적용하여 새로운 `state`를 반환합니다.
-    fn apply<'a: 'b, 'b, 'c>(
-        &self,
-        state: &'b Self::S<'a>,
-        action: &'b ActionContext,
-    ) -> Self::S<'a>;
+    ///
+    /// # 구현 시 주의사항
+    /// `action.targets`에는 캐스터 자신이 포함되어서는 안 됩니다. 캐스터에 대한 효과는
+    /// `Skill::apply`의 `caster` 인자로 처리해야 합니다. 같은 대상에 대한 가변 참조를
+    /// 두 개 만들 수 없기 때문에, 캐스터가 타깃 목록에도 들어있으면 적용이 누락됩니다.
+    fn apply<'a>(&self, state: &Self::S<'a>, action: &ActionContext) -> Self::S<'a>;
 
     /// 주어진 `state`를 `delta_ticks`만큼 진행시키고 변화된 `state`를 반환합니다.
-    fn advance<'a: 'b, 'b>(
+    fn advance<'a>(
         &self,
-        state: &'b Self::S<'a>,
+        state: &Self::S<'a>,
         delta_ticks: u16,
     ) -> Result<Self::S<'a>, error::Error>;
 

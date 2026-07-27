@@ -2,15 +2,14 @@ use crate::create_boss_skill;
 use core::{
     boss::Boss,
     character::Character,
-    skill::{EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget, SkillType},
+    skill::{EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
     state::{State, StateData},
     utils::time_to_ticks,
 };
 use std::ptr::NonNull;
 
-create_boss_skill!(NowYouSeeUs, 0, 0, 0, SkillType::Ex, 0);
-impl NowYouSeeUs {
-    pub fn skill_effects(&self) -> Vec<SkillEffect> {
+create_boss_skill!(NowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Instant,
@@ -20,44 +19,46 @@ impl NowYouSeeUs {
         }]
     }
 
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         todo!()
     }
+});
 
+impl NowYouSeeUs {
     pub fn other_apply<'a>(skill: &Skill, state: State<'a>) -> State<'a> {
         state
     }
 }
+
 create_boss_skill!(
     ThreeLightMonte,
     3,
     time_to_ticks(7, 1),
     time_to_ticks(16, 10),
     SkillType::Ex,
-    1
+    1,
+    {
+        fn skill_effects(&self) -> Vec<SkillEffect> {
+            vec![SkillEffect {
+                id: self.id,
+                timing: EffectTiming::Instant,
+                targets: vec![SkillEffectTarget::Student {
+                    kind: EffectKind::new_damage(),
+                    count: 4,
+                }],
+            }]
+        }
+
+        fn apply<'a: 'b, 'b, 'c: 'b>(
+            &self,
+            caster: &'c mut StateData<'a>,
+            targets: &'b mut [&'c mut StateData<'a>],
+        ) {
+            todo!()
+        }
+    }
 );
-
-impl ThreeLightMonte {
-    pub fn skill_effects(&self) -> Vec<SkillEffect> {
-        vec![SkillEffect {
-            id: self.id,
-            timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Student {
-                kind: EffectKind::new_damage(),
-                count: 4,
-            }],
-        }]
-    }
-
-    pub fn apply<'a: 'b, 'b>(
-        &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
-        todo!()
-    }
-}

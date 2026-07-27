@@ -202,6 +202,22 @@ pub enum SkillType {
 }
 use macros::dispatch_method;
 
+pub trait SkillOps {
+    fn name(&self) -> &str;
+    fn owner(&self) -> Character<'_>;
+    fn cost(&self) -> u8;
+    fn duration(&self) -> u16;
+    fn frames(&self) -> u16;
+    fn skill_mask_offset(&self) -> usize;
+    fn skill_type(&self) -> SkillType;
+    fn skill_effects(&self) -> Vec<SkillEffect>;
+    fn apply<'a: 'b, 'b, 'c: 'b>(
+        &self,
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    );
+}
+
 macro_rules! define_skill {
     ($($skill_name:tt),* $(,)?) => {
         #[derive(Debug)]
@@ -209,15 +225,16 @@ macro_rules! define_skill {
             $($skill_name($skill_name),)*
         }
 
-        impl Skill {
+        impl SkillOps for Skill {
             dispatch_method!(Skill, fn name(&self) -> &str, $($skill_name),*);
             dispatch_method!(Skill, fn owner(&self) -> Character<'_>, $($skill_name),*);
             dispatch_method!(Skill, fn cost(&self) -> u8, $($skill_name),*);
             dispatch_method!(Skill, fn duration(&self) -> u16, $($skill_name),*);
+            dispatch_method!(Skill, fn frames(&self) -> u16, $($skill_name),*);
             dispatch_method!(Skill, fn skill_mask_offset(&self) -> usize, $($skill_name),*);
             dispatch_method!(Skill, fn skill_type(&self) -> SkillType, $($skill_name),*);
             dispatch_method!(Skill, fn skill_effects(&self) -> Vec<SkillEffect>, $($skill_name),*);
-            dispatch_method!(Skill, fn apply<'a: 'b, 'b>(&self, caster: &'b mut StateData<'a>, targets: &'b mut [StateData<'a>],) -> &'b mut [StateData<'a>], $($skill_name),*);
+            dispatch_method!(Skill, fn apply<'a: 'b, 'b, 'c: 'b>(&self, caster: &'c mut StateData<'a>, targets: &'b mut [&'c mut StateData<'a>]),  $($skill_name),*);
         }
 
         // Skill은 생성이 끝난 뒤 내부 데이터 변경이 불가

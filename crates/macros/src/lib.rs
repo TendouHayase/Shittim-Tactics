@@ -245,7 +245,7 @@ pub fn dispatch_method(input: TokenStream) -> TokenStream {
     });
 
     let expanded = quote! {
-        pub fn #fn_name #generics (#inputs) #output {
+        fn #fn_name #generics (#inputs) #output {
             match self {
                 #(#arms,)*
             }

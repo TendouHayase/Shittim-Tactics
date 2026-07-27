@@ -4,7 +4,7 @@ use core::{
     character::Character,
     damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
-    skill::{EffectKind, Skill, SkillEffectTarget::Land},
+    skill::{EffectKind, Skill, SkillEffectTarget::Land, SkillOps},
     state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
     student::Student,
     utils::{TPS, is_inside},
@@ -46,88 +46,67 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         result
     }
 
-    fn apply<'a: 'b, 'b, 'c>(
+    fn apply<'a>(
         &self,
-        state: &'b Self::S<'a>,
-        action: &'b core::actions::ActionContext,
+        state: &Self::S<'a>,
+        action: &core::actions::ActionContext,
     ) -> Self::S<'a> {
         let action = match action {
-            ActionContext::Wait => return (*state).clone(),
+            ActionContext::Wait => return state.clone(),
             ActionContext::Use(action) => action,
         };
 
-        let caster_id = action.caster;
+        let mut state = state.clone();
 
+        let caster_id = action.caster;
         let target_ids = &action.targets;
 
-        let mut targets: Vec<&StateData> = Vec::with_capacity(target_ids.len());
+        // 보스와 학생들을 한 번의 가변 대여로 동시에 분리한다.
+        // 접근자를 따로 호출하면 같은 state를 두 번 가변 대여하게 되어 통과하지 못한다.
+        let (boss, students) = state.split_mut();
 
-        for id in target_ids {
-            if *id == state.boss().character.id() {
-                targets.push(state.boss());
-            } else {
-                for student in state.students() {
-                    if *id == student.character.id() {
-                        targets.push(student);
-                    }
+        let mut targets: Vec<&mut StateData<'a>> = Vec::with_capacity(target_ids.len());
+
+        // 각 가변 참조가 caster 또는 targets 중 정확히 한 곳으로만 이동하도록
+        // 대상 목록을 단 한 번만 순회한다. id로 여러 번 조회하면 같은 대상을 두 번
+        // 꺼낼 수 있다는 걸 컴파일러가 배제하지 못해 대여 검사를 통과할 수 없다.
+        let caster = if caster_id == boss.character.id() {
+            for student in students {
+                if target_ids.contains(&student.character.id()) {
+                    targets.push(student);
                 }
             }
-        }
 
-        let mut new_state = state.clone();
+            boss
+        } else {
+            if target_ids.contains(&boss.character.id()) {
+                targets.push(boss);
+            }
 
-        {
-            {
-                if caster_id == state.boss().character.id() {
-                    let changed_target = action.skill.apply(new_state.boss(), &targets);
-                    for target in changed_target {
-                        if state.boss().character.id() == target.character.id() {
-                            {
-                                let boss_mut = new_state.boss_mut();
-                                *boss_mut = target;
-                            }
-                        } else {
-                            for student in new_state.students_mut() {
-                                {
-                                    if student.character.id() == target.character.id() {
-                                        *student = target;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    for student in state.students() {
-                        if caster_id == student.character.id() {
-                            for target in action.skill.apply(student, &targets) {
-                                if state.boss().character.id() == target.character.id() {
-                                    {
-                                        let t = new_state.boss_mut();
-                                        *t = target;
-                                    }
-                                } else {
-                                    for student in new_state.students_mut() {
-                                        if student.character.id() == target.character.id() {
-                                            *student = target;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
+            let mut caster = None;
+
+            for student in students {
+                let id = student.character.id();
+
+                // 캐스터는 타깃 목록에 포함되지 않는다(`Simulator::apply` 문서 참고).
+                if id == caster_id {
+                    caster = Some(student);
+                } else if target_ids.contains(&id) {
+                    targets.push(student);
                 }
             }
-        }
 
-        new_state
+            caster.expect("caster id does not match any character in the state")
+        };
+
+        action.skill.apply(caster, &mut targets);
+
+        state
     }
 
-    fn advance<'a: 'b, 'b>(
+    fn advance<'a>(
         &self,
-        state: &'b Self::S<'a>,
+        state: &Self::S<'a>,
         delta_ticks: u16,
     ) -> Result<Self::S<'a>, error::Error> {
         let mut skill_mask = 0u64;

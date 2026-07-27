@@ -4,7 +4,7 @@ use crate::{
     difficulty::Difficulty,
     skill::{
         DebuffType::Def, EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget,
-        SkillType,
+        SkillOps, SkillType,
     },
     state::{AccumulatedDamage, StateData},
 };
@@ -16,23 +16,23 @@ pub struct BinahAtsilutsLight {
     id: (u32, u8),
     name: String,
 }
-impl BinahAtsilutsLight {
-    pub fn name(&self) -> &str {
+impl SkillOps for BinahAtsilutsLight {
+    fn name(&self) -> &str {
         &self.name
     }
-    pub fn cost(&self) -> u8 {
+    fn cost(&self) -> u8 {
         0
     }
-    pub fn duration(&self) -> u16 {
+    fn duration(&self) -> u16 {
         0
     }
-    pub fn frames(&self) -> u16 {
+    fn frames(&self) -> u16 {
         todo!()
     }
-    pub fn skill_mask_offset(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
-    pub fn skill_effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         let duration: u16;
         match unsafe { self.parent.read().stats.difficulty } {
             Difficulty::Torment => duration = 15 * 30,
@@ -77,17 +77,17 @@ impl BinahAtsilutsLight {
             },
         ]
     }
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         todo!()
     }
-    pub fn owner(&self) -> Character {
+    fn owner(&self) -> Character<'_> {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-    pub fn skill_type(&self) -> SkillType {
+    fn skill_type(&self) -> SkillType {
         SkillType::Ex
     }
 }
@@ -110,29 +110,29 @@ pub struct BinahFiresofSeverity1 {
     id: (u32, u8),
     name: String,
 }
-impl BinahFiresofSeverity1 {
-    pub fn name(&self) -> &str {
+impl SkillOps for BinahFiresofSeverity1 {
+    fn name(&self) -> &str {
         &self.name
     }
-    pub fn cost(&self) -> u8 {
+    fn cost(&self) -> u8 {
         0
     }
-    pub fn duration(&self) -> u16 {
+    fn duration(&self) -> u16 {
         0
     }
-    pub fn frames(&self) -> u16 {
+    fn frames(&self) -> u16 {
         todo!()
     }
-    pub fn owner(&self) -> Character {
+    fn owner(&self) -> Character<'_> {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-    pub fn skill_mask_offset(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
-    pub fn skill_type(&self) -> SkillType {
+    fn skill_type(&self) -> SkillType {
         SkillType::Ex
     }
-    pub fn skill_effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Instant,
@@ -142,11 +142,11 @@ impl BinahFiresofSeverity1 {
             }],
         }]
     }
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         let dmg_num;
         let dmg_den;
         match unsafe { self.parent.read().stats.difficulty } {
@@ -171,7 +171,6 @@ impl BinahFiresofSeverity1 {
                 });
             }
         }
-        targets
     }
 }
 impl BinahFiresofSeverity1 {
@@ -192,26 +191,26 @@ pub struct BinahFireofSeverity2 {
     name: String,
     id: (u32, u8),
 }
-impl BinahFireofSeverity2 {
-    pub fn name(&self) -> &str {
+impl SkillOps for BinahFireofSeverity2 {
+    fn name(&self) -> &str {
         &self.name
     }
-    pub fn owner(&self) -> Character {
+    fn owner(&self) -> Character<'_> {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-    pub fn cost(&self) -> u8 {
+    fn cost(&self) -> u8 {
         0
     }
-    pub fn duration(&self) -> u16 {
+    fn duration(&self) -> u16 {
         0
     }
-    pub fn frames(&self) -> u16 {
+    fn frames(&self) -> u16 {
         todo!()
     }
-    pub fn skill_mask_offset(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
-    pub fn skill_effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Instant,
@@ -221,14 +220,14 @@ impl BinahFireofSeverity2 {
             }],
         }]
     }
-    pub fn skill_type(&self) -> SkillType {
+    fn skill_type(&self) -> SkillType {
         SkillType::Ex
     }
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         let dmg_num;
         let mut dmg_den;
         match unsafe { self.parent.read().stats.difficulty } {
@@ -263,7 +262,6 @@ impl BinahFireofSeverity2 {
                 dmg_den *= 2;
             }
         }
-        targets
     }
 }
 impl BinahFireofSeverity2 {
@@ -284,29 +282,29 @@ pub struct BinahPurifyingStorm {
     id: (u32, u8),
     name: String,
 }
-impl BinahPurifyingStorm {
-    pub fn name(&self) -> &str {
+impl SkillOps for BinahPurifyingStorm {
+    fn name(&self) -> &str {
         &self.name
     }
-    pub fn cost(&self) -> u8 {
+    fn cost(&self) -> u8 {
         3
     }
-    pub fn duration(&self) -> u16 {
+    fn duration(&self) -> u16 {
         30
     }
-    pub fn frames(&self) -> u16 {
+    fn frames(&self) -> u16 {
         todo!()
     }
-    pub fn skill_mask_offset(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.index
     }
-    pub fn owner(&self) -> Character {
+    fn owner(&self) -> Character<'_> {
         unsafe { Character::Boss(self.parent.as_ref()) }
     }
-    pub fn skill_type(&self) -> SkillType {
+    fn skill_type(&self) -> SkillType {
         SkillType::Ex
     }
-    pub fn skill_effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Instant,
@@ -316,11 +314,11 @@ impl BinahPurifyingStorm {
             }],
         }]
     }
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         for target in targets.iter_mut() {
             let d = caster.damage_with_effects();
             if let Some(damage) = d {
@@ -331,7 +329,6 @@ impl BinahPurifyingStorm {
                 });
             }
         }
-        targets
     }
 }
 impl BinahPurifyingStorm {

@@ -1,10 +1,11 @@
-use crate::states::kei::SubSkillState;
+use crate::states::KeiState;
 use crate::{
     character::Character,
     damage::Damage,
     skill::{
         BuffType::{self},
-        EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillType,
+        EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps,
+        SkillType,
     },
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
     student::Student,
@@ -57,28 +58,30 @@ impl KeiExSkill {
             id: (owner.id(), 0),
         }
     }
-    pub fn name(&self) -> &str {
+}
+impl SkillOps for KeiExSkill {
+    fn name(&self) -> &str {
         self.name.as_str()
     }
-    pub fn cost(&self) -> u8 {
+    fn cost(&self) -> u8 {
         2
     }
-    pub fn duration(&self) -> u16 {
+    fn duration(&self) -> u16 {
         25 * TPS
     }
-    pub fn frames(&self) -> u16 {
+    fn frames(&self) -> u16 {
         123
     }
-    pub fn owner(&self) -> Character<'_> {
+    fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
-    pub fn skill_mask_offset(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.skill_mask_offset
     }
-    pub fn skill_type(&self) -> crate::skill::SkillType {
+    fn skill_type(&self) -> crate::skill::SkillType {
         SkillType::Ex
     }
-    pub fn skill_effects(&self) -> Vec<crate::skill::SkillEffect> {
+    fn skill_effects(&self) -> Vec<crate::skill::SkillEffect> {
         let effective_buff = EffectKind::new_buff(
             BuffType::Effectiveness(AttackType::Mystic),
             25 * TPS,
@@ -108,11 +111,11 @@ impl KeiExSkill {
             ],
         }]
     }
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         let caster_coord = caster.coordinate;
         for target in targets.into_iter() {
             if is_inside(target.coordinate, Self::REGION, caster_coord) {
@@ -136,7 +139,6 @@ impl KeiExSkill {
             }));
             caster.effects = (caster.effects.0 | (0x01u64 << self.skill_mask_offset)).into();
         }
-        targets
     }
 }
 impl KeiBasicSkill {
@@ -148,28 +150,30 @@ impl KeiBasicSkill {
             name: name.to_string(),
         }
     }
-    pub fn name(&self) -> &str {
+}
+impl SkillOps for KeiBasicSkill {
+    fn name(&self) -> &str {
         self.name.as_str()
     }
-    pub fn cost(&self) -> u8 {
+    fn cost(&self) -> u8 {
         0
     }
-    pub fn duration(&self) -> u16 {
+    fn duration(&self) -> u16 {
         0
     }
-    pub fn frames(&self) -> u16 {
+    fn frames(&self) -> u16 {
         141
     }
-    pub fn owner(&self) -> Character<'_> {
+    fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
-    pub fn skill_mask_offset(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.skill_mask_offset
     }
-    pub fn skill_type(&self) -> crate::skill::SkillType {
+    fn skill_type(&self) -> crate::skill::SkillType {
         SkillType::Basic
     }
-    pub fn skill_effects(&self) -> Vec<crate::skill::SkillEffect> {
+    fn skill_effects(&self) -> Vec<crate::skill::SkillEffect> {
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Instant,
@@ -178,11 +182,11 @@ impl KeiBasicSkill {
             }],
         }]
     }
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         assert_eq!(targets.len(), 1);
         let damage_key = caster.effects;
         for target in targets.into_iter() {
@@ -199,7 +203,6 @@ impl KeiBasicSkill {
                 });
             }
         }
-        targets
     }
 }
 impl KeiSubSkill {
@@ -217,7 +220,7 @@ impl KeiSubSkill {
         let prior_idx = state
             .state_data_by_id(kei.id())
             .expect("cannot found kei")
-            .extra_as::<SubSkillState>()
+            .extra_as::<KeiState>()
             .recording_start_len;
         let mut acc = 0;
         for i in prior_idx..len {
@@ -228,33 +231,35 @@ impl KeiSubSkill {
         let ex = state
             .state_data_by_id_mut(kei.id())
             .expect("cannot found kei")
-            .extra_as_mut::<SubSkillState>();
+            .extra_as_mut::<KeiState>();
         ex.acc_damage += acc;
         ex.recording_start_len = len;
         state
     }
-    pub fn name(&self) -> &str {
+}
+impl SkillOps for KeiSubSkill {
+    fn name(&self) -> &str {
         &self.name
     }
-    pub fn owner(&self) -> Character<'_> {
+    fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
     }
-    pub fn cost(&self) -> u8 {
+    fn cost(&self) -> u8 {
         0
     }
-    pub fn frames(&self) -> u16 {
+    fn frames(&self) -> u16 {
         0
     }
-    pub fn duration(&self) -> u16 {
+    fn duration(&self) -> u16 {
         25 * TPS
     }
-    pub fn skill_type(&self) -> SkillType {
+    fn skill_type(&self) -> SkillType {
         SkillType::Sub
     }
-    pub fn skill_mask_offset(&self) -> usize {
+    fn skill_mask_offset(&self) -> usize {
         self.skill_mask_offset
     }
-    pub fn skill_effects(&self) -> Vec<SkillEffect> {
+    fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Persistent {
@@ -266,14 +271,14 @@ impl KeiSubSkill {
             }],
         }]
     }
-    pub fn apply<'a: 'b, 'b>(
+    fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'b mut StateData<'a>,
-        targets: &'b mut [StateData<'a>],
-    ) -> &'b mut [StateData<'a>] {
+        caster: &'c mut StateData<'a>,
+        targets: &'b mut [&'c mut StateData<'a>],
+    ) {
         let atk = caster.character.stats().atk * 50;
         let acc_damage = {
-            let extras = caster.extra_as::<SubSkillState>();
+            let extras = caster.extra_as::<KeiState>();
             extras.acc_damage.min(atk.into())
         };
         let damage = Damage::new(acc_damage, acc_damage, acc_damage, acc_damage, 0, 1, 0);
@@ -283,7 +288,6 @@ impl KeiSubSkill {
                 damage: Some(damage),
             });
         }
-        caster.extra_as_mut::<SubSkillState>().acc_damage = 0;
-        targets
+        caster.extra_as_mut::<KeiState>().acc_damage = 0;
     }
 }

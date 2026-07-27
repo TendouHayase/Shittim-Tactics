@@ -5,7 +5,7 @@ use crate::{
 use core::{
     actions::ActionContext,
     simulator::Simulator,
-    skill::{Skill, SkillEffectTarget},
+    skill::{Skill, SkillEffectTarget, SkillOps},
     state::Stateful,
     utils::Position,
     utils::{euclidean_distance, is_inside},
@@ -88,10 +88,9 @@ impl<'d, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'d, N, S> 
                         for skill_effect in skill_effects {
                             for target in skill_effect.targets {
                                 match target {
-                                    // 자신이 타깃이면 자신 추가
-                                    SkillEffectTarget::Oneself { kind: _ } => {
-                                        targets.push(caster.id())
-                                    }
+                                    // 캐스터 자신에 대한 효과는 `Skill::apply`의 caster 인자로
+                                    // 처리하므로 타깃 목록에 넣지 않음.
+                                    SkillEffectTarget::Oneself { kind: _ } => {}
 
                                     // 타깃이 학생들이면 타겟팅할 학생 수만큼 캐스터에서 가까운 순으로 추가
                                     SkillEffectTarget::Student {
@@ -167,6 +166,13 @@ impl<'d, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'d, N, S> 
                                 }
                             }
                         }
+
+                        // 장판기처럼 캐스터 자신이 범위에 들어가는 경우가 있으므로
+                        // 캐스터를 걸러내고 중복 타깃도 제거한다.
+                        // (`Simulator::apply`가 요구하는 규약)
+                        targets.retain(|id| *id != caster_id);
+                        targets.sort_unstable();
+                        targets.dedup();
 
                         // 액션 컨텍스트 생성
                         let action_context: ActionContext =

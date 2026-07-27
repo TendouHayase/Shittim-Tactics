@@ -23,6 +23,6 @@ pub mod utils;
 
 pub use std::default;
 pub use std::marker;
+pub mod boss_macros;
 pub mod skills;
 pub mod states;
-pub mod boss_macros;
