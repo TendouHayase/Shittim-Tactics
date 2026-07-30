@@ -1,8 +1,9 @@
 [package]
 name = "xtask"
-version = "0.1.0"
-edition = "2024"
 publish = false
+license.workspace = true
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 heck = "0.5.0"
