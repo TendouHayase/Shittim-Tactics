@@ -200,6 +200,8 @@ pub enum SkillType {
     Enhanced,
     Sub,
     NormalAttack,
+    /// 전투 시작 시 걸린 채로 유지되는 보스 패시브.
+    Passive,
 }
 use macros::dispatch_method;
 
@@ -249,6 +251,10 @@ use crate::skills::binah::{
 };
 use crate::skills::goz::{GozMagicalCoinHat, GozNowYouSeeUs, GozThreeLightMonte};
 use crate::skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill};
+use crate::skills::perorodzilla::{
+    PerorodzillaAbsorbMinion, PerorodzillaAquaBall, PerorodzillaBurningPerorodzilla,
+    PerorodzillaHyperSpiralGlareBeam, PerorodzillaSummonMinion, PerorodzillaWhiteHotHeatVision,
+};
 
 define_skill!(
     BinahAtsilutsLight,
@@ -260,5 +266,11 @@ define_skill!(
     GozThreeLightMonte,
     KeiBasicSkill,
     KeiExSkill,
-    KeiSubSkill
+    KeiSubSkill,
+    PerorodzillaAbsorbMinion,
+    PerorodzillaAquaBall,
+    PerorodzillaBurningPerorodzilla,
+    PerorodzillaHyperSpiralGlareBeam,
+    PerorodzillaSummonMinion,
+    PerorodzillaWhiteHotHeatVision
 );
