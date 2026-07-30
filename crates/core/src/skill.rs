@@ -30,6 +30,7 @@ pub enum DebuffType {
     DmgDealt,
     Def,
     CostRecovery,
+    Stun,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EffectTiming {
@@ -199,6 +200,8 @@ pub enum SkillType {
     Enhanced,
     Sub,
     NormalAttack,
+    /// 전투 시작 시 걸린 채로 유지되는 보스 패시브.
+    Passive,
 }
 use macros::dispatch_method;
 
@@ -246,17 +249,28 @@ macro_rules! define_skill {
 use crate::skills::binah::{
     BinahAtsilutsLight, BinahFireofSeverity2, BinahFiresofSeverity1, BinahPurifyingStorm,
 };
-use crate::skills::goz::{GozNowYouSeeUs, GozThreeLightMonte};
+use crate::skills::goz::{GozMagicalCoinHat, GozNowYouSeeUs, GozThreeLightMonte};
 use crate::skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill};
+use crate::skills::perorodzilla::{
+    PerorodzillaAbsorbMinion, PerorodzillaAquaBall, PerorodzillaBurningPerorodzilla,
+    PerorodzillaHyperSpiralGlareBeam, PerorodzillaSummonMinion, PerorodzillaWhiteHotHeatVision,
+};
 
 define_skill!(
     BinahAtsilutsLight,
     BinahFireofSeverity2,
     BinahFiresofSeverity1,
     BinahPurifyingStorm,
+    GozMagicalCoinHat,
     GozNowYouSeeUs,
     GozThreeLightMonte,
     KeiBasicSkill,
     KeiExSkill,
-    KeiSubSkill
+    KeiSubSkill,
+    PerorodzillaAbsorbMinion,
+    PerorodzillaAquaBall,
+    PerorodzillaBurningPerorodzilla,
+    PerorodzillaHyperSpiralGlareBeam,
+    PerorodzillaSummonMinion,
+    PerorodzillaWhiteHotHeatVision
 );

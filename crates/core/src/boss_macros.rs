@@ -17,6 +17,8 @@ macro_rules! create_boss_skill {
         $skill_id:literal,
         { $($rest:tt)* }
     ) => {
+
+
         #[derive(Debug)]
         pub struct $name {
             parent: NonNull<Boss>,
