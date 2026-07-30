@@ -4,8 +4,8 @@ use core::{
     character::Character,
     difficulty::Difficulty,
     skill::{
-        DebuffType::Def, EffectKind, EffectTiming, Region, SkillEffect, SkillEffectTarget, SkillOps,
-        SkillType,
+        DebuffType::Def, EffectKind, EffectTiming, Region, SkillEffect, SkillEffectTarget,
+        SkillOps, SkillType,
     },
     state::{AccumulatedDamage, StateData},
 };

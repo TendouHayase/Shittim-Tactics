@@ -18,11 +18,6 @@ pub trait Stateful<'a>: Clone + Send + Sync + Eq + Hash {
     fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a>;
     fn boss_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut StateData<'a>;
     /// 보스와 학생들을 단 한 번의 가변 대여로 동시에 꺼냅니다.
-    ///
-    /// `boss_mut()`와 `students_mut()`를 각각 호출하면 컴파일러 입장에서는
-    /// 같은 `self`를 두 번 가변 대여하는 것이라 대여 검사를 통과할 수 없습니다.
-    /// 두 대상이 서로 겹치지 않는다는 사실은 필드가 보이는 구현부에서만
-    /// 증명할 수 있으므로, 분리는 반드시 이 메서드 안에서 이루어져야 합니다.
     fn split_mut<'b>(&'b mut self) -> (&'b mut StateData<'a>, &'b mut [StateData<'a>]);
     fn cost(&self) -> i8;
     fn frames(&self) -> u16;

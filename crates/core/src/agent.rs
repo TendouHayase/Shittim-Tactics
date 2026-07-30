@@ -10,7 +10,7 @@ pub trait Agent {
 
 pub trait RLAgent: Agent {
     /// Returns the prior probability/score for each action in state s
-    fn policy<'a>(&self, s: &Self::S<'a>) -> Vec<(ActionContext, f64)>;
+    fn policy<'a>(&self, s: &Self::S<'a>) -> Vec<(ActionContext<'_>, f64)>;
 
     /// Estimating the Value of State s
     fn value<'a>(&self, s: &Self::S<'a>) -> f64;
