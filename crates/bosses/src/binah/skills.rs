@@ -162,7 +162,7 @@ create_boss_skill!(FireofSeverity2, 0, 0, todo!(), SkillType::Ex, 2, {
                     .append(&(damage * dmg_num / dmg_den));
                 target.accumulated_damage.push(AccumulatedDamage {
                     ticks: self.duration(),
-                    damage: target.damage_map.get(&target.effects).copied(),
+                    damage: Some(target.damage_map[&target.effects] * dmg_den / dmg_num),
                 });
             }
 
