@@ -30,6 +30,7 @@ pub enum DebuffType {
     DmgDealt,
     Def,
     CostRecovery,
+    Stun,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EffectTiming {
@@ -246,7 +247,7 @@ macro_rules! define_skill {
 use crate::skills::binah::{
     BinahAtsilutsLight, BinahFireofSeverity2, BinahFiresofSeverity1, BinahPurifyingStorm,
 };
-use crate::skills::goz::{GozNowYouSeeUs, GozThreeLightMonte};
+use crate::skills::goz::{GozMagicalCoinHat, GozNowYouSeeUs, GozThreeLightMonte};
 use crate::skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill};
 
 define_skill!(
@@ -254,6 +255,7 @@ define_skill!(
     BinahFireofSeverity2,
     BinahFiresofSeverity1,
     BinahPurifyingStorm,
+    GozMagicalCoinHat,
     GozNowYouSeeUs,
     GozThreeLightMonte,
     KeiBasicSkill,
