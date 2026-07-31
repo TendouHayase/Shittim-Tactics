@@ -101,6 +101,30 @@ fn damage_effect(percent: u16) -> EffectKind {
         coef_den: params::PERCENT_DEN,
     }
 }
+/// `splits`를 앞에서부터 인원수만큼 펼쳐 대상에 하나씩 물린다. 대상이 모자라면 남은
+/// split은 버려짐.
+fn append_split_damage(
+    caster: &StateData<'_>,
+    targets: &mut [&mut StateData<'_>],
+    splits: &[params::Split],
+    ticks: u16,
+) {
+    let Some(damage) = caster.damage_with_effects() else {
+        return;
+    };
+    let percents = splits
+        .iter()
+        .flat_map(|&(percent, count)| std::iter::repeat_n(percent, count as usize));
+    for (target, percent) in targets.iter_mut().zip(percents) {
+        target
+            .accumulated_damage_cache
+            .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
+        target.accumulated_damage.push(AccumulatedDamage {
+            ticks,
+            damage: target.damage_map.get(&target.effects).copied(),
+        });
+    }
+}
 create_boss_skill!(
     BinahAtsilutsLight, 0, 0, params::ATSILUTS_LIGHT_FRAMES, SkillType::Ex, 0, params :
     params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let params = self
@@ -121,15 +145,8 @@ create_boss_skill!(
     timing : EffectTiming::Instant, targets : vec![SkillEffectTarget::Student { kind :
     damage_effect(percent), count, }], }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self,
     caster : &'c mut StateData <'a >, targets : &'b mut [&'c mut StateData <'a >],) { let
-    damage_list = & self.skill_effects() [0].targets; assert!(targets.len() > 4,
-    "The number of targets cannot exceed 4"); let mut cnt = 0; let mut inner_cnt = 0; for
-    target in targets.iter_mut() { let d = caster.damage_with_effects(); let
-    SkillEffectTarget::Student { kind, count } = damage_list[cnt] else { unreachable!()
-    }; let EffectKind::Damage { coef_num, coef_den } = kind else { unreachable!() }; if
-    let Some(damage) = d { target.accumulated_damage_cache.append(& (damage * coef_num as
-    u64 / coef_den as u64)); target.accumulated_damage.push(AccumulatedDamage { ticks :
-    self.duration(), damage : target.damage_map.get(& target.effects).copied(), }); } if
-    inner_cnt == count { inner_cnt = 0; cnt += 1; } inner_cnt += 1; } } }
+    split = self.params.severity_1_split; append_split_damage(caster, targets, & [split],
+    self.duration()); } }
 );
 create_boss_skill!(
     BinahFireofSeverity2, 0, 0, params::FIRES_OF_SEVERITY_2_FRAMES, SkillType::Ex, 2,
@@ -138,16 +155,8 @@ create_boss_skill!(
     SkillEffectTarget::Student { kind : damage_effect(percent), count, }).collect();
     vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets, }] } fn
     apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >, targets :
-    &'b mut [&'c mut StateData <'a >],) { let damage_list = & self.skill_effects() [0]
-    .targets; assert!(targets.len() > 4, "The number of targets cannot exceed 4"); let
-    mut cnt = 0; let mut inner_cnt = 0; for target in targets.iter_mut() { let d = caster
-    .damage_with_effects(); let SkillEffectTarget::Student { kind, count } =
-    damage_list[cnt] else { unreachable!() }; let EffectKind::Damage { coef_num, coef_den
-    } = kind else { unreachable!() }; if let Some(damage) = d { target
-    .accumulated_damage_cache.append(& (damage * coef_num as u64 / coef_den as u64));
-    target.accumulated_damage.push(AccumulatedDamage { ticks : self.duration(), damage :
-    target.damage_map.get(& target.effects).copied(), }); } if inner_cnt == count {
-    inner_cnt = 0; cnt += 1; } inner_cnt += 1; } } }
+    &'b mut [&'c mut StateData <'a >],) { let splits = self.params.severity_2_splits;
+    append_split_damage(caster, targets, & splits, self.duration()); } }
 );
 create_boss_skill!(
     BinahPurifyingStorm, 3, params::PURIFYING_STORM_DURATION,
@@ -160,9 +169,7 @@ create_boss_skill!(
     : EffectTiming::Instant, targets : vec![SkillEffectTarget::Student { kind :
     damage_effect(params.storm_percent), count : params.storm_count, }], },] } fn apply
     <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >, targets : &'b mut
-    [&'c mut StateData <'a >],) { for target in targets.iter_mut() { let d = caster
-    .damage_with_effects(); if let Some(damage) = d { target.accumulated_damage_cache
-    .append(& (damage * 3)); target.accumulated_damage.push(AccumulatedDamage { damage :
-    target.damage_map.get(& target.effects).copied(), ticks : self.duration(), }); } } }
-    }
+    [&'c mut StateData <'a >],) { let params = self.params; let split = (params
+    .storm_percent, params.storm_count); append_split_damage(caster, targets, & [split],
+    self.duration()); } }
 );
