@@ -1,5 +1,5 @@
 //! 패턴 수치는 [`params`] 한 곳에 모아뒀다. `data/bosses/perorodzilla.json` 파서가 붙으면
-//! [`params::of`]와 프레임 상수만 갈아끼우면 된다.
+//! [`params::Params::of`]와 프레임 상수만 갈아끼우면 된다.
 use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 };
 use std::ptr::NonNull;
 use params::Params;
-/// json에서 채울 패턴 수치. 아직 데이터가 없는 항목은 `None`/`0`이고, 그 값을 쓰는 효과는
+/// json에 없는 패턴 수치. 아직 데이터가 없는 항목은 `None`/`0`이고, 그 값을 쓰는 효과는
 /// 조용히 빠진다.
 ///
 /// # Warning
@@ -23,6 +23,8 @@ mod params {
     use crate::difficulty::Difficulty;
     use crate::skill::Region;
     use crate::utils::{MAX_STUDENT_COUNT, time_to_ticks};
+    /// 계수는 전부 백분율이라 분모가 고정.
+    pub const PERCENT_DEN: u16 = 100;
     /// `0`은 미측정.
     ///
     /// 3.666초. `time_to_ticks(3666, 1000)`은 `3666 * 30`이 u16을 넘어 터진다.
@@ -61,64 +63,73 @@ mod params {
         pub atg_gain_percent: u16,
         pub mystic_up_percent: u16,
     }
-    pub fn of(difficulty: Difficulty) -> Params {
-        let mut params = Params {
-            def_down_amount: 9_999,
-            def_down_duration: time_to_ticks(60, 1),
-            dot_interval: time_to_ticks(1, 1),
-            dot_duration: DOT_DURATION,
-            heat_vision_percent: 90,
-            chain_count: 0,
-            chain_percents: [0, 0],
-            blast_percent: 0,
-            blast_region: None,
-            blast_atk_down_scale: 0,
-            blast_atk_down_duration: 0,
-            aqua_ball_percent: 400,
-            aqua_ball_region: None,
-            aqua_ball_def_down: false,
-            hyper_spiral_percent: 300,
-            big_minion_count: 7,
-            shiny_minion_count: 0,
-            shiny_blast_damage: 200_000,
-            shiny_blast_region: None,
-            groggy_denominator: 7,
-            small_minion_count: 5,
-            knockback_on_groggy: false,
-            atg_gain_percent: 50,
-            mystic_up_percent: 0,
-        };
-        if matches!(
-            difficulty, Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic
-        ) {
-            params.blast_percent = 250;
-            params.shiny_minion_count = 1;
-            params.groggy_denominator = 10;
-        }
-        match difficulty {
-            Difficulty::Torment => {
-                params.heat_vision_percent = 100;
-                params.chain_count = 2;
-                params.chain_percents = [20, 10];
-                params.blast_atk_down_scale = 50;
-                params.blast_atk_down_duration = time_to_ticks(40, 1);
-                params.groggy_denominator = 12;
-                params.mystic_up_percent = 50;
+    impl Params {
+        pub fn of(difficulty: Difficulty) -> Self {
+            let mut params = Self {
+                def_down_amount: 9_999,
+                def_down_duration: time_to_ticks(60, 1),
+                dot_interval: time_to_ticks(1, 1),
+                dot_duration: DOT_DURATION,
+                heat_vision_percent: 90,
+                chain_count: 0,
+                chain_percents: [0, 0],
+                blast_percent: 0,
+                blast_region: None,
+                blast_atk_down_scale: 0,
+                blast_atk_down_duration: 0,
+                aqua_ball_percent: 400,
+                aqua_ball_region: None,
+                aqua_ball_def_down: false,
+                hyper_spiral_percent: 300,
+                big_minion_count: 7,
+                shiny_minion_count: 0,
+                shiny_blast_damage: 200_000,
+                shiny_blast_region: None,
+                groggy_denominator: 7,
+                small_minion_count: 5,
+                knockback_on_groggy: false,
+                atg_gain_percent: 50,
+                mystic_up_percent: 0,
+            };
+            if matches!(
+                difficulty, Difficulty::Insane | Difficulty::Torment |
+                Difficulty::Lunatic
+            ) {
+                params.blast_percent = 250;
+                params.shiny_minion_count = 1;
+                params.groggy_denominator = 10;
             }
-            Difficulty::Lunatic => {
-                params.heat_vision_percent = 100;
-                params.chain_count = (MAX_STUDENT_COUNT - 1) as u8;
-                params.chain_percents = [40, 40];
-                params.blast_atk_down_scale = 50;
-                params.blast_atk_down_duration = time_to_ticks(40, 1);
-                params.aqua_ball_def_down = true;
-                params.groggy_denominator = 12;
-                params.knockback_on_groggy = true;
-                params.mystic_up_percent = 200;
+            match difficulty {
+                Difficulty::Torment => {
+                    params.heat_vision_percent = 100;
+                    params.chain_count = 2;
+                    params.chain_percents = [20, 10];
+                    params.blast_atk_down_scale = 50;
+                    params.blast_atk_down_duration = time_to_ticks(40, 1);
+                    params.groggy_denominator = 12;
+                    params.mystic_up_percent = 50;
+                }
+                Difficulty::Lunatic => {
+                    params.heat_vision_percent = 100;
+                    params.chain_count = (MAX_STUDENT_COUNT - 1) as u8;
+                    params.chain_percents = [40, 40];
+                    params.blast_atk_down_scale = 50;
+                    params.blast_atk_down_duration = time_to_ticks(40, 1);
+                    params.aqua_ball_def_down = true;
+                    params.groggy_denominator = 12;
+                    params.knockback_on_groggy = true;
+                    params.mystic_up_percent = 200;
+                }
+                _ => {}
             }
-            _ => {}
+            params
         }
-        params
+    }
+}
+fn damage_effect(percent: u64) -> EffectKind {
+    EffectKind::Damage {
+        coef_num: percent as u16,
+        coef_den: params::PERCENT_DEN,
     }
 }
 fn difficulty_of(skill: &Skill) -> Difficulty {
@@ -285,90 +296,80 @@ pub fn init_big_minion_hp(boss: &mut StateData<'_>, hp: u64) {
 }
 create_boss_skill!(
     PerorodzillaWhiteHotHeatVision, 0, params::DOT_DURATION,
-    params::WHITE_HOT_HEAT_VISION_FRAMES, SkillType::Ex, 0, { fn skill_effects(& self) ->
-    Vec < SkillEffect > { let params = self.params(); let dot_timing =
-    EffectTiming::Persistent { interval_frames : params.dot_interval, duration_frames :
-    params.dot_duration, }; let mut effects = vec![SkillEffect { id : self.id, timing :
-    EffectTiming::Instant, targets : vec![SkillEffectTarget::Student { kind :
-    EffectKind::new_debuff(DebuffType::Def, params.def_down_duration, 0, params
-    .def_down_amount,), count : 1, }], }, SkillEffect { id : self.id, timing :
-    dot_timing, targets : vec![SkillEffectTarget::Student { kind :
-    EffectKind::new_damage(), count : 1, }], },]; if params.chain_count > 0 { effects
-    .push(SkillEffect { id : self.id, timing : dot_timing, targets :
-    vec![SkillEffectTarget::Student { kind : EffectKind::new_damage(), count : params
-    .chain_count, }], }); } if params.blast_percent > 0 && let Some(region) = params
+    params::WHITE_HOT_HEAT_VISION_FRAMES, SkillType::Ex, 0, params : params::Params, { fn
+    skill_effects(& self) -> Vec < SkillEffect > { let params = self.params; let
+    dot_timing = EffectTiming::Persistent { interval_frames : params.dot_interval,
+    duration_frames : params.dot_duration, }; let mut effects = vec![SkillEffect { id :
+    self.id, timing : EffectTiming::Instant, targets : vec![SkillEffectTarget::Student {
+    kind : EffectKind::Debuff { ty : DebuffType::Def, duration : params
+    .def_down_duration, scale : 0, amount : params.def_down_amount, }, count : 1, }], },
+    SkillEffect { id : self.id, timing : dot_timing, targets :
+    vec![SkillEffectTarget::Student { kind : damage_effect(params.heat_vision_percent),
+    count : 1, }], },]; if params.chain_count > 0 { let [first, rest] = params
+    .chain_percents; let mut chain = vec![SkillEffectTarget::Student { kind :
+    damage_effect(first), count : 1, }]; if params.chain_count > 1 { chain
+    .push(SkillEffectTarget::Student { kind : damage_effect(rest), count : params
+    .chain_count - 1, }); } effects.push(SkillEffect { id : self.id, timing : dot_timing,
+    targets : chain, }); } if params.blast_percent > 0 && let Some(region) = params
     .blast_region { let mut targets = vec![SkillEffectTarget::Land { kind :
-    EffectKind::new_damage(), region, }]; if params.blast_atk_down_scale > 0 { targets
-    .push(SkillEffectTarget::Land { kind : EffectKind::new_debuff(DebuffType::Atk, params
-    .blast_atk_down_duration, params.blast_atk_down_scale, 0,), region, }); } effects
-    .push(SkillEffect { id : self.id, timing : EffectTiming::Instant, targets, }); }
-    effects } fn apply < 'a : 'b, 'b, 'c : 'b > (& self, caster : & 'c mut StateData < 'a
-    >, targets : & 'b mut [& 'c mut StateData < 'a >],) { let params = self.params(); for
-    (i, target) in targets.iter_mut().enumerate() { let percent = match i { 0 => params
-    .heat_vision_percent, _ if (i as u8) <= params.chain_count => { let last = params
-    .chain_percents.len() - 1; params.chain_percents[(i - 1).min(last)] } _ => continue,
-    }; append_damage_over_time(caster, target, percent, params.dot_interval, params
+    damage_effect(params.blast_percent), region, }]; if params.blast_atk_down_scale > 0 {
+    targets.push(SkillEffectTarget::Land { kind : EffectKind::Debuff { ty :
+    DebuffType::Atk, duration : params.blast_atk_down_duration, scale : params
+    .blast_atk_down_scale, amount : 0, }, region, }); } effects.push(SkillEffect { id :
+    self.id, timing : EffectTiming::Instant, targets, }); } effects } fn apply <'a : 'b,
+    'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >, targets : &'b mut [&'c mut
+    StateData <'a >],) { let params = self.params; for (i, target) in targets.iter_mut()
+    .enumerate() { let percent = match i { 0 => params.heat_vision_percent, _ if (i as
+    u8) <= params.chain_count => { let last = params.chain_percents.len() - 1; params
+    .chain_percents[(i - 1).min(last)] } _ => continue, };
+    append_damage_over_time(caster, target, percent, params.dot_interval, params
     .dot_duration,); } } }
 );
-impl PerorodzillaWhiteHotHeatVision {
-    fn params(&self) -> Params {
-        params::of(unsafe { self.parent.read().stats.difficulty })
-    }
-}
 create_boss_skill!(
-    PerorodzillaAquaBall, 0, 0, params::AQUA_BALL_FRAMES, SkillType::Ex, 1, { fn
-    skill_effects(& self) -> Vec < SkillEffect > { let params = self.params(); let
-    Some(region) = params.aqua_ball_region else { return vec![]; }; let mut targets =
-    vec![SkillEffectTarget::Land { kind : EffectKind::new_damage(), region, }]; if params
-    .aqua_ball_def_down { targets.push(SkillEffectTarget::Land { kind :
-    EffectKind::new_debuff(DebuffType::Def, params.def_down_duration, 0, params
-    .def_down_amount,), region, }); } vec![SkillEffect { id : self.id, timing :
-    EffectTiming::Instant, targets, }] } fn apply < 'a : 'b, 'b, 'c : 'b > (& self,
-    caster : & 'c mut StateData < 'a >, targets : & 'b mut [& 'c mut StateData < 'a >],)
-    { let percent = self.params().aqua_ball_percent; for target in targets.iter_mut() {
-    append_damage(caster, target, percent, self.duration()); } } }
+    PerorodzillaAquaBall, 0, 0, params::AQUA_BALL_FRAMES, SkillType::Ex, 1, params :
+    params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let params = self
+    .params; let Some(region) = params.aqua_ball_region else { return vec![]; }; let mut
+    targets = vec![SkillEffectTarget::Land { kind : damage_effect(params
+    .aqua_ball_percent), region, }]; if params.aqua_ball_def_down { targets
+    .push(SkillEffectTarget::Land { kind : EffectKind::Debuff { ty : DebuffType::Def,
+    duration : params.def_down_duration, scale : 0, amount : params.def_down_amount, },
+    region, }); } vec![SkillEffect { id : self.id, timing : EffectTiming::Instant,
+    targets, }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData
+    <'a >, targets : &'b mut [&'c mut StateData <'a >],) { let percent = self.params
+    .aqua_ball_percent; for target in targets.iter_mut() { append_damage(caster, target,
+    percent, self.duration()); } } }
 );
-impl PerorodzillaAquaBall {
-    fn params(&self) -> Params {
-        params::of(unsafe { self.parent.read().stats.difficulty })
-    }
-}
 create_boss_skill!(
-    PerorodzillaSummonMinion, 0, 0, params::SUMMON_MINION_FRAMES, SkillType::Ex, 2, { fn
-    skill_effects(& self) -> Vec < SkillEffect > { vec![SkillEffect { id : self.id,
-    timing : EffectTiming::Instant, targets : vec![SkillEffectTarget::Oneself { kind :
-    EffectKind::new_other(Self::other_apply), }], }] } fn apply < 'a : 'b, 'b, 'c : 'b >
-    (& self, caster : & 'c mut StateData < 'a >, _targets : & 'b mut [& 'c mut StateData
-    < 'a >],) { summon_minion_wave(caster, self.params()); } }
+    PerorodzillaSummonMinion, 0, 0, params::SUMMON_MINION_FRAMES, SkillType::Ex, 2,
+    params : params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > {
+    vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
+    vec![SkillEffectTarget::Oneself { kind : EffectKind::new_other(Self::other_apply),
+    }], }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >,
+    _targets : &'b mut [&'c mut StateData <'a >],) { summon_minion_wave(caster, self
+    .params); } }
 );
 impl PerorodzillaSummonMinion {
-    fn params(&self) -> Params {
-        params::of(unsafe { self.parent.read().stats.difficulty })
-    }
     pub fn other_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
-        let params = params::of(difficulty_of(skill));
+        let params = Params::of(difficulty_of(skill));
         summon_minion_wave(state.boss_mut(), params);
         state
     }
 }
 create_boss_skill!(
-    PerorodzillaAbsorbMinion, 0, 0, params::ABSORB_MINION_FRAMES, SkillType::Ex, 3, { fn
-    skill_effects(& self) -> Vec < SkillEffect > { let params = self.params(); let mut
-    targets = vec![SkillEffectTarget::Oneself { kind :
+    PerorodzillaAbsorbMinion, 0, 0, params::ABSORB_MINION_FRAMES, SkillType::Ex, 3,
+    params : params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let
+    params = self.params; let mut targets = vec![SkillEffectTarget::Oneself { kind :
     EffectKind::new_other(Self::other_apply), }]; if params.knockback_on_groggy { targets
-    .push(SkillEffectTarget::Student { kind : EffectKind::new_mov(), count :
-    MAX_STUDENT_COUNT as u8, }); } vec![SkillEffect { id : self.id, timing :
-    EffectTiming::Instant, targets, }] } fn apply < 'a : 'b, 'b, 'c : 'b > (& self,
-    caster : & 'c mut StateData < 'a >, targets : & 'b mut [& 'c mut StateData < 'a >],)
-    { let params = self.params(); let is_groggy = absorb_minion_wave(caster, targets,
-    params); let _ = is_groggy && params.knockback_on_groggy; } }
+    .push(SkillEffectTarget::Student { kind : EffectKind::Move, count : MAX_STUDENT_COUNT
+    as u8, }); } vec![SkillEffect { id : self.id, timing : EffectTiming::Instant,
+    targets, }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData
+    <'a >, targets : &'b mut [&'c mut StateData <'a >],) { let params = self.params; let
+    is_groggy = absorb_minion_wave(caster, targets, params); let _ = is_groggy && params
+    .knockback_on_groggy; } }
 );
 impl PerorodzillaAbsorbMinion {
-    fn params(&self) -> Params {
-        params::of(unsafe { self.parent.read().stats.difficulty })
-    }
     pub fn other_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
-        let params = params::of(difficulty_of(skill));
+        let params = Params::of(difficulty_of(skill));
         let (boss, students) = state.split_mut();
         let mut students: Vec<&mut StateData<'_>> = students.iter_mut().collect();
         absorb_minion_wave(boss, &mut students, params);
@@ -377,28 +378,23 @@ impl PerorodzillaAbsorbMinion {
 }
 create_boss_skill!(
     PerorodzillaHyperSpiralGlareBeam, 0, 0, params::HYPER_SPIRAL_GLARE_BEAM_FRAMES,
-    SkillType::Ex, 4, { fn skill_effects(& self) -> Vec < SkillEffect > {
-    vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
-    vec![SkillEffectTarget::Student { kind : EffectKind::new_damage(), count :
-    MAX_STUDENT_COUNT as u8, }], }] } fn apply < 'a : 'b, 'b, 'c : 'b > (& self, caster :
-    & 'c mut StateData < 'a >, targets : & 'b mut [& 'c mut StateData < 'a >],) { if
-    caster.extra_as:: < PerorodzillaState > ().atg_percent < 100 { return; } let percent
-    = self.params().hyper_spiral_percent; for target in targets.iter_mut() {
-    append_damage(caster, target, percent, self.duration()); } caster.extra_as_mut:: <
-    PerorodzillaState > ().atg_percent = 0; } }
+    SkillType::Ex, 4, params : params::Params, { fn skill_effects(& self) -> Vec <
+    SkillEffect > { vec![SkillEffect { id : self.id, timing : EffectTiming::Instant,
+    targets : vec![SkillEffectTarget::Student { kind : damage_effect(self.params
+    .hyper_spiral_percent), count : MAX_STUDENT_COUNT as u8, }], }] } fn apply <'a : 'b,
+    'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >, targets : &'b mut [&'c mut
+    StateData <'a >],) { if caster.extra_as::< PerorodzillaState > ().atg_percent < 100 {
+    return; } let percent = self.params.hyper_spiral_percent; for target in targets
+    .iter_mut() { append_damage(caster, target, percent, self.duration()); } caster
+    .extra_as_mut::< PerorodzillaState > ().atg_percent = 0; } }
 );
-impl PerorodzillaHyperSpiralGlareBeam {
-    fn params(&self) -> Params {
-        params::of(unsafe { self.parent.read().stats.difficulty })
-    }
-}
 create_boss_skill!(
-    PerorodzillaBurningPerorodzilla, 0, 0, 0, SkillType::Passive, 5, { fn skill_effects(&
-    self) -> Vec < SkillEffect > { let scale = params::of(unsafe { self.parent.read()
-    .stats.difficulty }).mystic_up_percent; if scale == 0 { return vec![]; }
-    vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
-    vec![SkillEffectTarget::Oneself { kind :
-    EffectKind::new_buff(BuffType::Effectiveness(AttackType::Mystic), u16::MAX, scale,
-    0,), }], }] } fn apply < 'a : 'b, 'b, 'c : 'b > (& self, _caster : & 'c mut StateData
-    < 'a >, _targets : & 'b mut [& 'c mut StateData < 'a >],) {} }
+    PerorodzillaBurningPerorodzilla, 0, 0, 0, SkillType::Passive, 5, params :
+    params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let scale = self
+    .params.mystic_up_percent; if scale == 0 { return vec![]; } vec![SkillEffect { id :
+    self.id, timing : EffectTiming::Instant, targets : vec![SkillEffectTarget::Oneself {
+    kind : EffectKind::Buff { ty : BuffType::Effectiveness(AttackType::Mystic), duration
+    : u16::MAX, scale, amount : 0, }, }], }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self,
+    _caster : &'c mut StateData <'a >, _targets : &'b mut [&'c mut StateData <'a >],) {}
+    }
 );

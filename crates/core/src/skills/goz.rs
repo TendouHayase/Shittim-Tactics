@@ -13,13 +13,7 @@ use crate::{
 use std::ptr::NonNull;
 create_boss_skill!(GozNowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
-        vec![SkillEffect {
-            id: self.id,
-            timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Oneself {
-                kind: EffectKind::new_other(Self::other_apply),
-            }],
-        }]
+        todo!()
     }
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
@@ -31,7 +25,7 @@ create_boss_skill!(GozNowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
 });
 impl GozNowYouSeeUs {
     pub fn other_apply<'a>(skill: &Skill, state: State<'a>) -> State<'a> {
-        state
+        todo!()
     }
 }
 create_boss_skill!(
@@ -43,14 +37,7 @@ create_boss_skill!(
     1,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
-            vec![SkillEffect {
-                id: self.id,
-                timing: EffectTiming::Instant,
-                targets: vec![SkillEffectTarget::Student {
-                    kind: EffectKind::new_damage(),
-                    count: 4,
-                }],
-            }]
+            todo!()
         }
         fn apply<'a: 'b, 'b, 'c: 'b>(
             &self,

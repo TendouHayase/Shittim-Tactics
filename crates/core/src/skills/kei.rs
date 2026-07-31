@@ -28,6 +28,7 @@ pub struct KeiBasicSkill {
     skill_mask_offset: usize,
     id: (u32, u8),
     name: String,
+    coef_percent: u16,
 }
 #[derive(Debug)]
 pub struct KeiSubSkill {
@@ -82,13 +83,18 @@ impl SkillOps for KeiExSkill {
         SkillType::Ex
     }
     fn skill_effects(&self) -> Vec<crate::skill::SkillEffect> {
-        let effective_buff = EffectKind::new_buff(
-            BuffType::Effectiveness(AttackType::Mystic),
-            25 * TPS,
-            self.effective_buff_scale,
-            0,
-        );
-        let atk_buff = EffectKind::new_buff(BuffType::Atk, 25 * TPS, self.atk_buff_scale, 0);
+        let effective_buff = EffectKind::Buff {
+            ty: BuffType::Effectiveness(AttackType::Mystic),
+            duration: 25 * TPS,
+            scale: self.effective_buff_scale,
+            amount: 0,
+        };
+        let atk_buff = EffectKind::Buff {
+            ty: BuffType::Atk,
+            duration: 25 * TPS,
+            scale: self.atk_buff_scale,
+            amount: 0,
+        };
         vec![SkillEffect {
             id: self.id,
             timing: EffectTiming::Persistent {
@@ -142,12 +148,15 @@ impl SkillOps for KeiExSkill {
     }
 }
 impl KeiBasicSkill {
-    pub fn new(name: &str, owner: &Student, skill_mask_offset: usize) -> Self {
+    /// 계수 분모. 계수를 백분율로 받으므로 고정.
+    const PERCENT_DEN: u16 = 100;
+    pub fn new(name: &str, owner: &Student, skill_mask_offset: usize, coef_percent: u16) -> Self {
         Self {
             kei: NonNull::from_ref(owner),
             skill_mask_offset,
             id: (owner.id(), 1),
             name: name.to_string(),
+            coef_percent,
         }
     }
 }
@@ -178,7 +187,10 @@ impl SkillOps for KeiBasicSkill {
             id: self.id,
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Boss {
-                kind: EffectKind::new_damage(),
+                kind: EffectKind::Damage {
+                    coef_num: self.coef_percent,
+                    coef_den: Self::PERCENT_DEN,
+                },
             }],
         }]
     }

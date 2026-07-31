@@ -46,12 +46,20 @@ pub enum EffectTiming {
 ///
 /// `Other` 변형의 함수 포인터 주소를 기준으로 `Eq`와 `Hash`를 비교합니다.
 /// 컴파일 시 소스코드 상에선 다르더라도 생성되는 기계어가 같으면 같다고 취급될 수 있지만,
-/// 로직상 `Other`의 함수는 같은 기능을 하면 같은 것이므로 이 위험을 배제합니다.
-#[non_exhaustive]
+/// 로직상 `Other`의 함수는 같은 기능을 하면 같은 것이므로 이 위험을 배제.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum EffectKindInner {
-    Damage,
-    Heal,
+struct EffectKindOther(*const u8);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum EffectKind {
+    Damage {
+        coef_num: u16,
+        coef_den: u16,
+    },
+    Heal {
+        coef_num: u16,
+        coef_den: u16,
+    },
     Buff {
         ty: BuffType,
         duration: u16,
@@ -65,84 +73,17 @@ enum EffectKindInner {
         amount: u32,
     },
     Move,
-    Other(*const u8),
+    Other(EffectKindOther),
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EffectKind(EffectKindInner);
-macro_rules! effect_kind_field {
-    ($variant:ident, $name:ident) => {
-        paste::paste! {
-            impl EffectKind {
-                #[inline]
-                pub fn [< new_ $name >] () -> Self {
-                    Self(EffectKindInner::$variant)
-                }
 
-                #[inline] pub fn [<is_ $name>](&self) -> bool {
-                    matches!(self.0, EffectKindInner::$variant)
-                }
-            }
-        }
-    };
-
-    ($variant:ident { $($field:ident : $ty:ty),+ $(,)? }, $name:ident) => {
-        paste::paste! {
-            impl EffectKind {
-                #[inline]
-                pub fn [<new_ $name>] ($($field : $ty),+) -> Self {
-                    Self(EffectKindInner::$variant { $($field),+})
-                }
-
-                #[inline]
-                pub fn [<is_ $name>](&self) -> bool {
-                    matches!(self.0, EffectKindInner::$variant { .. })
-                }
-
-                #[inline]
-                pub fn [<as_ $name>](&self) -> Option <($($ty),+)> {
-                    match self.0 {
-                            EffectKindInner::$variant { $($field),+ } => Some(($($field),+)),
-                            _ => None,
-                        }
-                    }
-
-                $(
-                    #[inline]
-                    pub fn [<as_ $name _ $field >] (& self) -> Option<$ty> {
-                        match self.0 {
-                            EffectKindInner::$variant { $field, .. } => Some($field), _ => None, } })+ }
-                }
-    };
-}
-effect_kind_field!(Damage, damage);
-effect_kind_field!(Heal, heal);
-effect_kind_field!(
-    Buff {
-        ty: BuffType,
-        duration: u16,
-        scale: u16,
-        amount: u32,
-    },
-    buff
-);
-effect_kind_field!(
-    Debuff {
-        ty: DebuffType,
-        duration: u16,
-        scale: u16,
-        amount: u32,
-    },
-    debuff
-);
-effect_kind_field!(Move, mov);
 impl EffectKind {
     #[inline]
     pub fn new_other<'a>(func: fn(&Skill, State<'a>) -> State<'a>) -> Self {
-        EffectKind(EffectKindInner::Other(func as *const u8))
+        EffectKind::Other(EffectKindOther(func as *const u8))
     }
     #[inline]
     pub fn is_other(&self) -> bool {
-        if let EffectKindInner::Other(_) = self.0 {
+        if let EffectKind::Other(_) = self {
             true
         } else {
             false
@@ -150,9 +91,9 @@ impl EffectKind {
     }
     #[inline]
     pub fn as_other<'a>(&self) -> Option<fn(&Skill, State<'a>) -> State<'a>> {
-        match self.0 {
-            EffectKindInner::Other(ptr) => unsafe {
-                if ptr.is_null() {
+        match self {
+            EffectKind::Other(ptr) => unsafe {
+                if ptr.0.is_null() {
                     None
                 } else {
                     std::mem::transmute(ptr)
