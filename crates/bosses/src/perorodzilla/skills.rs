@@ -55,21 +55,21 @@ mod params {
         pub dot_interval: u16,
         pub dot_duration: u16,
 
-        pub heat_vision_percent: u64,
+        pub heat_vision_percent: u16,
         pub chain_count: u8,
         /// 대상이 더 많으면 마지막 값을 반복한다.
-        pub chain_percents: [u64; 2],
+        pub chain_percents: [u16; 2],
 
-        pub blast_percent: u64,
+        pub blast_percent: u16,
         pub blast_region: Option<Region>,
         pub blast_atk_down_scale: u16,
         pub blast_atk_down_duration: u16,
 
-        pub aqua_ball_percent: u64,
+        pub aqua_ball_percent: u16,
         pub aqua_ball_region: Option<Region>,
         pub aqua_ball_def_down: bool,
 
-        pub hyper_spiral_percent: u64,
+        pub hyper_spiral_percent: u16,
 
         pub big_minion_count: u8,
         pub shiny_minion_count: u8,
@@ -160,9 +160,9 @@ mod params {
     }
 }
 
-fn damage_effect(percent: u64) -> EffectKind {
+fn damage_effect(percent: u16) -> EffectKind {
     EffectKind::Damage {
-        coef_num: percent as u16,
+        coef_num: percent,
         coef_den: params::PERCENT_DEN,
     }
 }
@@ -177,7 +177,7 @@ fn difficulty_of(skill: &Skill) -> Difficulty {
 fn append_damage_over_time(
     caster: &StateData<'_>,
     target: &mut StateData<'_>,
-    percent: u64,
+    percent: u16,
     interval: u16,
     duration: u16,
 ) {
@@ -189,7 +189,7 @@ fn append_damage_over_time(
     while ticks <= duration {
         target
             .accumulated_damage_cache
-            .append(&(damage * percent / 100));
+            .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
         target.accumulated_damage.push(AccumulatedDamage {
             ticks,
             damage: target.damage_map.get(&target.effects).copied(),
@@ -198,14 +198,14 @@ fn append_damage_over_time(
     }
 }
 
-fn append_damage(caster: &StateData<'_>, target: &mut StateData<'_>, percent: u64, ticks: u16) {
+fn append_damage(caster: &StateData<'_>, target: &mut StateData<'_>, percent: u16, ticks: u16) {
     let Some(damage) = caster.damage_with_effects() else {
         return;
     };
 
     target
         .accumulated_damage_cache
-        .append(&(damage * percent / 100));
+        .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
     target.accumulated_damage.push(AccumulatedDamage {
         ticks,
         damage: target.damage_map.get(&target.effects).copied(),

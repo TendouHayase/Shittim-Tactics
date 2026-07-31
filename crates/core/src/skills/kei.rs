@@ -4,23 +4,54 @@ use crate::{
     damage::Damage,
     skill::{
         BuffType::{self},
-        EffectKind, EffectTiming, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps,
-        SkillType,
+        EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType,
     },
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
     student::Student,
     types::AttackType,
-    utils::{is_inside, TPS},
+    utils::is_inside,
 };
 use std::{cmp::Reverse, ptr::NonNull};
+/// json에 없는 스킬 수치. 파서가 붙으면 각 `new`에 넘길 값만 데이터에서 읽으면 된다.
+///
+/// # Warning
+///
+/// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
+pub mod params {
+    use crate::skill::Region;
+    /// 계수는 전부 백분율이라 분모가 고정.
+    pub const PERCENT_DEN: u16 = 100;
+    #[derive(Debug, Clone, Copy)]
+    pub struct ExParams {
+        pub cost: u8,
+        pub duration: u16,
+        pub frames: u16,
+        pub region: Region,
+        /// 자신을 뺀 버프 대상 수.
+        pub ally_count: u8,
+        pub atk_buff_scale: u16,
+        /// 83.8 반올림.
+        pub effective_buff_scale: u16,
+    }
+    #[derive(Debug, Clone, Copy)]
+    pub struct BasicParams {
+        pub frames: u16,
+        pub coef_percent: u16,
+    }
+    #[derive(Debug, Clone, Copy)]
+    pub struct SubParams {
+        pub duration: u16,
+        /// 누적 데미지 상한을 공격력의 몇 %로 둘지.
+        pub acc_damage_cap_percent: u16,
+    }
+}
 #[derive(Debug)]
 pub struct KeiExSkill {
     kei: NonNull<Student>,
     skill_mask_offset: usize,
     name: String,
     id: (u32, u8),
-    effective_buff_scale: u16,
-    atk_buff_scale: u16,
+    params: params::ExParams,
 }
 #[derive(Debug)]
 pub struct KeiBasicSkill {
@@ -28,7 +59,7 @@ pub struct KeiBasicSkill {
     skill_mask_offset: usize,
     id: (u32, u8),
     name: String,
-    coef_percent: u16,
+    params: params::BasicParams,
 }
 #[derive(Debug)]
 pub struct KeiSubSkill {
@@ -36,26 +67,20 @@ pub struct KeiSubSkill {
     skill_mask_offset: usize,
     id: (u32, u8),
     name: String,
+    params: params::SubParams,
 }
 impl KeiExSkill {
-    const REGION: Region = Region::Arc {
-        radius: 1050,
-        start_angle_degree: 0,
-        end_angle_degree: 360,
-    };
     pub fn new(
         name: &str,
         owner: &Student,
         skill_mask_offset: usize,
-        atk_buff_scale: u16,
-        effective_buff_scale: u16,
+        params: params::ExParams,
     ) -> Self {
         Self {
             kei: NonNull::from(owner),
             skill_mask_offset,
             name: name.to_string(),
-            atk_buff_scale,
-            effective_buff_scale,
+            params,
             id: (owner.id(), 0),
         }
     }
@@ -65,13 +90,13 @@ impl SkillOps for KeiExSkill {
         self.name.as_str()
     }
     fn cost(&self) -> u8 {
-        2
+        self.params.cost
     }
     fn duration(&self) -> u16 {
-        25 * TPS
+        self.params.duration
     }
     fn frames(&self) -> u16 {
-        123
+        self.params.frames
     }
     fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
@@ -85,14 +110,14 @@ impl SkillOps for KeiExSkill {
     fn skill_effects(&self) -> Vec<crate::skill::SkillEffect> {
         let effective_buff = EffectKind::Buff {
             ty: BuffType::Effectiveness(AttackType::Mystic),
-            duration: 25 * TPS,
-            scale: self.effective_buff_scale,
+            duration: self.params.duration,
+            scale: self.params.effective_buff_scale,
             amount: 0,
         };
         let atk_buff = EffectKind::Buff {
             ty: BuffType::Atk,
-            duration: 25 * TPS,
-            scale: self.atk_buff_scale,
+            duration: self.params.duration,
+            scale: self.params.atk_buff_scale,
             amount: 0,
         };
         vec![SkillEffect {
@@ -108,11 +133,11 @@ impl SkillOps for KeiExSkill {
                 SkillEffectTarget::Oneself { kind: atk_buff },
                 SkillEffectTarget::Student {
                     kind: effective_buff,
-                    count: 6,
+                    count: self.params.ally_count,
                 },
                 SkillEffectTarget::Student {
                     kind: atk_buff,
-                    count: 6,
+                    count: self.params.ally_count,
                 },
             ],
         }]
@@ -124,7 +149,7 @@ impl SkillOps for KeiExSkill {
     ) {
         let caster_coord = caster.coordinate;
         for target in targets.into_iter() {
-            if is_inside(target.coordinate, Self::REGION, caster_coord) {
+            if is_inside(target.coordinate, self.params.region, caster_coord) {
                 let already_applied =
                     (target.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
                 if !already_applied {
@@ -148,15 +173,18 @@ impl SkillOps for KeiExSkill {
     }
 }
 impl KeiBasicSkill {
-    /// 계수 분모. 계수를 백분율로 받으므로 고정.
-    const PERCENT_DEN: u16 = 100;
-    pub fn new(name: &str, owner: &Student, skill_mask_offset: usize, coef_percent: u16) -> Self {
+    pub fn new(
+        name: &str,
+        owner: &Student,
+        skill_mask_offset: usize,
+        params: params::BasicParams,
+    ) -> Self {
         Self {
             kei: NonNull::from_ref(owner),
             skill_mask_offset,
             id: (owner.id(), 1),
             name: name.to_string(),
-            coef_percent,
+            params,
         }
     }
 }
@@ -171,7 +199,7 @@ impl SkillOps for KeiBasicSkill {
         0
     }
     fn frames(&self) -> u16 {
-        141
+        self.params.frames
     }
     fn owner(&self) -> Character<'_> {
         unsafe { Character::Student(self.kei.as_ref()) }
@@ -188,8 +216,8 @@ impl SkillOps for KeiBasicSkill {
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Boss {
                 kind: EffectKind::Damage {
-                    coef_num: self.coef_percent,
-                    coef_den: Self::PERCENT_DEN,
+                    coef_num: self.params.coef_percent,
+                    coef_den: params::PERCENT_DEN,
                 },
             }],
         }]
@@ -218,12 +246,18 @@ impl SkillOps for KeiBasicSkill {
     }
 }
 impl KeiSubSkill {
-    pub fn new(name: &str, owner: &Student, skill_mask_offset: usize) -> Self {
+    pub fn new(
+        name: &str,
+        owner: &Student,
+        skill_mask_offset: usize,
+        params: params::SubParams,
+    ) -> Self {
         Self {
             kei: NonNull::from_ref(owner),
             skill_mask_offset,
             id: (owner.id(), 2),
             name: name.to_string(),
+            params,
         }
     }
     pub fn effect_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
@@ -263,7 +297,7 @@ impl SkillOps for KeiSubSkill {
         0
     }
     fn duration(&self) -> u16 {
-        25 * TPS
+        self.params.duration
     }
     fn skill_type(&self) -> SkillType {
         SkillType::Sub
@@ -288,10 +322,11 @@ impl SkillOps for KeiSubSkill {
         caster: &'c mut StateData<'a>,
         targets: &'b mut [&'c mut StateData<'a>],
     ) {
-        let atk = caster.character.stats().atk * 50;
+        let cap = caster.character.stats().atk as u64 * self.params.acc_damage_cap_percent as u64
+            / params::PERCENT_DEN as u64;
         let acc_damage = {
             let extras = caster.extra_as::<KeiState>();
-            extras.acc_damage.min(atk.into())
+            extras.acc_damage.min(cap)
         };
         let damage = Damage::new(acc_damage, acc_damage, acc_damage, acc_damage, 0, 1, 0);
         for target in targets.into_iter() {
