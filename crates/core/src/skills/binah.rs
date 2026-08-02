@@ -1,5 +1,5 @@
-//! 패턴 수치는 [`params`] 한 곳에 모아뒀다. `data/bosses/binah.json` 파서가 붙으면
-//! [`params::Params::of`]와 프레임 상수만 갈아끼우면 된다.
+//! 패턴 수치는 전부 `data/bosses/binah.json`에서 옴. 스킬은 난이도도 json도 모르고, 생성될
+//! 때 받은 [`params`] 값만 봄.
 use crate::create_boss_skill;
 use crate::{
     boss::Boss,
@@ -10,88 +10,132 @@ use crate::{
     state::{AccumulatedDamage, StateData},
 };
 use std::ptr::NonNull;
-/// json에 없는 패턴 수치. 아직 데이터가 없는 항목은 `0`이고, 그 값을 쓰는 효과는 조용히
-/// 빠진다.
+/// json의 `skills` 객체를 받는 원본 구조체(`Raw*`)와, 난이도 하나를 골라낸 결과(`*Params`).
 ///
 /// # Warning
 ///
-/// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
-mod params {
-    use crate::difficulty::Difficulty;
+/// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣음. 모듈 안에 둘 것.
+pub mod params {
+    use crate::difficulty::{ByDifficulty, Difficulty};
+    use crate::locale::LocalizedName;
     use crate::skill::Region;
-    use crate::utils::time_to_ticks;
+    use serde::Deserialize;
     /// 계수는 전부 백분율이라 분모가 고정.
     pub const PERCENT_DEN: u16 = 100;
-    /// `0`은 미측정.
-    pub const ATSILUTS_LIGHT_FRAMES: u16 = 0;
-    pub const FIRES_OF_SEVERITY_1_FRAMES: u16 = 0;
-    pub const FIRES_OF_SEVERITY_2_FRAMES: u16 = 0;
-    pub const PURIFYING_STORM_FRAMES: u16 = 0;
-    /// 매크로 인자는 `self`를 볼 수 없어서 상수로 뺀다.
-    pub const PURIFYING_STORM_DURATION: u16 = 30;
-    /// 아트질루트의 빛이 덮는 세로 직사각형. 보스 기준 상대 좌표이고 난이도와 무관.
-    ///
-    /// `Position`의 필드가 `OrderedFloat`이고 `bosses`는 `ordered_float`에 의존하지 않아
-    /// `const`로는 못 만든다.
-    pub fn light_region() -> Region {
-        Region::Polygon {
-            vertex: [
-                (-150, 2200).into(),
-                (150, 2200).into(),
-                (150, 0).into(),
-                (-150, 0).into(),
-            ],
-            count: 4,
+    /// 비나전 온필드 최대 인원. 실제로 몇 명이 서는지는 런타임에야 알 수 있으므로 이건
+    /// `skill_effects`가 효과를 선언할 때 쓰는 상한일 뿐이고, `apply`는 받은 대상을 그대로 씀.
+    /// `core::utils::MAX_STUDENT_COUNT`는 편성 최대(10)라 여기 쓰면 안 됨.
+    pub const ON_FIELD_COUNT: u8 = 4;
+    /// json `skills`의 키는 보스 이름 접두사를 뺀 스킬 구조체 이름.
+    #[derive(Debug, Deserialize)]
+    pub struct RawSkills {
+        #[serde(rename = "AtsilutsLight")]
+        pub atsiluts_light: RawAtsilutsLight,
+        #[serde(rename = "FiresofSeverity")]
+        pub fires_of_severity: RawFiresOfSeverity,
+        #[serde(rename = "PurifyingStorm")]
+        pub purifying_storm: RawPurifyingStorm,
+    }
+    #[derive(Debug, Clone, Copy)]
+    pub struct AtsilutsLightParams {
+        pub cost: u8,
+        pub duration: u16,
+        pub frames: u16,
+        pub instant_percent: u16,
+        pub dot_percent: u16,
+        pub dot_interval: u16,
+        pub dot_duration: u16,
+        /// 빛이 덮는 세로 직사각형. 보스 기준 상대 좌표.
+        pub region: Region,
+    }
+    #[derive(Debug, Deserialize)]
+    pub struct RawAtsilutsLight {
+        pub name: LocalizedName,
+        cost: ByDifficulty<u8>,
+        duration: ByDifficulty<u16>,
+        frames: ByDifficulty<u16>,
+        instant_percent: ByDifficulty<u16>,
+        dot_percent: ByDifficulty<u16>,
+        dot_interval: ByDifficulty<u16>,
+        dot_duration: ByDifficulty<u16>,
+        region: ByDifficulty<Region>,
+    }
+    impl RawAtsilutsLight {
+        pub fn pick(&self, difficulty: Difficulty) -> AtsilutsLightParams {
+            AtsilutsLightParams {
+                cost: self.cost[difficulty],
+                duration: self.duration[difficulty],
+                frames: self.frames[difficulty],
+                instant_percent: self.instant_percent[difficulty],
+                dot_percent: self.dot_percent[difficulty],
+                dot_interval: self.dot_interval[difficulty],
+                dot_duration: self.dot_duration[difficulty],
+                region: self.region[difficulty],
+            }
         }
     }
-    /// `(계수 백분율, 인원)`. 앞에서부터 순서대로 대상에게 배분된다.
-    pub type Split = (u16, u8);
+    /// 한 번에 두 방이 나감. 모든 적에게 한 대, 가까운 스트라이커 4명에게 추가로 한 대씩.
     #[derive(Debug, Clone, Copy)]
-    pub struct Params {
-        pub light_instant_percent: u16,
-        pub light_dot_percent: u16,
-        pub light_dot_interval: u16,
-        pub light_dot_duration: u16,
-        pub severity_1_split: Split,
-        pub severity_2_splits: [Split; 3],
-        pub storm_percent: u16,
-        pub storm_def_down_scale: u16,
-        pub storm_def_down_duration: u16,
-        pub storm_count: u8,
+    pub struct FiresOfSeverityParams {
+        pub cost: u8,
+        pub duration: u16,
+        pub frames: u16,
+        pub all_percent: u16,
+        /// 비나에게 가까운 순서대로 물림. 인원이 고정이라 `(계수, 인원)`이 아니라 순서 배열.
+        pub nearest_percents: [u16; 4],
     }
-    impl Params {
-        pub fn of(difficulty: Difficulty) -> Self {
-            let mut params = Self {
-                light_instant_percent: 120,
-                light_dot_percent: 50,
-                light_dot_interval: time_to_ticks(3, 1),
-                light_dot_duration: time_to_ticks(15, 1),
-                severity_1_split: (75, 4),
-                severity_2_splits: [(375, 1), (150, 2), (75, 1)],
-                storm_percent: 300,
-                storm_def_down_scale: 50,
-                storm_def_down_duration: 90,
-                storm_count: 4,
-            };
-            if matches!(
-                difficulty,
-                Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic
-            ) {
-                params.severity_1_split = (150, 4);
-                params.severity_2_splits = [(750, 1), (300, 2), (150, 1)];
+    #[derive(Debug, Deserialize)]
+    pub struct RawFiresOfSeverity {
+        pub name: LocalizedName,
+        cost: ByDifficulty<u8>,
+        duration: ByDifficulty<u16>,
+        frames: ByDifficulty<u16>,
+        all_percent: ByDifficulty<u16>,
+        nearest_percents: ByDifficulty<[u16; 4]>,
+    }
+    impl RawFiresOfSeverity {
+        pub fn pick(&self, difficulty: Difficulty) -> FiresOfSeverityParams {
+            FiresOfSeverityParams {
+                cost: self.cost[difficulty],
+                duration: self.duration[difficulty],
+                frames: self.frames[difficulty],
+                all_percent: self.all_percent[difficulty],
+                nearest_percents: self.nearest_percents[difficulty],
             }
-            match difficulty {
-                Difficulty::Torment => {
-                    params.light_instant_percent = 160;
-                }
-                Difficulty::Lunatic => {
-                    params.light_instant_percent = 200;
-                    params.light_dot_percent = 130;
-                    params.light_dot_duration = time_to_ticks(120, 1);
-                }
-                _ => {}
+        }
+    }
+    #[derive(Debug, Clone, Copy)]
+    pub struct PurifyingStormParams {
+        pub cost: u8,
+        pub duration: u16,
+        pub frames: u16,
+        pub percent: u16,
+        pub def_down_scale: u16,
+        pub def_down_duration: u16,
+        pub count: u8,
+    }
+    #[derive(Debug, Deserialize)]
+    pub struct RawPurifyingStorm {
+        pub name: LocalizedName,
+        cost: ByDifficulty<u8>,
+        duration: ByDifficulty<u16>,
+        frames: ByDifficulty<u16>,
+        percent: ByDifficulty<u16>,
+        def_down_scale: ByDifficulty<u16>,
+        def_down_duration: ByDifficulty<u16>,
+        count: ByDifficulty<u8>,
+    }
+    impl RawPurifyingStorm {
+        pub fn pick(&self, difficulty: Difficulty) -> PurifyingStormParams {
+            PurifyingStormParams {
+                cost: self.cost[difficulty],
+                duration: self.duration[difficulty],
+                frames: self.frames[difficulty],
+                percent: self.percent[difficulty],
+                def_down_scale: self.def_down_scale[difficulty],
+                def_down_duration: self.def_down_duration[difficulty],
+                count: self.count[difficulty],
             }
-            params
         }
     }
 }
@@ -101,20 +145,19 @@ fn damage_effect(percent: u16) -> EffectKind {
         coef_den: params::PERCENT_DEN,
     }
 }
-/// `splits`를 앞에서부터 인원수만큼 펼쳐 대상에 하나씩 물린다. 대상이 모자라면 남은
-/// split은 버려짐.
-fn append_split_damage(
+/// `percents`를 대상에 앞에서부터 하나씩 물림. 대상이 모자라면 남은 값은 버려지고, 값이
+/// 모자라면 남은 대상은 맞지 않음.
+///
+/// 순서가 곧 대상 선정이므로 거리순 패턴은 `targets`가 이미 정렬되어 있다고 보고 씀.
+fn append_damage(
     caster: &StateData<'_>,
     targets: &mut [&mut StateData<'_>],
-    splits: &[params::Split],
+    percents: impl IntoIterator<Item = u16>,
     ticks: u16,
 ) {
     let Some(damage) = caster.damage_with_effects() else {
         return;
     };
-    let percents = splits
-        .iter()
-        .flat_map(|&(percent, count)| std::iter::repeat_n(percent, count as usize));
     for (target, percent) in targets.iter_mut().zip(percents) {
         target
             .accumulated_damage_cache
@@ -126,50 +169,40 @@ fn append_split_damage(
     }
 }
 create_boss_skill!(
-    BinahAtsilutsLight, 0, 0, params::ATSILUTS_LIGHT_FRAMES, SkillType::Ex, 0, params :
-    params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let params = self
-    .params; vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
-    vec![SkillEffectTarget::Land { kind : damage_effect(params.light_instant_percent),
-    region : params::light_region(), }], }, SkillEffect { id : self.id, timing :
-    EffectTiming::Persistent { interval_frames : params.light_dot_interval,
-    duration_frames : params.light_dot_duration, }, targets :
-    vec![SkillEffectTarget::Land { kind : damage_effect(params.light_dot_percent), region
-    : params::light_region(), }], },] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster
-    : &'c mut StateData <'a >, targets : &'b mut [&'c mut StateData <'a >],) { todo!() }
-    }
+    BinahAtsilutsLight, params : params::AtsilutsLightParams, SkillType::Ex, 0, { fn
+    skill_effects(& self) -> Vec < SkillEffect > { let params = self.params;
+    vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
+    vec![SkillEffectTarget::Land { kind : damage_effect(params.instant_percent), region :
+    params.region, }], }, SkillEffect { id : self.id, timing : EffectTiming::Persistent {
+    interval_frames : params.dot_interval, duration_frames : params.dot_duration, },
+    targets : vec![SkillEffectTarget::Land { kind : damage_effect(params.dot_percent),
+    region : params.region, }], },] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster :
+    &'c mut StateData <'a >, targets : &'b mut [&'c mut StateData <'a >],) { todo!() } }
 );
 create_boss_skill!(
-    BinahFiresofSeverity1, 0, 0, params::FIRES_OF_SEVERITY_1_FRAMES, SkillType::Ex, 1,
-    params : params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let
-    (percent, count) = self.params.severity_1_split; vec![SkillEffect { id : self.id,
-    timing : EffectTiming::Instant, targets : vec![SkillEffectTarget::Student { kind :
-    damage_effect(percent), count, }], }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self,
-    caster : &'c mut StateData <'a >, targets : &'b mut [&'c mut StateData <'a >],) { let
-    split = self.params.severity_1_split; append_split_damage(caster, targets, & [split],
-    self.duration()); } }
+    BinahFiresofSeverity, params : params::FiresOfSeverityParams, SkillType::Ex, 1, { fn
+    skill_effects(& self) -> Vec < SkillEffect > { let params = self.params;
+    vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
+    vec![SkillEffectTarget::Student { kind : damage_effect(params.all_percent), count :
+    params::ON_FIELD_COUNT, }], }, SkillEffect { id : self.id, timing :
+    EffectTiming::Instant, targets : params.nearest_percents.iter().map(|& percent |
+    SkillEffectTarget::Student { kind : damage_effect(percent), count : 1, }).collect(),
+    },] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >,
+    targets : &'b mut [&'c mut StateData <'a >],) { let params = self.params; let ticks =
+    self.duration(); append_damage(caster, targets, std::iter::repeat(params
+    .all_percent), ticks); append_damage(caster, targets, params.nearest_percents,
+    ticks); } }
 );
 create_boss_skill!(
-    BinahFireofSeverity2, 0, 0, params::FIRES_OF_SEVERITY_2_FRAMES, SkillType::Ex, 2,
-    params : params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let
-    targets = self.params.severity_2_splits.iter().map(|& (percent, count) |
-    SkillEffectTarget::Student { kind : damage_effect(percent), count, }).collect();
-    vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets, }] } fn
-    apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >, targets :
-    &'b mut [&'c mut StateData <'a >],) { let splits = self.params.severity_2_splits;
-    append_split_damage(caster, targets, & splits, self.duration()); } }
-);
-create_boss_skill!(
-    BinahPurifyingStorm, 3, params::PURIFYING_STORM_DURATION,
-    params::PURIFYING_STORM_FRAMES, SkillType::Ex, 3, params : params::Params, { fn
+    BinahPurifyingStorm, params : params::PurifyingStormParams, SkillType::Ex, 2, { fn
     skill_effects(& self) -> Vec < SkillEffect > { let params = self.params;
     vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
     vec![SkillEffectTarget::Student { kind : EffectKind::Debuff { ty : DebuffType::Def,
-    duration : params.storm_def_down_duration, scale : params.storm_def_down_scale,
-    amount : 0, }, count : params.storm_count, }], }, SkillEffect { id : self.id, timing
-    : EffectTiming::Instant, targets : vec![SkillEffectTarget::Student { kind :
-    damage_effect(params.storm_percent), count : params.storm_count, }], },] } fn apply
-    <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >, targets : &'b mut
-    [&'c mut StateData <'a >],) { let params = self.params; let split = (params
-    .storm_percent, params.storm_count); append_split_damage(caster, targets, & [split],
-    self.duration()); } }
+    duration : params.def_down_duration, scale : params.def_down_scale, amount : 0, },
+    count : params.count, }], }, SkillEffect { id : self.id, timing :
+    EffectTiming::Instant, targets : vec![SkillEffectTarget::Student { kind :
+    damage_effect(params.percent), count : params.count, }], },] } fn apply <'a : 'b, 'b,
+    'c : 'b > (& self, caster : &'c mut StateData <'a >, targets : &'b mut [&'c mut
+    StateData <'a >],) { let params = self.params; append_damage(caster, targets,
+    std::iter::repeat_n(params.percent, params.count as usize), self.duration(),); } }
 );
