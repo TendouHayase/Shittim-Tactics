@@ -13,6 +13,7 @@ pub mod boss;
 pub mod character;
 pub mod damage;
 pub mod difficulty;
+pub mod locale;
 pub mod simulator;
 pub mod skill;
 pub mod state;
