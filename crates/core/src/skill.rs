@@ -4,6 +4,7 @@ use crate::types::AttackType;
 use crate::utils::Position;
 use crate::variant_accessor;
 use macros::{unreachable_impl_for_empty, EnumAccessors};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Weak;
@@ -117,9 +118,11 @@ pub enum SkillEffectTarget {
     Land { kind: EffectKind, region: Region },
     Oneself { kind: EffectKind },
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "shape", rename_all = "lowercase")]
 pub enum Region {
     Polygon {
+        /// 항상 4개를 채우고 실제로 쓰는 개수만 `count`에 적음. 남는 자리는 무시됨.
         vertex: [Position; 4],
         count: u8,
     },
@@ -188,9 +191,7 @@ macro_rules! define_skill {
 }
 
 // === xtask gen-skills: generated below, do not edit by hand ===
-use crate::skills::binah::{
-    BinahAtsilutsLight, BinahFireofSeverity2, BinahFiresofSeverity1, BinahPurifyingStorm,
-};
+use crate::skills::binah::{BinahAtsilutsLight, BinahFiresofSeverity, BinahPurifyingStorm};
 use crate::skills::goz::{GozMagicalCoinHat, GozNowYouSeeUs, GozThreeLightMonte};
 use crate::skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill};
 use crate::skills::perorodzilla::{
@@ -200,8 +201,7 @@ use crate::skills::perorodzilla::{
 
 define_skill!(
     BinahAtsilutsLight,
-    BinahFireofSeverity2,
-    BinahFiresofSeverity1,
+    BinahFiresofSeverity,
     BinahPurifyingStorm,
     GozMagicalCoinHat,
     GozNowYouSeeUs,

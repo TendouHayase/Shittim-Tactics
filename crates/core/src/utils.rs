@@ -1,5 +1,6 @@
 use crate::skill::Region;
 use ordered_float::OrderedFloat;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub const TPS: u16 = 30;
 pub const MAX_STUDENT_COUNT: usize = 10;
@@ -8,6 +9,20 @@ pub const MAX_STUDENT_COUNT: usize = 10;
 pub struct Position {
     pub x: OrderedFloat<f32>,
     pub y: OrderedFloat<f32>,
+}
+
+/// json에서는 `[x, y]`. `ordered-float`의 serde 기능을 켜지 않으려고 직접 붙인 것이고, 덤으로
+/// 데이터 파일에 필드 이름이 반복되지 않음.
+impl Serialize for Position {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (self.x.0, self.y.0).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Position {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        <(f32, f32)>::deserialize(deserializer).map(Into::into)
+    }
 }
 
 impl From<(f32, f32)> for Position {
