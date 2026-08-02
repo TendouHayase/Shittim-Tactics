@@ -669,9 +669,11 @@ dependencies = [
  "error",
  "macros",
  "ordered-float 5.3.0",
+ "parsing-json",
  "paste",
  "seq-macro",
  "serde",
+ "serde_json",
  "stochastic",
  "typed-builder",
 ]
