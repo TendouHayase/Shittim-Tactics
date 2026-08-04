@@ -5,6 +5,97 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub const TPS: u16 = 30;
 pub const MAX_STUDENT_COUNT: usize = 10;
 
+/// json에 소수로 적힌 값을 반올림 없이 담는 유리수. 분모는 항상 `10^exp`.
+///
+/// 부동소수로 접으면 스탯 몇십 차이가 반올림에서 갈리고 그게 택틱 성패를 바꾸므로, 곱셈을
+/// 먼저 하고 나눗셈을 마지막에 하려고 분자와 자릿수를 따로 들고 있음.
+///
+/// # Warning
+///
+/// json 숫자는 serde가 이미 `f64`로 만들어 넘겨주기 때문에 원문 문자열을 볼 수 없음. 대신
+/// `f64`의 최단 왕복 표현(`{}` 포맷)에서 자릿수를 다시 읽어냄. `26.8`처럼 소수 몇 자리짜리
+/// 게임 데이터는 이 왕복으로 정확히 복원되지만, 유효숫자 17자리를 넘는 값을 적으면 복원되지
+/// 않음.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
+pub struct Ratio {
+    num: i64,
+    exp: u8,
+}
+
+impl Ratio {
+    /// `10^exp`가 `i64`를 넘지 않는 한계.
+    pub const MAX_EXP: u8 = 18;
+
+    /// 뒤따르는 0을 떼어 같은 값이 항상 같은 표현을 갖게 함. `Eq`/`Hash`가 값 비교가 되려면
+    /// 필요함 (`2.50`과 `2.5`).
+    pub fn new(num: i64, exp: u8) -> Self {
+        let mut num = num;
+        let mut exp = exp.min(Self::MAX_EXP);
+
+        while exp > 0 && num % 10 == 0 {
+            num /= 10;
+            exp -= 1;
+        }
+
+        Self { num, exp }
+    }
+
+    pub const fn num(self) -> i64 {
+        self.num
+    }
+
+    pub const fn den(self) -> i64 {
+        10i64.pow(self.exp as u32)
+    }
+
+    /// `value * self`를 정수로. 중간 반올림이 없도록 곱셈이 먼저 가고, 나눗셈은 0 쪽으로 버림.
+    /// 곱한 값이 `i64`를 넘길 수 있어 `i128`을 거침.
+    pub fn apply(self, value: i64) -> i64 {
+        ((value as i128 * self.num as i128) / self.den() as i128) as i64
+    }
+
+    pub fn to_f64(self) -> f64 {
+        self.num as f64 / self.den() as f64
+    }
+}
+
+impl Serialize for Ratio {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if self.exp == 0 {
+            self.num.serialize(serializer)
+        } else {
+            self.to_f64().serialize(serializer)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Ratio {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = f64::deserialize(deserializer)?;
+
+        if !value.is_finite() {
+            return Err(serde::de::Error::custom("ratio must be finite"));
+        }
+
+        // `f64`의 `Display`는 지수 표기를 쓰지 않아 항상 `-?\d+(\.\d+)?` 꼴임.
+        let text = value.to_string();
+        let exp = text.split_once('.').map_or(0, |(_, frac)| frac.len());
+
+        if exp > Self::MAX_EXP as usize {
+            return Err(serde::de::Error::custom(format!(
+                "ratio has too many decimal places: {text}"
+            )));
+        }
+
+        let digits: String = text.chars().filter(|c| *c != '.').collect();
+        let num = digits
+            .parse::<i64>()
+            .map_err(|_| serde::de::Error::custom(format!("ratio out of range: {text}")))?;
+
+        Ok(Self::new(num, exp as u8))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Hash)]
 pub struct Position {
     pub x: OrderedFloat<f32>,
