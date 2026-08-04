@@ -10,7 +10,7 @@
         "outdoor": "d",
         "indoor": "a"
     },
-    "gear_slots": ["hat", "wristwatch", "necklace"],
+    "gear_slots": ["shoes", "hairpin", "wristwatch"],
     "lvl1_stats": {
         "hp": 2218,
         "atk": 451,

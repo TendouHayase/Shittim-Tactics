@@ -194,7 +194,7 @@ mod tests {
         assert_eq!(file.lvl1_stats.attack_type, AttackType::Mystic);
         assert_eq!(file.lvl1_stats.level, 0);
         assert_eq!(file.stats_at_90.hp, 15479);
-        assert_eq!(file.gear_slots[0], GearSlot::Hat);
+        assert_eq!(file.gear_slots[0], GearSlot::Shoes);
     }
 
     /// 소수가 `f64`를 거쳐도 자릿수 그대로 복원되는지. 여기가 깨지면 스탯이 조용히 몇씩
