@@ -1,5 +1,5 @@
 {
-    "id": 0,
+    "id": 2147483648,
     "name": {
         "ko": "비나",
         "ja": "ビナー",
@@ -16,7 +16,7 @@
             "evasion": 100,
             "crit": 200,
             "crit_res": 20,
-            "crit_dmg": 200,
+            "crit_dmg": 20000,
             "crit_dmg_res": 5000,
             "stability": 300,
             "stability_rate": 7500,
