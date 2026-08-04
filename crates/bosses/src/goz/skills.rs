@@ -1,7 +1,7 @@
 use crate::create_boss_skill;
 use core::{
     boss::Boss,
-    character::Character,
+    character::{Character, CharacterOps},
     difficulty::Difficulty,
     skill::{
         BuffType, DebuffType, EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget,

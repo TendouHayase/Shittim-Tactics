@@ -1,7 +1,7 @@
 use core::{
     actions::ActionContext::{self},
     boss::Boss,
-    character::Character,
+    character::{Character, CharacterOps},
     damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
     skill::{EffectKind, Skill, SkillEffectTarget::Land, SkillOps},

@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    character::Character,
+    character::{Character, CharacterOps},
     damage::{Damage, cache::DamageCache, key::SkillsBitMask},
     states::MAX_EXTRA_STATE_SIZE,
     utils::Position,

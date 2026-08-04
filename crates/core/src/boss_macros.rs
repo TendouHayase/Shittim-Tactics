@@ -20,6 +20,10 @@
 /// `params`인지 `{`인지다. fragment 매처(`$x:ty` 등)는 파싱에 실패하면 다음 규칙으로 넘어가지
 /// 않고 그 자리에서 에러가 되므로, 분기는 반드시 fragment보다 앞의 리터럴 토큰에서 갈려야 함.
 /// 리터럴 토큰이 어긋나는 것은 그냥 다음 규칙으로 넘어감.
+///
+/// 이 파일은 `core::`를 `crate::`로 치환하지 않고 통째로 복제되므로 매크로 안에서 경로를
+/// 완전 수식할 수 없음. `Boss` `Character` `CharacterOps` `SkillOps` `SkillType` `NonNull`은
+/// 전부 호출부에 `use`되어 있어야 함.
 #[macro_export]
 macro_rules! create_boss_skill {
     (

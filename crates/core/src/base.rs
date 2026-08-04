@@ -7,6 +7,10 @@ use crate::types::{ArmorType, AttackType};
     Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, TypedBuilder,
 )]
 pub struct BaseStats {
+    /// 학생 파일에는 없음. 레벨은 데이터가 아니라 편성에서 정해지는 런타임 값이라, 파일에서
+    /// 읽는 것은 1레벨 스탯뿐이고 여기는 나중에 채워짐. 보스 파일에는 난이도마다 적혀 있음.
+    #[serde(default)]
+    #[builder(default = 0)]
     pub level: u8,
     pub hp: u64,
     pub atk: u32,

@@ -4,6 +4,7 @@ use crate::{
 };
 use core::{
     actions::ActionContext,
+    character::CharacterOps,
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget, SkillOps},
     state::Stateful,

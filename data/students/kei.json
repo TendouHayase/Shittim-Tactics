@@ -1,0 +1,143 @@
+{
+    "id": 10135,
+    "name": {
+        "ko": "텐도 케이",
+        "ja": "天童 ケイ",
+        "en": "Tendou Kei"
+    },
+    "terrain_adaptation": {
+        "street": "s",
+        "outdoor": "d",
+        "indoor": "a"
+    },
+    "gear_slots": ["hat", "wristwatch", "necklace"],
+    "lvl1_stats": {
+        "hp": 2218,
+        "atk": 451,
+        "def": 69,
+        "healing": 1328,
+        "accuracy": 605,
+        "evasion": 198,
+        "crit": 201,
+        "crit_res": 100,
+        "crit_dmg": 20000,
+        "crit_dmg_res": 5000,
+        "stability": 1384,
+        "stability_rate": 2000,
+        "normal_attack_range": 850,
+        "sighting_range": 800,
+        "cc_power": 100,
+        "cc_res": 100,
+        "recovery_boost": 10000,
+        "cost_recovery": 700,
+        "atk_speed": 10000,
+        "mov_speed": 200,
+        "block_rate_bonus": 0,
+        "defense_piercing": 0,
+        "mag_count": 5,
+        "dmg_dealt": 10000,
+        "dmg_resist": 10000,
+        "ex_skill_dmg_dealt": 10000,
+        "ex_skill_dmg_resist": 10000,
+        "basics_proficiency": 10000,
+        "healing_boost": 10000,
+        "attack_type": "mystic",
+        "armor_type": "composite",
+        "explosive_effectiveness": 10000,
+        "piercing_effectiveness": 10000,
+        "corrosive_effectiveness": 10000,
+        "mystic_effectiveness": 10000,
+        "sonic_effectiveness": 10000,
+        "buff_retention": 10000,
+        "debuff_retention": 10000
+    },
+    "delta": {
+        "hp": 149,
+        "atk": 41,
+        "def": 3.5,
+        "healing": 26.8
+    },
+    "stats_at_90": {
+        "hp": 15479,
+        "atk": 4102,
+        "def": 380,
+        "healing": 3718
+    },
+    "unique_weapon": {
+        "hp": [0, 0, 0, 0],
+        "atk": [0, 0, 0, 0],
+        "enhanced_skill_plus": {
+            "buff": {
+                "crit_dmg": {
+                    "amount": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "scale": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                }
+            }
+        },
+        "effectiveness_bonus": 1000
+    },
+    "skills": {
+        "Ex": {
+            "name": {
+                "ko": "지금, 여기에 있는 나",
+                "ja": "ここにいる私",
+                "en": "Me, Here and Now"
+            },
+            "radius": 350,
+            "range": 1050,
+            "cost": 2,
+            "frames": 123,
+            "duration": 750,
+            "buff": {
+                "atk": {
+                    "amount": [0, 0, 0, 0, 0],
+                    "scale": [26.8, 30.8, 38.9, 42.9, 51]
+                },
+                "mystic_effectiveness": {
+                    "amount": [0, 0, 0, 0, 0],
+                    "scale": [44.1, 50.7, 64, 70.6, 83.8]
+                }
+            }
+        },
+        "Basic": {
+            "name": {
+                "ko": "저를 화나게 했다 이거죠?!",
+                "ja": "",
+                "en": "You're Making me So Mad!"
+            },
+            "range": 1050,
+            "frames": 141,
+            "damage": {
+                "coefficient": [148, 155, 163, 192, 200, 207, 237, 244, 252, 281],
+                "acculmulated_damage_coefficient": [40, 44, 48, 60, 64, 68, 80, 84, 88, 100]
+            }
+        },
+        "Enhanced": {
+            "name": {
+                "ko": "저는 저항할 거예요!",
+                "ja": "",
+                "en": "I WILL Resist You!"
+            },
+            "buff": {
+                "crit_dmg": {
+                    "amount": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "scale": [14, 14.7, 15.4, 18.2, 18.9, 19.6, 22.4, 23.1, 23.8, 26.6]
+                }
+            }
+        },
+        "Sub": {
+            "name": {
+                "ko": "함께 걷는 친구",
+                "ja": "",
+                "en": "Those Who Walk Together"
+            },
+            "duration": 750,
+            "buff": {
+                "crit": {
+                    "amount": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "scale": [13.1, 13.4, 14.1, 15.4, 16, 16.4, 19, 19.3, 19.6, 22.3]
+                }
+            }
+        }
+    }
+}

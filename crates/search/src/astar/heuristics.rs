@@ -1,4 +1,6 @@
-use core::{damage::Damage, simulator::Simulator, skill::SkillOps, state::Stateful};
+use core::{
+    character::CharacterOps, damage::Damage, simulator::Simulator, skill::SkillOps, state::Stateful,
+};
 
 pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {
     let students = state.students();

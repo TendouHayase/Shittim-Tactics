@@ -5,7 +5,7 @@ use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
 use core::{
     boss::Boss,
-    character::Character,
+    character::{Character, CharacterOps},
     damage::Damage,
     difficulty::Difficulty,
     skill::{

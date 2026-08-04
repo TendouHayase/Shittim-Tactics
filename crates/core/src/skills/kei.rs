@@ -1,6 +1,6 @@
 use crate::states::KeiState;
 use crate::{
-    character::Character,
+    character::{Character, CharacterOps},
     damage::Damage,
     skill::{
         BuffType::{self},
@@ -21,6 +21,7 @@ pub mod params {
     use crate::skill::Region;
     /// 계수는 전부 백분율이라 분모가 고정.
     pub const PERCENT_DEN: u16 = 100;
+    pub const ACC_DAMAGE_CAP_PERCENT: u16 = 5000;
     #[derive(Debug, Clone, Copy)]
     pub struct ExParams {
         pub cost: u8,
@@ -41,10 +42,10 @@ pub mod params {
     #[derive(Debug, Clone, Copy)]
     pub struct SubParams {
         pub duration: u16,
-        /// 누적 데미지 상한을 공격력의 몇 %로 둘지.
-        pub acc_damage_cap_percent: u16,
     }
 }
+/// 증폭 장치를 설치하여 원형범위 내에 있는 아군의 공격력 26.8 → 51% 증가,
+/// 신비 특효 44.1 → 83.8% 가산 (25초간)
 #[derive(Debug)]
 pub struct KeiExSkill {
     kei: NonNull<Student>,
@@ -53,6 +54,9 @@ pub struct KeiExSkill {
     id: (u32, u8),
     params: params::ExParams,
 }
+/// 증폭 장치 작동 종료 시 적 1인에게 공격력 148 → 281% 대미지
+/// 추가로 해당 증폭 장치 저장량의 40 → 100%만큼 대미지
+/// (이 대미지는 치명 공격이 발생하지 않으며, 케이의 능력치에 영향받지 않습니다.)
 #[derive(Debug)]
 pub struct KeiBasicSkill {
     kei: NonNull<Student>,
@@ -61,6 +65,10 @@ pub struct KeiBasicSkill {
     name: String,
     params: params::BasicParams,
 }
+/// 증폭 장치 작동 시작 시 증폭 장치 범위 내의 아군에게 치명 수치 13.1 → 22.3% 증가 (25초간)
+/// 증폭 장치 작동 종료 시, 자신을 제외한 아군이 해당 증폭 장치 범위 내에서
+/// 적에게 가한 대미지의 10%를 저장 (케이 기본 공격력의 5000%까지)
+/// (저장량은 덮어씌워집니다)
 #[derive(Debug)]
 pub struct KeiSubSkill {
     kei: NonNull<Student>,
@@ -322,7 +330,7 @@ impl SkillOps for KeiSubSkill {
         caster: &'c mut StateData<'a>,
         targets: &'b mut [&'c mut StateData<'a>],
     ) {
-        let cap = caster.character.stats().atk as u64 * self.params.acc_damage_cap_percent as u64
+        let cap = caster.character.stats().atk as u64 * params::ACC_DAMAGE_CAP_PERCENT as u64
             / params::PERCENT_DEN as u64;
         let acc_damage = {
             let extras = caster.extra_as::<KeiState>();

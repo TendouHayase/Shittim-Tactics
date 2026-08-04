@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomPinned};
 
 use error::Error;
 use serde::{Deserialize, Serialize};
@@ -6,6 +6,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     base::BaseStats,
+    character::CharacterOps,
     difficulty::Difficulty,
     locale::LocalizedName,
     skill::Skill,
@@ -38,6 +39,8 @@ pub struct BossStats {
 pub struct Boss {
     pub stats: BossStats,
     pub skills: Vec<Skill>,
+
+    _pin: PhantomPinned,
 }
 
 /// `data/bosses/<보스>.json`의 최상위. 방어 타입 키는 보스마다 다르므로 남는 키를 전부
@@ -76,19 +79,21 @@ impl Hash for Boss {
     }
 }
 
-impl Boss {
-    pub fn id(&self) -> u32 {
+impl CharacterOps for Boss {
+    fn id(&self) -> u32 {
         self.stats.id
     }
 
-    pub fn stats(&self) -> &BaseStats {
+    fn stats(&self) -> &BaseStats {
         &self.stats.base_stats
     }
 
-    pub fn skill_list(&self) -> &[Skill] {
+    fn skill_list(&self) -> &[Skill] {
         &self.skills
     }
+}
 
+impl Boss {
     /// `Box`로 돌려주는 이유는 스킬이 `NonNull<Boss>`로 자기 보스를 가리키기 때문임. 값으로
     /// 돌려주면 반환하면서 보스가 이동해 그 포인터가 전부 끊김.
     pub fn from_file(
@@ -123,7 +128,13 @@ impl Boss {
             .phase_switching_hp(entry.phase_switching_hp)
             .build();
 
-        let mut boss = Box::new(Boss::builder().stats(stats).skills(Vec::new()).build());
+        let mut boss = Box::new(
+            Boss::builder()
+                .stats(stats)
+                ._pin(PhantomPinned)
+                .skills(Vec::new())
+                .build(),
+        );
 
         boss.skills = build_skills(&boss, kind, file.skills, skill_mask_offset)?;
 
@@ -186,7 +197,9 @@ fn build_skills(
         ],
 
         BossKind::Perorodzilla => vec![
-            Skill::PerorodzillaWhiteHotHeatVision(PerorodzillaWhiteHotHeatVision::new(boss, offset)),
+            Skill::PerorodzillaWhiteHotHeatVision(PerorodzillaWhiteHotHeatVision::new(
+                boss, offset,
+            )),
             Skill::PerorodzillaAquaBall(PerorodzillaAquaBall::new(boss, offset + 1)),
             Skill::PerorodzillaSummonMinion(PerorodzillaSummonMinion::new(boss, offset + 2)),
             Skill::PerorodzillaAbsorbMinion(PerorodzillaAbsorbMinion::new(boss, offset + 3)),
@@ -247,7 +260,7 @@ mod tests {
             )
             .expect("failed to load binah")
             .skill_list()[0]
-            .skill_effects()
+                .skill_effects()
         };
 
         let normal = effects_of(Difficulty::Normal);

@@ -3,7 +3,8 @@
 use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
 use crate::{
-    boss::Boss, character::Character, damage::Damage, difficulty::Difficulty,
+    boss::Boss, character::{Character, CharacterOps},
+    damage::Damage, difficulty::Difficulty,
     skill::{
         BuffType, DebuffType, EffectKind, EffectTiming, Region, Skill, SkillEffect,
         SkillEffectTarget, SkillOps, SkillType,
