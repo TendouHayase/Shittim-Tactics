@@ -5,13 +5,8 @@ use typed_builder::TypedBuilder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    base::BaseStats,
-    character::CharacterOps,
-    locale::LocalizedName,
-    skill::Skill,
-    terrains::TerrainCombatPower,
-    types::GearSlot,
-    utils::Ratio,
+    base::BaseStats, character::CharacterOps, locale::LocalizedName, skill::Skill,
+    terrains::TerrainCombatPower, types::GearSlot, utils::Ratio,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -30,11 +25,11 @@ pub struct StudentSpec {
 
     /// Each element in the array represents the tier of the equipment listed below.
     /// hat, gloves, shoes, bag, badge, hairpin, amulet, wristwatch, necklace, unique_item
-    pub gear_tiers: [u8; 10],
+    pub gear_tiers: [u8; 4],
 
     /// Each element in the array represents the level of the equipment listed below.
     /// hat, gloves, shoes, bag, badge, hairpin, amulet, wristwatch, necklace, unique_item
-    pub gear_levels: [u8; 10],
+    pub gear_levels: [u8; 4],
 
     /// Each element in this array represents the following.
     /// Max HP Talent level, ATK Talent Level, Healing Talent Level
