@@ -4,9 +4,9 @@ use crate::create_boss_skill;
 use crate::{
     boss::Boss,
     character::{Character, CharacterOps},
-    skill::{
-        DebuffType, EffectKind, EffectTiming, SkillEffect, SkillEffectTarget, SkillOps, SkillType,
-    },
+    effect::EffectTiming,
+    skill::{EffectKind, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
+    stat::StatKind,
     state::{AccumulatedDamage, StateData},
 };
 use std::ptr::NonNull;
@@ -197,7 +197,7 @@ create_boss_skill!(
     BinahPurifyingStorm, params : params::PurifyingStormParams, SkillType::Ex, 2, { fn
     skill_effects(& self) -> Vec < SkillEffect > { let params = self.params;
     vec![SkillEffect { id : self.id, timing : EffectTiming::Instant, targets :
-    vec![SkillEffectTarget::Student { kind : EffectKind::Debuff { ty : DebuffType::Def,
+    vec![SkillEffectTarget::Student { kind : EffectKind::Debuff { ty : StatKind::Def,
     duration : params.def_down_duration, scale : params.def_down_scale, amount : 0, },
     count : params.count, }], }, SkillEffect { id : self.id, timing :
     EffectTiming::Instant, targets : vec![SkillEffectTarget::Student { kind :

@@ -2,10 +2,9 @@ use crate::states::KeiState;
 use core::{
     character::{Character, CharacterOps},
     damage::Damage,
-    skill::{
-        BuffType::{self},
-        EffectKind, EffectTiming, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType,
-    },
+    effect::EffectTiming,
+    skill::{EffectKind, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
+    stat::StatKind,
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
     student::Student,
     types::AttackType,
@@ -135,14 +134,14 @@ impl SkillOps for ExSkill {
 
     fn skill_effects(&self) -> Vec<core::skill::SkillEffect> {
         let effective_buff = EffectKind::Buff {
-            ty: BuffType::Effectiveness(AttackType::Mystic),
+            ty: StatKind::MysticEffectiveness,
             duration: self.params.duration,
             scale: self.params.effective_buff_scale,
             amount: 0,
         };
 
         let atk_buff = EffectKind::Buff {
-            ty: BuffType::Atk,
+            ty: StatKind::Atk,
             duration: self.params.duration,
             scale: self.params.atk_buff_scale,
             amount: 0,

@@ -1,46 +1,16 @@
 use crate::character::Character;
+use crate::effect::{CCEffect, EffectTiming};
+use crate::stat::StatKind;
 use crate::state::{State, StateData};
 use crate::types::AttackType;
 use crate::utils::Position;
 use crate::variant_accessor;
-use macros::{unreachable_impl_for_empty, EnumAccessors};
+use macros::{EnumAccessors, unreachable_impl_for_empty};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Weak;
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BuffType {
-    Atk,
-    Crit,
-    CritDmg,
-    Effectiveness(AttackType),
-    BasicProficiency,
-    ExSkillDmgDealt,
-    DmgDealt,
-    Def,
-    CostRecovery,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DebuffType {
-    Atk,
-    Crit,
-    CritDmg,
-    Effectiveness(AttackType),
-    ExSkillDmgDealt,
-    BasicProficiency,
-    DmgDealt,
-    Def,
-    CostRecovery,
-    Stun,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EffectTiming {
-    Instant,
-    Persistent {
-        interval_frames: u16,
-        duration_frames: u16,
-    },
-}
+
 /// 적용된 스킬 또는 상태효과의 종류를 나타냅니다.
 ///
 /// # Warning
@@ -63,18 +33,22 @@ pub enum EffectKind {
         coef_den: u16,
     },
     Buff {
-        ty: BuffType,
+        ty: StatKind,
         duration: u16,
         scale: u16,
         amount: u32,
     },
     Debuff {
-        ty: DebuffType,
+        ty: StatKind,
         duration: u16,
         scale: u16,
         amount: u32,
     },
     Move,
+    CC {
+        ty: CCEffect,
+        duration: u16,
+    },
     Other(EffectKindOther),
 }
 
@@ -105,12 +79,7 @@ impl EffectKind {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Effect<'a> {
-    pub name: &'a str,
-    pub kind: EffectKind,
-    pub timing: EffectTiming,
-}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SkillEffectTarget {
     Boss { kind: EffectKind },

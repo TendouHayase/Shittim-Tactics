@@ -5,9 +5,9 @@ use crate::create_boss_skill;
 use core::{
     boss::Boss,
     character::{Character, CharacterOps},
-    skill::{
-        DebuffType, EffectKind, EffectTiming, SkillEffect, SkillEffectTarget, SkillOps, SkillType,
-    },
+    effect::EffectTiming,
+    skill::{EffectKind, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
+    stat::StatKind,
     state::{AccumulatedDamage, StateData},
 };
 use std::ptr::NonNull;
@@ -292,7 +292,7 @@ create_boss_skill!(
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
                         kind: EffectKind::Debuff {
-                            ty: DebuffType::Def,
+                            ty: StatKind::Def,
                             duration: params.def_down_duration,
                             scale: params.def_down_scale,
                             amount: 0,

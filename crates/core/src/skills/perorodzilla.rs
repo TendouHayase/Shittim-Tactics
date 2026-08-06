@@ -4,12 +4,11 @@ use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
 use crate::{
     boss::Boss, character::{Character, CharacterOps},
-    damage::Damage, difficulty::Difficulty,
+    damage::Damage, difficulty::Difficulty, effect::EffectTiming,
     skill::{
-        BuffType, DebuffType, EffectKind, EffectTiming, Region, Skill, SkillEffect,
-        SkillEffectTarget, SkillOps, SkillType,
+        EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType,
     },
-    state::{AccumulatedDamage, State, StateData, Stateful},
+    stat::StatKind, state::{AccumulatedDamage, State, StateData, Stateful},
     types::AttackType, utils::{MAX_STUDENT_COUNT, is_inside},
 };
 use std::ptr::NonNull;
@@ -306,28 +305,27 @@ create_boss_skill!(
     dot_timing = EffectTiming::Persistent { interval_frames : params.dot_interval,
     duration_frames : params.dot_duration, }; let mut effects = vec![SkillEffect { id :
     self.id, timing : EffectTiming::Instant, targets : vec![SkillEffectTarget::Student {
-    kind : EffectKind::Debuff { ty : DebuffType::Def, duration : params
-    .def_down_duration, scale : 0, amount : params.def_down_amount, }, count : 1, }], },
-    SkillEffect { id : self.id, timing : dot_timing, targets :
-    vec![SkillEffectTarget::Student { kind : damage_effect(params.heat_vision_percent),
-    count : 1, }], },]; if params.chain_count > 0 { let [first, rest] = params
-    .chain_percents; let mut chain = vec![SkillEffectTarget::Student { kind :
-    damage_effect(first), count : 1, }]; if params.chain_count > 1 { chain
-    .push(SkillEffectTarget::Student { kind : damage_effect(rest), count : params
-    .chain_count - 1, }); } effects.push(SkillEffect { id : self.id, timing : dot_timing,
-    targets : chain, }); } if params.blast_percent > 0 && let Some(region) = params
-    .blast_region { let mut targets = vec![SkillEffectTarget::Land { kind :
-    damage_effect(params.blast_percent), region, }]; if params.blast_atk_down_scale > 0 {
-    targets.push(SkillEffectTarget::Land { kind : EffectKind::Debuff { ty :
-    DebuffType::Atk, duration : params.blast_atk_down_duration, scale : params
-    .blast_atk_down_scale, amount : 0, }, region, }); } effects.push(SkillEffect { id :
-    self.id, timing : EffectTiming::Instant, targets, }); } effects } fn apply <'a : 'b,
-    'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >, targets : &'b mut [&'c mut
-    StateData <'a >],) { let params = self.params; for (i, target) in targets.iter_mut()
-    .enumerate() { let percent = match i { 0 => params.heat_vision_percent, _ if (i as
-    u8) <= params.chain_count => { let last = params.chain_percents.len() - 1; params
-    .chain_percents[(i - 1).min(last)] } _ => continue, };
-    append_damage_over_time(caster, target, percent, params.dot_interval, params
+    kind : EffectKind::Debuff { ty : StatKind::Def, duration : params.def_down_duration,
+    scale : 0, amount : params.def_down_amount, }, count : 1, }], }, SkillEffect { id :
+    self.id, timing : dot_timing, targets : vec![SkillEffectTarget::Student { kind :
+    damage_effect(params.heat_vision_percent), count : 1, }], },]; if params.chain_count
+    > 0 { let [first, rest] = params.chain_percents; let mut chain =
+    vec![SkillEffectTarget::Student { kind : damage_effect(first), count : 1, }]; if
+    params.chain_count > 1 { chain.push(SkillEffectTarget::Student { kind :
+    damage_effect(rest), count : params.chain_count - 1, }); } effects.push(SkillEffect {
+    id : self.id, timing : dot_timing, targets : chain, }); } if params.blast_percent > 0
+    && let Some(region) = params.blast_region { let mut targets =
+    vec![SkillEffectTarget::Land { kind : damage_effect(params.blast_percent), region,
+    }]; if params.blast_atk_down_scale > 0 { targets.push(SkillEffectTarget::Land { kind
+    : EffectKind::Debuff { ty : StatKind::Atk, duration : params.blast_atk_down_duration,
+    scale : params.blast_atk_down_scale, amount : 0, }, region, }); } effects
+    .push(SkillEffect { id : self.id, timing : EffectTiming::Instant, targets, }); }
+    effects } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData <'a >,
+    targets : &'b mut [&'c mut StateData <'a >],) { let params = self.params; for (i,
+    target) in targets.iter_mut().enumerate() { let percent = match i { 0 => params
+    .heat_vision_percent, _ if (i as u8) <= params.chain_count => { let last = params
+    .chain_percents.len() - 1; params.chain_percents[(i - 1).min(last)] } _ => continue,
+    }; append_damage_over_time(caster, target, percent, params.dot_interval, params
     .dot_duration,); } } }
 );
 create_boss_skill!(
@@ -336,7 +334,7 @@ create_boss_skill!(
     .params; let Some(region) = params.aqua_ball_region else { return vec![]; }; let mut
     targets = vec![SkillEffectTarget::Land { kind : damage_effect(params
     .aqua_ball_percent), region, }]; if params.aqua_ball_def_down { targets
-    .push(SkillEffectTarget::Land { kind : EffectKind::Debuff { ty : DebuffType::Def,
+    .push(SkillEffectTarget::Land { kind : EffectKind::Debuff { ty : StatKind::Def,
     duration : params.def_down_duration, scale : 0, amount : params.def_down_amount, },
     region, }); } vec![SkillEffect { id : self.id, timing : EffectTiming::Instant,
     targets, }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster : &'c mut StateData
@@ -398,8 +396,7 @@ create_boss_skill!(
     params::Params, { fn skill_effects(& self) -> Vec < SkillEffect > { let scale = self
     .params.mystic_up_percent; if scale == 0 { return vec![]; } vec![SkillEffect { id :
     self.id, timing : EffectTiming::Instant, targets : vec![SkillEffectTarget::Oneself {
-    kind : EffectKind::Buff { ty : BuffType::Effectiveness(AttackType::Mystic), duration
-    : u16::MAX, scale, amount : 0, }, }], }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self,
-    _caster : &'c mut StateData <'a >, _targets : &'b mut [&'c mut StateData <'a >],) {}
-    }
+    kind : EffectKind::Buff { ty : StatKind::MysticEffectiveness, duration : u16::MAX,
+    scale, amount : 0, }, }], }] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, _caster :
+    &'c mut StateData <'a >, _targets : &'b mut [&'c mut StateData <'a >],) {} }
 );

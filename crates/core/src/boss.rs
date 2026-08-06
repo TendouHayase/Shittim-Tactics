@@ -269,14 +269,14 @@ mod tests {
         assert_ne!(normal[0].targets, lunatic[0].targets);
         assert_eq!(
             normal[1].timing,
-            crate::skill::EffectTiming::Persistent {
+            crate::effect::EffectTiming::Persistent {
                 interval_frames: 90,
                 duration_frames: 450,
             }
         );
         assert_eq!(
             lunatic[1].timing,
-            crate::skill::EffectTiming::Persistent {
+            crate::effect::EffectTiming::Persistent {
                 interval_frames: 90,
                 duration_frames: 3600,
             }

@@ -8,10 +8,9 @@ use core::{
     character::{Character, CharacterOps},
     damage::Damage,
     difficulty::Difficulty,
-    skill::{
-        BuffType, DebuffType, EffectKind, EffectTiming, Region, Skill, SkillEffect,
-        SkillEffectTarget, SkillOps, SkillType,
-    },
+    effect::EffectTiming,
+    skill::{EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
+    stat::StatKind,
     state::{AccumulatedDamage, State, StateData, Stateful},
     types::AttackType,
     utils::{MAX_STUDENT_COUNT, is_inside},
@@ -372,7 +371,7 @@ create_boss_skill!(
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
                         kind: EffectKind::Debuff {
-                            ty: DebuffType::Def,
+                            ty: StatKind::Def,
                             duration: params.def_down_duration,
                             scale: 0,
                             amount: params.def_down_amount,
@@ -425,7 +424,7 @@ create_boss_skill!(
                 if params.blast_atk_down_scale > 0 {
                     targets.push(SkillEffectTarget::Land {
                         kind: EffectKind::Debuff {
-                            ty: DebuffType::Atk,
+                            ty: StatKind::Atk,
                             duration: params.blast_atk_down_duration,
                             scale: params.blast_atk_down_scale,
                             amount: 0,
@@ -497,7 +496,7 @@ create_boss_skill!(
             if params.aqua_ball_def_down {
                 targets.push(SkillEffectTarget::Land {
                     kind: EffectKind::Debuff {
-                        ty: DebuffType::Def,
+                        ty: StatKind::Def,
                         duration: params.def_down_duration,
                         scale: 0,
                         amount: params.def_down_amount,
@@ -682,7 +681,7 @@ create_boss_skill!(
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Oneself {
                 kind: EffectKind::Buff {
-                    ty: BuffType::Effectiveness(AttackType::Mystic),
+                    ty: StatKind::MysticEffectiveness,
                     duration: u16::MAX,
                     scale,
                     amount: 0,
