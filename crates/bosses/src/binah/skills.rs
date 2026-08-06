@@ -222,8 +222,8 @@ create_boss_skill!(
 
         fn apply<'a: 'b, 'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            _caster: &'c mut StateData<'a>,
+            _targets: &'b mut [&'c mut StateData<'a>],
         ) {
             todo!()
         }

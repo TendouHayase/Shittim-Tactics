@@ -142,13 +142,7 @@ impl<'a> Stateful<'a> for State<'a> {
             return Some(&self.boss);
         }
 
-        for student in self.students() {
-            if id == student.character.id() {
-                return Some(student);
-            }
-        }
-
-        None
+        self.students().iter().find(|&student| id == student.character.id()).map(|v| v as _)
     }
 
     fn state_data_by_id_mut<'b: 'c, 'c>(&'b mut self, id: u32) -> Option<&'c mut StateData<'a>> {

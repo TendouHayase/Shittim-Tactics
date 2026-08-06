@@ -1,5 +1,4 @@
 use crate::skill::Skill;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Action<'a> {

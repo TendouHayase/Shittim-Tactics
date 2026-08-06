@@ -70,10 +70,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // states를 먼저 만든다: skills 쪽이 `crate::states::...`를 참조하기 때문.
     let state_structs = process_states(
-        &[
-            students_src.join("states.rs"),
-            bosses_src.join("states.rs"),
-        ],
+        &[students_src.join("states.rs"), bosses_src.join("states.rs")],
         &core_src.join("states.rs"),
     )?;
 
@@ -375,20 +372,18 @@ impl VisitMut for RelocateVisitor {
     }
 
     fn visit_use_tree_mut(&mut self, tree: &mut UseTree) {
-        if let UseTree::Path(use_path) = tree {
-            if use_path.ident == "core" {
+        if let UseTree::Path(use_path) = tree
+            && use_path.ident == "core" {
                 use_path.ident = Ident::new("crate", use_path.ident.span());
             }
-        }
         syn::visit_mut::visit_use_tree_mut(self, tree);
     }
 
     fn visit_path_mut(&mut self, path: &mut syn::Path) {
-        if let Some(first) = path.segments.first_mut() {
-            if first.ident == "core" {
+        if let Some(first) = path.segments.first_mut()
+            && first.ident == "core" {
                 first.ident = Ident::new("crate", first.ident.span());
             }
-        }
         syn::visit_mut::visit_path_mut(self, path);
     }
 

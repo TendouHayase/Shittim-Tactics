@@ -176,8 +176,8 @@ create_boss_skill!(
     params.region, }], }, SkillEffect { id : self.id, timing : EffectTiming::Persistent {
     interval_frames : params.dot_interval, duration_frames : params.dot_duration, },
     targets : vec![SkillEffectTarget::Land { kind : damage_effect(params.dot_percent),
-    region : params.region, }], },] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, caster :
-    &'c mut StateData <'a >, targets : &'b mut [&'c mut StateData <'a >],) { todo!() } }
+    region : params.region, }], },] } fn apply <'a : 'b, 'b, 'c : 'b > (& self, _caster :
+    &'c mut StateData <'a >, _targets : &'b mut [&'c mut StateData <'a >],) { todo!() } }
 );
 create_boss_skill!(
     BinahFiresofSeverity, params : params::FiresOfSeverityParams, SkillType::Ex, 1, { fn

@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::fmt::Debug;
 
 use crate::{base::BaseStats, boss::Boss, skill::Skill, student::Student};
 

@@ -30,7 +30,7 @@ impl<'d, const N: usize, S: for<'a> Stateful<'a>> Algorithm for Astar<'d, N, S> 
         simulator: &'a impl core::simulator::Simulator<S<'a> = Self::S<'a>>,
         initial: Self::S<'a>,
         threshold: f64,
-    ) -> Vec<(&Skill, u16)> {
+    ) -> Vec<(&'b Skill, u16)> {
         // 결과 노드
         let mut result_node = None;
 

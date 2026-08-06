@@ -2,14 +2,10 @@ use crate::character::Character;
 use crate::effect::{CCEffect, EffectTiming};
 use crate::stat::StatKind;
 use crate::state::{State, StateData};
-use crate::types::AttackType;
 use crate::utils::Position;
-use crate::variant_accessor;
-use macros::{EnumAccessors, unreachable_impl_for_empty};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::sync::Weak;
 
 /// 적용된 스킬 또는 상태효과의 종류를 나타냅니다.
 ///

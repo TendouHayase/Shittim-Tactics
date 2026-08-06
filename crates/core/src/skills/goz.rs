@@ -2,10 +2,7 @@ use crate::create_boss_skill;
 use crate::{
     boss::Boss,
     character::{Character, CharacterOps},
-    difficulty::Difficulty,
-    effect::EffectTiming,
-    skill::{EffectKind, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
-    stat::StatKind,
+    skill::{Skill, SkillEffect, SkillOps, SkillType},
     state::{State, StateData},
     utils::time_to_ticks,
 };
@@ -16,14 +13,14 @@ create_boss_skill!(GozNowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
     }
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
-        caster: &'c mut StateData<'a>,
-        targets: &'b mut [&'c mut StateData<'a>],
+        _caster: &'c mut StateData<'a>,
+        _targets: &'b mut [&'c mut StateData<'a>],
     ) {
         todo!()
     }
 });
 impl GozNowYouSeeUs {
-    pub fn other_apply<'a>(skill: &Skill, state: State<'a>) -> State<'a> {
+    pub fn other_apply<'a>(_skill: &Skill, _state: State<'a>) -> State<'a> {
         todo!()
     }
 }
@@ -40,8 +37,8 @@ create_boss_skill!(
         }
         fn apply<'a: 'b, 'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            _caster: &'c mut StateData<'a>,
+            _targets: &'b mut [&'c mut StateData<'a>],
         ) {
             todo!()
         }
@@ -60,8 +57,8 @@ create_boss_skill!(
         }
         fn apply<'a: 'b, 'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            _caster: &'c mut StateData<'a>,
+            _targets: &'b mut [&'c mut StateData<'a>],
         ) {
             todo!()
         }

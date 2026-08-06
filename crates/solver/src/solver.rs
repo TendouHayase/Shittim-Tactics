@@ -1,5 +1,5 @@
 use core::{agent::Agent, simulator::Simulator, skill::Skill, state::Stateful};
-use std::{marker::PhantomData, sync::Arc};
+use std::marker::PhantomData;
 
 use search::algorithm::Algorithm;
 

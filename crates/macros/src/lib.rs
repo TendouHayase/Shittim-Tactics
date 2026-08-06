@@ -67,7 +67,7 @@ pub fn enum_accessors_derive(input: TokenStream) -> TokenStream {
 
     for variant in variants {
         let variant_ident = &variant.ident;
-        let snake_name = (&variant_ident.to_string()).to_snake_case();
+        let snake_name = variant_ident.to_string().to_snake_case();
         let is_fn = format_ident!("is_{}", snake_name);
         let as_fn = format_ident!("as_{}", snake_name);
 
@@ -229,11 +229,10 @@ pub fn dispatch_method(input: TokenStream) -> TokenStream {
         .iter()
         .skip(1)
         .filter_map(|fn_arg| {
-            if let syn::FnArg::Typed(pat_type) = fn_arg {
-                if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
+            if let syn::FnArg::Typed(pat_type) = fn_arg
+                && let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
                     return Some(&pat_ident.ident);
                 }
-            }
             None
         })
         .collect();

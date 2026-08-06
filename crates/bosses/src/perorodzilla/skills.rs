@@ -12,7 +12,6 @@ use core::{
     skill::{EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
     stat::StatKind,
     state::{AccumulatedDamage, State, StateData, Stateful},
-    types::AttackType,
     utils::{MAX_STUDENT_COUNT, is_inside},
 };
 

@@ -4,7 +4,7 @@ use core::{
     character::{Character, CharacterOps},
     damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
-    skill::{EffectKind, Skill, SkillEffectTarget::Land, SkillOps},
+    skill::{Skill, SkillEffectTarget::Land, SkillOps},
     state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
     student::Student,
     utils::{TPS, is_inside},
@@ -12,9 +12,7 @@ use core::{
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
-    fmt::Debug,
     marker::PhantomData,
-    sync::Arc,
 };
 
 pub struct Simulation<'a, const N: usize, S: Stateful<'a>> {
@@ -46,11 +44,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         result
     }
 
-    fn apply<'a>(
-        &self,
-        state: &Self::S<'a>,
-        action: &core::actions::ActionContext,
-    ) -> Self::S<'a> {
+    fn apply<'a>(&self, state: &Self::S<'a>, action: &core::actions::ActionContext) -> Self::S<'a> {
         let action = match action {
             ActionContext::Wait => return state.clone(),
             ActionContext::Use(action) => action,
@@ -311,7 +305,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         }
     }
 
-    fn character_by_id(&self, id: u32) -> Option<Character> {
+    fn character_by_id(&self, id: u32) -> Option<Character<'_>> {
         if id == self.boss.id() {
             Some(Character::Boss(&self.boss))
         } else {

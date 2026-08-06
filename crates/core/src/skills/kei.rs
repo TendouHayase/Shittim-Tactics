@@ -7,7 +7,6 @@ use crate::{
     stat::StatKind,
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
     student::Student,
-    types::AttackType,
     utils::is_inside,
 };
 use std::{cmp::Reverse, ptr::NonNull};
@@ -155,7 +154,7 @@ impl SkillOps for KeiExSkill {
         targets: &'b mut [&'c mut StateData<'a>],
     ) {
         let caster_coord = caster.coordinate;
-        for target in targets.into_iter() {
+        for target in targets.iter_mut() {
             if is_inside(target.coordinate, self.params.region, caster_coord) {
                 let already_applied =
                     (target.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
@@ -236,7 +235,7 @@ impl SkillOps for KeiBasicSkill {
     ) {
         assert_eq!(targets.len(), 1);
         let damage_key = caster.effects;
-        for target in targets.into_iter() {
+        for target in targets.iter_mut() {
             if target.character.is_boss() {
                 target.accumulated_damage.push(AccumulatedDamage {
                     ticks: 1,
@@ -336,7 +335,7 @@ impl SkillOps for KeiSubSkill {
             extras.acc_damage.min(cap)
         };
         let damage = Damage::new(acc_damage, acc_damage, acc_damage, acc_damage, 0, 1, 0);
-        for target in targets.into_iter() {
+        for target in targets.iter_mut() {
             target.accumulated_damage.push(AccumulatedDamage {
                 ticks: 1,
                 damage: Some(damage),
