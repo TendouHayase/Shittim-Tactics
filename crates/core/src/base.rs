@@ -12,11 +12,17 @@ pub struct BaseStats {
     #[serde(default)]
     #[builder(default = 0)]
     pub level: u8,
+
     pub hp: u64,
+
     pub atk: u32,
+
     pub def: u32,
+
     pub healing: u32,
+
     pub accuracy: u16,
+
     pub evasion: u16,
 
     #[builder(default = 10000)]
@@ -25,9 +31,11 @@ pub struct BaseStats {
     #[builder(default = 5000)]
     pub crit_res: i32,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub crit_dmg: u32,
 
+    // 만분율
     #[builder(default = 5000)]
     pub crit_dmg_res: u32,
 
@@ -41,18 +49,22 @@ pub struct BaseStats {
     #[builder(default = 800)]
     pub sighting_range: u16,
 
+    /// 백분율 단위
     #[builder(default = 100)]
-    pub cc_power: u8,
+    pub cc_power: u16,
 
+    /// 백분율 단위
     #[builder(default = 100)]
-    pub cc_res: u8,
+    pub cc_res: u16,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub recovery_boost: u32,
 
     #[builder(default = 700)]
     pub cost_recovery: u16,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub atk_speed: u32,
 
@@ -67,36 +79,53 @@ pub struct BaseStats {
 
     pub mag_count: u8,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub dmg_dealt: u32,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub dmg_resist: u16,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub ex_skill_dmg_dealt: u32,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub ex_skill_dmg_resist: u32,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub basics_proficiency: u32,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub healing_boost: u32,
 
     pub attack_type: AttackType,
     pub armor_type: ArmorType,
 
+    /// 만분율
     pub explosive_effectiveness: u32,
+
+    /// 만분율
     pub piercing_effectiveness: u32,
+
+    /// 만분율
     pub corrosive_effectiveness: u32,
+
+    /// 만분율
     pub mystic_effectiveness: u32,
+
+    /// 만분율
     pub sonic_effectiveness: u32,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub buff_retention: u32,
 
+    /// 만분율
     #[builder(default = 10000)]
     pub debuff_retention: u32,
 }

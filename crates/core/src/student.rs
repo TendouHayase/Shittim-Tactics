@@ -27,8 +27,7 @@ pub struct StudentSpec {
     /// hat, gloves, shoes, bag, badge, hairpin, amulet, wristwatch, necklace, unique_item
     pub gear_tiers: [u8; 4],
 
-    /// Each element in the array represents the level of the equipment listed below.
-    /// hat, gloves, shoes, bag, badge, hairpin, amulet, wristwatch, necklace, unique_item
+    /// 0번, 1번, 2j번 인덱스는 일반 장비, 3번은 애장품, 없으면 0
     pub gear_levels: [u8; 4],
 
     /// Each element in this array represents the following.

@@ -30,7 +30,7 @@ pub enum StatKind {
     DmgResist,
     ExSkillDmgDealt,
     ExSkillDmgResist,
-    BasicProficiency,
+    BasicsProficiency,
     HealingBoost,
     ExplosiveEffectiveness,
     PiercingEffectiveness,
