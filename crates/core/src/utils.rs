@@ -16,7 +16,7 @@ pub const MAX_STUDENT_COUNT: usize = 10;
 /// `f64`의 최단 왕복 표현(`{}` 포맷)에서 자릿수를 다시 읽어냄. `26.8`처럼 소수 몇 자리짜리
 /// 게임 데이터는 이 왕복으로 정확히 복원되지만, 유효숫자 17자리를 넘는 값을 적으면 복원되지
 /// 않음.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Ratio {
     num: i64,
     exp: u8,
@@ -93,6 +93,18 @@ impl<'de> Deserialize<'de> for Ratio {
             .map_err(|_| serde::de::Error::custom(format!("ratio out of range: {text}")))?;
 
         Ok(Self::new(num, exp as u8))
+    }
+}
+
+impl PartialOrd for Ratio {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Ratio {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.num as i128 * other.den() as i128).cmp(&(other.num() as i128 * self.den() as i128))
     }
 }
 
