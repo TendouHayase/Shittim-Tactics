@@ -1,9 +1,13 @@
 use std::collections::HashSet;
 
 use error::Error;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
-use crate::{stat::StatKind, types::StatValueKind, utils::Ratio};
+use crate::{
+    stat::{Stat, StatKind, StatValueKind},
+    utils::{Ratio, lerp},
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -38,6 +42,32 @@ impl GearTable {
         gear_table.validate()?;
 
         Ok(gear_table)
+    }
+
+    pub fn stats(&self, kind: GearKind, tier: usize, lvl: usize) -> Option<Vec<Stat>> {
+        if tier == 0 || tier > GearTable::MAX_TIER {
+            return None;
+        }
+        let lvl_len = self.max_level_with_tier[tier - 1] as usize;
+
+        if lvl == 0 || lvl > lvl_len || lvl_len <= 1 {
+            return None;
+        }
+
+        let mut result = vec![];
+        for s in self.gear_stats(kind) {
+            let stat_min = s.curve[tier - 1][0];
+            let stat_max = s.curve[tier - 1][1];
+
+            let v = lerp(stat_min, stat_max, lvl, lvl_len)?; // 위에서 검사해서 항상 Some
+
+            result.push(Stat {
+                stat: s.stat,
+                kind: s.kind,
+                value: OrderedFloat(v),
+            });
+        }
+        Some(result)
     }
 
     fn validate(&self) -> Result<(), Error> {
@@ -295,5 +325,73 @@ mod tests {
         // 2.5 < 4. exp가 큰 쪽이 값도 크다고 보던 옛 `Ratio::cmp`라면 여기서 뒤집힘.
         let shoes_atk = &table.gear_stats(GearKind::Shoes)[0];
         assert!(shoes_atk.curve[0][0] < shoes_atk.curve[0][1]);
+    }
+
+    /// hat/atk 1티어는 5→8에 만렙 10이라 `3(lvl-1)/9`가 lvl 1·4·7·10에서 정수로 떨어짐.
+    /// f64 오차가 끼지 않는 표본이라 허용 오차 없이 비교할 수 있음.
+    #[test]
+    fn stats_interpolate_between_curve_ends() {
+        let table = table();
+
+        let at = |lvl| table.stats(GearKind::Hat, 1, lvl).unwrap()[0].value.0;
+
+        assert_eq!(at(1), 5.0);
+        assert_eq!(at(4), 6.0);
+        assert_eq!(at(7), 7.0);
+        assert_eq!(at(10), 8.0);
+    }
+
+    /// 커브가 아니라 `max_level_with_tier`가 티어마다 다른 분모를 준다는 것. 4티어는 만렙
+    /// 40이라 분모가 39이고, 양 끝만 정수로 떨어짐.
+    #[test]
+    fn stats_use_the_max_level_of_that_tier() {
+        let table = table();
+
+        let hat_atk_t4 = |lvl| table.stats(GearKind::Hat, 4, lvl).unwrap()[0].value.0;
+        assert_eq!(hat_atk_t4(1), 20.0);
+        assert_eq!(hat_atk_t4(40), 25.0);
+
+        // 4티어에 41레벨은 없음. 5티어의 만렙이 45라고 해서 넘어가지 않아야 함.
+        assert!(table.stats(GearKind::Hat, 4, 41).is_none());
+    }
+
+    #[test]
+    fn stats_carry_every_row_of_the_slot() {
+        let table = table();
+        let badge = table.stats(GearKind::Badge, 10, 70).unwrap();
+
+        assert_eq!(badge.len(), 4);
+        assert_eq!(badge[0].stat, StatKind::Hp);
+        assert_eq!(badge[0].kind, StatValueKind::Amount);
+        assert_eq!(badge[0].value.0, 16000.0);
+
+        // 같은 슬롯에 hp가 amount와 scale로 두 번 나옴. 둘이 섞이지 않는지.
+        assert_eq!(badge[2].stat, StatKind::Hp);
+        assert_eq!(badge[2].kind, StatValueKind::Scale);
+        assert_eq!(badge[2].value.0, 25.0);
+    }
+
+    /// 1~3티어가 [0, 0]인 행은 레벨을 올려도 0이어야 함. 패딩이 보간을 타고 값을 만들어내면
+    /// 없는 스탯이 생김.
+    #[test]
+    fn padded_rows_stay_zero() {
+        let table = table();
+        let necklace_atk = |lvl| table.stats(GearKind::Necklace, 1, lvl).unwrap()[2].value.0;
+
+        assert_eq!(necklace_atk(1), 0.0);
+        assert_eq!(necklace_atk(10), 0.0);
+    }
+
+    /// `tier == 0`은 `max_level_with_tier[tier - 1]`이 usize 언더플로라 가드보다 인덱싱이
+    /// 먼저 오면 None이 아니라 패닉이 됨.
+    #[test]
+    fn stats_reject_out_of_range() {
+        let table = table();
+
+        assert!(table.stats(GearKind::Hat, 0, 1).is_none());
+        let over_tier = GearTable::MAX_TIER + 1;
+        assert!(table.stats(GearKind::Hat, over_tier, 1).is_none());
+        assert!(table.stats(GearKind::Hat, 1, 0).is_none());
+        assert!(table.stats(GearKind::Hat, 1, 11).is_none());
     }
 }

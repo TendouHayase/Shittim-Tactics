@@ -94,6 +94,12 @@ impl<'de> Deserialize<'de> for Ratio {
     }
 }
 
+impl From<Ratio> for f64 {
+    fn from(value: Ratio) -> Self {
+        value.to_f64()
+    }
+}
+
 impl PartialOrd for Ratio {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -173,8 +179,7 @@ impl Sub<Position> for Position {
     }
 }
 
-use std::ops::Add;
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 
 #[inline]
 pub fn euclidean_distance(lhs: Position, rhs: Position) -> f64 {
@@ -406,4 +411,17 @@ macro_rules! variant_accessor {
 
 pub const fn time_to_ticks(time_num: u16, time_den: u16) -> u16 {
     time_num * TPS / time_den
+}
+
+pub fn lerp<T>(start: T, end: T, lvl: usize, lvl_max: usize) -> Option<f64>
+where
+    f64: From<T>,
+{
+    if lvl == 0 || lvl_max <= 1 || lvl > lvl_max {
+        return None;
+    }
+    let start_f64: f64 = start.into();
+    let end_f64: f64 = end.into();
+
+    Some(start_f64 + (end_f64 - start_f64) * (lvl - 1) as f64 / (lvl_max - 1) as f64)
 }

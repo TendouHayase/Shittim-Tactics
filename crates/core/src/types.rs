@@ -47,13 +47,6 @@ pub enum ArmorType {
     Structure,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StatValueKind {
-    Amount,
-    Scale,
-}
-
 pub fn damage_scale(atk_type: &AttackType, armor_type: &ArmorType) -> u32 {
     match atk_type {
         AttackType::Normal => 100,

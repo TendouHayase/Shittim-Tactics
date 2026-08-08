@@ -1,3 +1,4 @@
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -39,4 +40,18 @@ pub enum StatKind {
     SonicEffectiveness,
     BuffRetention,
     DebuffRetention,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StatValueKind {
+    Amount,
+    Scale,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct Stat {
+    pub stat: StatKind,
+    pub kind: StatValueKind,
+    pub value: OrderedFloat<f64>,
 }

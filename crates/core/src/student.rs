@@ -10,10 +10,9 @@ use crate::{
     constants::MAX_SKILL_LEVEL,
     locale::LocalizedName,
     skill::Skill,
-    stat::StatKind,
+    stat::{StatKind, StatValueKind},
     table::gear::GearKind,
     terrains::{Terrain, TerrainCombatPower, TerrainCombatPowerState},
-    types::StatValueKind,
     utils::Ratio,
 };
 
