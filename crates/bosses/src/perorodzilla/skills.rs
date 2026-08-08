@@ -6,13 +6,14 @@ use crate::states::PerorodzillaState;
 use core::{
     boss::Boss,
     character::{Character, CharacterOps},
+    constants::MAX_STUDENT_COUNT,
     damage::Damage,
     difficulty::Difficulty,
     effect::EffectTiming,
     skill::{EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
     stat::StatKind,
     state::{AccumulatedDamage, State, StateData, Stateful},
-    utils::{MAX_STUDENT_COUNT, is_inside},
+    utils::is_inside,
 };
 
 use std::ptr::NonNull;
@@ -26,9 +27,10 @@ use params::Params;
 ///
 /// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
 mod params {
+    use core::constants::MAX_STUDENT_COUNT;
     use core::difficulty::Difficulty;
     use core::skill::Region;
-    use core::utils::{MAX_STUDENT_COUNT, time_to_ticks};
+    use core::utils::time_to_ticks;
 
     /// 계수는 전부 백분율이라 분모가 고정.
     pub const PERCENT_DEN: u16 = 100;

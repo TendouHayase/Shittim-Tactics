@@ -1,9 +1,7 @@
+use crate::constants::TPS;
 use crate::skill::Region;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-pub const TPS: u16 = 30;
-pub const MAX_STUDENT_COUNT: usize = 10;
 
 /// json에 소수로 적힌 값을 반올림 없이 담는 유리수. 분모는 항상 `10^exp`.
 ///

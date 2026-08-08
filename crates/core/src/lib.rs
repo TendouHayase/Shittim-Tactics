@@ -11,6 +11,7 @@ pub mod agent;
 pub mod base;
 pub mod boss;
 pub mod character;
+pub mod constants;
 pub mod damage;
 pub mod difficulty;
 pub mod effect;

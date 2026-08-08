@@ -3,18 +3,17 @@
 use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
 use crate::{
-    boss::Boss,
-    character::{Character, CharacterOps},
-    damage::Damage,
-    difficulty::Difficulty,
+    boss::Boss, character::{Character, CharacterOps},
+    constants::MAX_STUDENT_COUNT, damage::Damage, difficulty::Difficulty,
     effect::EffectTiming,
-    skill::{EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
-    stat::StatKind,
-    state::{AccumulatedDamage, State, StateData, Stateful},
-    utils::{MAX_STUDENT_COUNT, is_inside},
+    skill::{
+        EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType,
+    },
+    stat::StatKind, state::{AccumulatedDamage, State, StateData, Stateful},
+    utils::is_inside,
 };
-use params::Params;
 use std::ptr::NonNull;
+use params::Params;
 /// json에 없는 패턴 수치. 아직 데이터가 없는 항목은 `None`/`0`이고, 그 값을 쓰는 효과는
 /// 조용히 빠진다.
 ///
@@ -22,9 +21,10 @@ use std::ptr::NonNull;
 ///
 /// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
 mod params {
+    use crate::constants::MAX_STUDENT_COUNT;
     use crate::difficulty::Difficulty;
     use crate::skill::Region;
-    use crate::utils::{MAX_STUDENT_COUNT, time_to_ticks};
+    use crate::utils::time_to_ticks;
     /// 계수는 전부 백분율이라 분모가 고정.
     pub const PERCENT_DEN: u16 = 100;
     /// `0`은 미측정.
@@ -94,8 +94,8 @@ mod params {
                 mystic_up_percent: 0,
             };
             if matches!(
-                difficulty,
-                Difficulty::Insane | Difficulty::Torment | Difficulty::Lunatic
+                difficulty, Difficulty::Insane | Difficulty::Torment |
+                Difficulty::Lunatic
             ) {
                 params.blast_percent = 250;
                 params.shiny_minion_count = 1;
@@ -157,24 +157,33 @@ fn append_damage_over_time(
         target
             .accumulated_damage_cache
             .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
-        target.accumulated_damage.push(AccumulatedDamage {
-            ticks,
-            damage: target.damage_map.get(&target.effects).copied(),
-        });
+        target
+            .accumulated_damage
+            .push(AccumulatedDamage {
+                ticks,
+                damage: target.damage_map.get(&target.effects).copied(),
+            });
         ticks += interval;
     }
 }
-fn append_damage(caster: &StateData<'_>, target: &mut StateData<'_>, percent: u16, ticks: u16) {
+fn append_damage(
+    caster: &StateData<'_>,
+    target: &mut StateData<'_>,
+    percent: u16,
+    ticks: u16,
+) {
     let Some(damage) = caster.damage_with_effects() else {
         return;
     };
     target
         .accumulated_damage_cache
         .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
-    target.accumulated_damage.push(AccumulatedDamage {
-        ticks,
-        damage: target.damage_map.get(&target.effects).copied(),
-    });
+    target
+        .accumulated_damage
+        .push(AccumulatedDamage {
+            ticks,
+            damage: target.damage_map.get(&target.effects).copied(),
+        });
 }
 fn summon_minion_wave(boss: &mut StateData<'_>, params: Params) {
     let record_start = boss.accumulated_damage.len();
@@ -231,10 +240,12 @@ fn apply_shiny_minion_blast(
         }
         for _ in 0..shiny_count {
             student.accumulated_damage_cache.append(&blast);
-            student.accumulated_damage.push(AccumulatedDamage {
-                ticks,
-                damage: Some(blast),
-            });
+            student
+                .accumulated_damage
+                .push(AccumulatedDamage {
+                    ticks,
+                    damage: Some(blast),
+                });
         }
         student_share += unit * shiny_count;
     }
@@ -245,10 +256,11 @@ fn apply_shiny_minion_blast(
     if total > 0 {
         let absorbed = Damage::new(total, total, total, total, 0, 1, 0);
         boss.accumulated_damage_cache.append(&absorbed);
-        boss.accumulated_damage.push(AccumulatedDamage {
-            ticks,
-            damage: Some(absorbed),
-        });
+        boss.accumulated_damage
+            .push(AccumulatedDamage {
+                ticks,
+                damage: Some(absorbed),
+            });
     }
     minion_share
 }
@@ -261,8 +273,7 @@ fn absorb_minion_wave(
     let dealt = damage_since_wave_start(boss);
     boss.extra_as_mut::<PerorodzillaState>().minion_damage = dealt;
     let mut knocked = knockdown_count(boss);
-    if knocked > 0
-        && params.shiny_minion_count > 0
+    if knocked > 0 && params.shiny_minion_count > 0
         && let Some(region) = params.shiny_blast_region
     {
         boss.extra_as_mut::<PerorodzillaState>().knocked_down = knocked;

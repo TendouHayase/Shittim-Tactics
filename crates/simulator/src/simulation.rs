@@ -2,12 +2,13 @@ use core::{
     actions::ActionContext::{self},
     boss::Boss,
     character::{Character, CharacterOps},
+    constants::TPS,
     damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget::Land, SkillOps},
     state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
     student::Student,
-    utils::{TPS, is_inside},
+    utils::is_inside,
 };
 use std::{
     cmp::Reverse,
