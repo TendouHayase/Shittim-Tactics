@@ -5,8 +5,15 @@ use typed_builder::TypedBuilder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    base::BaseStats, character::CharacterOps, locale::LocalizedName, skill::Skill,
-    terrains::TerrainCombatPower, types::GearSlot, utils::Ratio,
+    base::BaseStats,
+    character::CharacterOps,
+    locale::LocalizedName,
+    skill::Skill,
+    stat::StatKind,
+    table::gear::GearKind,
+    terrains::{Terrain, TerrainCombatPower},
+    types::StatValueKind,
+    utils::Ratio,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -23,16 +30,15 @@ pub struct StudentSpec {
     /// Affinity Level of the Separated Character
     pub alter_bond_levels: Vec<u8>,
 
-    /// Each element in the array represents the tier of the equipment listed below.
-    /// hat, gloves, shoes, bag, badge, hairpin, amulet, wristwatch, necklace, unique_item
-    pub gear_tiers: [u8; 4],
+    pub gear_tiers: [u8; 3],
 
-    /// 0번, 1번, 2j번 인덱스는 일반 장비, 3번은 애장품, 없으면 0
-    pub gear_levels: [u8; 4],
+    pub gear_levels: [u8; 3],
 
     /// Each element in this array represents the following.
     /// Max HP Talent level, ATK Talent Level, Healing Talent Level
     pub talent_levels: [u8; 3],
+
+    pub unique_item_level: Option<u8>,
 }
 
 /// `data/students/<학생>.json`의 최상위.
@@ -46,7 +52,7 @@ pub struct StudentFile {
     pub terrain_adaptation: TerrainCombatPower,
 
     /// 이 학생이 낄 수 있는 장비 3종. 수치는 여기 없고 장비 쪽 데이터에 있음.
-    pub gear_slots: [GearSlot; 3],
+    pub gear_slots: [GearKind; 3],
 
     /// 1레벨 스탯. `level`은 런타임 값이라 파일에 없고 0으로 들어옴.
     pub lvl1_stats: BaseStats,

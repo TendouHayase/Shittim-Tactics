@@ -47,21 +47,11 @@ pub enum ArmorType {
     Structure,
 }
 
-/// 장비 종류. 선언 순서가 [`crate::student::StudentSpec`]의 `gear_tiers`/`gear_levels` 색인과
-/// 같아서 `as usize`로 바로 찾을 수 있음. 순서를 바꾸면 그 배열이 통째로 어긋남.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum GearSlot {
-    Hat,
-    Gloves,
-    Shoes,
-    Bag,
-    Badge,
-    Hairpin,
-    Amulet,
-    Wristwatch,
-    Necklace,
-    UniqueItem,
+pub enum StatValueKind {
+    Amount,
+    Scale,
 }
 
 pub fn damage_scale(atk_type: &AttackType, armor_type: &ArmorType) -> u32 {

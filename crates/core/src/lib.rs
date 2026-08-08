@@ -20,6 +20,7 @@ pub mod skill;
 pub mod stat;
 pub mod state;
 pub mod student;
+pub mod table;
 pub mod terrains;
 pub mod types;
 pub mod utils;
