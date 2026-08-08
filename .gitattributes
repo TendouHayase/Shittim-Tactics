@@ -1,0 +1,5 @@
+# xtask 생성물. `students/src/skills/**`와 `bosses/src/**`가 원본이고 여기는 복제본임.
+# 손으로 고치면 다음 `cargo xtask`에서 통째로 덮여 사라짐.
+crates/core/src/skills.rs   linguist-generated=true -diff eol=lf
+crates/core/src/skills/**   linguist-generated=true -diff eol=lf
+crates/core/src/states.rs   linguist-generated=true -diff eol=lf
