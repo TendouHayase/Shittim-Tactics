@@ -7,11 +7,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     base::BaseStats,
     character::CharacterOps,
+    constants::MAX_SKILL_LEVEL,
     locale::LocalizedName,
     skill::Skill,
     stat::StatKind,
     table::gear::GearKind,
-    terrains::{Terrain, TerrainCombatPower},
+    terrains::{Terrain, TerrainCombatPower, TerrainCombatPowerState},
     types::StatValueKind,
     utils::Ratio,
 };
@@ -85,27 +86,45 @@ pub struct LevelStats {
     pub healing: u32,
 }
 
-/// 전용무기. 배열은 전부 1성~4성이라 색인이 `성급 - 1`임. 0성(미장착)은 배열에 없음.
+/// 고유무기/전용무기
 #[derive(Debug, Clone, Deserialize)]
 pub struct UniqueWeapon {
-    pub hp: [u32; UniqueWeapon::MAX_STAR as usize],
-    pub atk: [u32; UniqueWeapon::MAX_STAR as usize],
+    /// [1렙시 수치, 1성 최대 레벨시 수치(30레벨), 2성 최대 레벨시 수치(40레벨)..]
+    pub hp: [u32; UniqueWeapon::MAX_STAR as usize + 1],
 
-    /// 2성에서 강화스킬 수치가 통째로 갈림. 구조는 `skills`의 `Enhanced`와 같고, 학생
-    /// 크레이트가 기존 수치 대신 이쪽을 읽음.
-    pub enhanced_skill_plus: serde_json::Value,
+    /// [1렙시 수치, 1성 최대 레벨시 수치(30레벨), 2성 최대 레벨시 수치(40레벨)..]
+    pub atk: [u32; UniqueWeapon::MAX_STAR as usize + 1],
 
-    /// 4성. 만분율이고 [`BaseStats`]의 특효에 더해짐. 어느 특효가 오르는지는 학생마다
-    /// 다르지 않고 항상 자기 공격 타입임.
-    pub effectiveness_bonus: u32,
+    /// 고유무기 2성에 추가되는 스탯
+    pub star2_option: EnhancedSkillPlus,
+
+    /// 고유무기 3성에 증가되는 지형 적성과 그 값
+    pub star3_option: (Terrain, TerrainCombatPowerState),
+
+    pub star4_option: UniqueWeapon4StarOption,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct EnhancedSkillPlus {
+    pub stat: StatKind,
+    pub kind: StatValueKind,
+    pub curve: [u32; MAX_SKILL_LEVEL],
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UniqueWeapon4StarOption {
+    /// 최대 코스트 0.5 증가
+    MaxCostUp,
+    ExplosiveEffectiveness,
+    PiercingEffectiveness,
+    CorrosiveEffectiveness,
+    MysticEffectiveness,
+    SonicEffectiveness,
 }
 
 impl UniqueWeapon {
     pub const MAX_STAR: u8 = 4;
-
-    /// 3성 효과는 수치가 아니라 연산이라 파일에 적을 것이 없음. 가장 높은 지형적성 하나가
-    /// 한 단계 오르는 것이 전부임.
-    pub const TERRAIN_PROMOTION_STAR: u8 = 3;
 }
 
 #[derive(Debug, Clone)]
@@ -194,7 +213,7 @@ mod tests {
         assert_eq!(file.lvl1_stats.attack_type, AttackType::Mystic);
         assert_eq!(file.lvl1_stats.level, 0);
         assert_eq!(file.stats_at_90.hp, 15479);
-        assert_eq!(file.gear_slots[0], GearSlot::Shoes);
+        assert_eq!(file.gear_slots[0], GearKind::Shoes);
     }
 
     /// 소수가 `f64`를 거쳐도 자릿수 그대로 복원되는지. 여기가 깨지면 스탯이 조용히 몇씩
