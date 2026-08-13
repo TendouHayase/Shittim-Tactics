@@ -5,7 +5,7 @@ use crate::{
     boss::Boss,
     character::{Character, CharacterOps},
     effect::EffectTiming,
-    skill::{EffectKind, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
+    skill::{EffectKind, SkillEffect, SkillEffectTarget, SkillMeta, SkillOps, SkillType},
     stat::StatKind,
     state::{AccumulatedDamage, StateData},
 };

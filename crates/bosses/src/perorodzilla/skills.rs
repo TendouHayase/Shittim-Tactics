@@ -10,7 +10,9 @@ use core::{
     damage::Damage,
     difficulty::Difficulty,
     effect::EffectTiming,
-    skill::{EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillOps, SkillType},
+    skill::{
+        EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillMeta, SkillOps, SkillType,
+    },
     stat::StatKind,
     state::{AccumulatedDamage, State, StateData, Stateful},
     utils::is_inside,

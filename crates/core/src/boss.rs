@@ -220,7 +220,7 @@ fn build_skills(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::skill::SkillOps;
+    use crate::skill::{SkillMeta, SkillOps};
 
     /// 워크스페이스 루트 기준이 아니라 크레이트 루트 기준으로 도는 것에 주의.
     const BINAH: &str = "../../data/bosses/binah.json";

@@ -1764,6 +1764,7 @@ name = "macros"
 version = "0.1.0"
 dependencies = [
  "heck",
+ "proc-macro2",
  "quote",
  "syn 3.0.2",
 ]
@@ -2964,6 +2965,7 @@ name = "students"
 version = "0.1.0"
 dependencies = [
  "core",
+ "macros",
 ]
 
 [[package]]

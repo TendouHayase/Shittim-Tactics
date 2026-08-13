@@ -65,6 +65,13 @@ pub struct StudentFile {
     pub skills: serde_json::Value,
 }
 
+impl StudentFile {
+    pub fn from_file(path: &str) -> Result<Self, error::Error> {
+        let text = std::fs::read_to_string(path)?;
+        Ok(serde_json::from_str(&text)?)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct StarCurves {
     pub hp: StarValue<u64>,
@@ -168,13 +175,6 @@ pub struct Student {
     _pin: PhantomPinned,
 }
 
-impl StudentFile {
-    pub fn from_file(path: &str) -> Result<Self, error::Error> {
-        let text = std::fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&text)?)
-    }
-}
-
 impl Student {
     pub fn from_file() -> Result<Box<Self>, error::Error> {
         todo!()
@@ -208,6 +208,11 @@ impl Hash for Student {
 }
 
 impl Eq for Student {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StudentKind {
+    Kei,
+}
 
 #[cfg(test)]
 mod tests {

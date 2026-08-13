@@ -113,7 +113,45 @@ pub enum SkillType {
 }
 use macros::dispatch_method;
 
-pub trait SkillOps {
+/// 스킬 수치. `cost`/`duration`/`frames`가 없는 스킬이 많아 전부 기본 구현을 둠.
+///
+/// `#[skill]`은 수치 타입의 이름만 볼 뿐 그 타입에 어떤 필드가 있는지 알 수 없어서, 세 값이
+/// 있는지 없는지의 판단을 여기 기본 구현으로 넘김.
+pub trait SkillParams {
+    fn cost(&self) -> u8 {
+        0
+    }
+    fn duration(&self) -> u16 {
+        0
+    }
+    fn frames(&self) -> u16 {
+        0
+    }
+}
+
+/// 수치가 없는 스킬용.
+impl SkillParams for () {}
+
+/// 이름과 수치를 밖에서 받아 스킬을 만드는 방법.
+///
+/// 조립 코드가 수치 타입의 이름을 몰라도 되도록 연관 타입으로 둠. 소유자를 `Character`로 받아
+/// 학생과 보스가 같은 트레이트를 쓰지만, 그래서 변형이 어긋나면 런타임 패닉임.
+pub trait FromParams: Sized {
+    type Params: SkillParams;
+
+    fn new(
+        name: &str,
+        owner: Character<'_>,
+        skill_mask_offset: usize,
+        params: Self::Params,
+    ) -> Self;
+}
+
+/// 스킬의 기계적인 절반. 전부 필드나 [`SkillParams`]에서 그대로 유도되므로 `#[skill]`이 생성함.
+///
+/// [`SkillOps`]와 나뉘어 있는 이유는 트레이트 impl을 여러 블록으로 쪼갤 수 없기 때문임. 한
+/// 트레이트에 아홉 개를 다 두면 매크로가 생성한 impl에 사람이 쓴 메서드를 넣을 자리가 없음.
+pub trait SkillMeta {
     fn name(&self) -> &str;
     fn owner(&self) -> Character<'_>;
     fn cost(&self) -> u8;
@@ -121,6 +159,10 @@ pub trait SkillOps {
     fn frames(&self) -> u16;
     fn skill_mask_offset(&self) -> usize;
     fn skill_type(&self) -> SkillType;
+}
+
+/// Half of skill in game logic. not auto generated.
+pub trait SkillOps: SkillMeta {
     fn skill_effects(&self) -> Vec<SkillEffect>;
     fn apply<'a: 'b, 'b, 'c: 'b>(
         &self,
@@ -136,7 +178,7 @@ macro_rules! define_skill {
             $($skill_name($skill_name),)*
         }
 
-        impl SkillOps for Skill {
+        impl SkillMeta for Skill {
             dispatch_method!(Skill, fn name(&self) -> &str, $($skill_name),*);
             dispatch_method!(Skill, fn owner(&self) -> Character<'_>, $($skill_name),*);
             dispatch_method!(Skill, fn cost(&self) -> u8, $($skill_name),*);
@@ -144,6 +186,9 @@ macro_rules! define_skill {
             dispatch_method!(Skill, fn frames(&self) -> u16, $($skill_name),*);
             dispatch_method!(Skill, fn skill_mask_offset(&self) -> usize, $($skill_name),*);
             dispatch_method!(Skill, fn skill_type(&self) -> SkillType, $($skill_name),*);
+        }
+
+        impl SkillOps for Skill {
             dispatch_method!(Skill, fn skill_effects(&self) -> Vec<SkillEffect>, $($skill_name),*);
             dispatch_method!(Skill, fn apply<'a: 'b, 'b, 'c: 'b>(&self, caster: &'c mut StateData<'a>, targets: &'b mut [&'c mut StateData<'a>]),  $($skill_name),*);
         }

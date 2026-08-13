@@ -4,10 +4,10 @@
 /// create_boss_skill!(name: ident, cost: u8, duration: u16, frames: u16, skill_type: SkillType, skill_id: u8, { 나머지 SkillOps 메서드 })
 /// create_boss_skill!(.., skill_id: u8, params: <Params 타입>, { 나머지 SkillOps 메서드 })
 ///
-/// 마지막 블록에는 이 매크로가 만들어주지 않는 `SkillOps` 메서드(`skill_effects`, `apply`)를
-/// 넣음. 트레이트 impl은 여러 블록으로 쪼갤 수 없어서 호출부가 따로 `impl SkillOps for`를 열 수
-/// 없기 때문에, 나머지 메서드도 이 매크로가 생성하는 impl 안으로 들어와야 함. `new`처럼
-/// `SkillOps`에 없는 항목은 별도 inherent impl로 나감.
+/// 마지막 블록에는 `SkillOps` 메서드(`skill_effects`, `apply`)를 넣음. 트레이트 impl은 여러
+/// 블록으로 쪼갤 수 없어서 호출부가 따로 `impl SkillOps for`를 열 수 없기 때문임. 매크로가
+/// 만드는 것은 `SkillMeta` 쪽 일곱 개고, `new`처럼 어느 트레이트에도 없는 항목은 별도 inherent
+/// impl로 나감.
 ///
 /// 첫 번째 형태가 목표. 이름과 수치를 전부 밖에서 받으므로 스킬이 난이도도 json도 모름.
 /// `$params`에 `cost: u8`, `duration: u16`, `frames: u16`이 있어야 함. 세 번째 형태는 아직
@@ -20,8 +20,8 @@
 /// 리터럴 토큰이 어긋나는 것은 그냥 다음 규칙으로 넘어감.
 ///
 /// 이 파일은 `core::`를 `crate::`로 치환하지 않고 통째로 복제되므로 매크로 안에서 경로를
-/// 완전 수식할 수 없음. `Boss` `Character` `CharacterOps` `SkillOps` `SkillType` `NonNull`은
-/// 전부 호출부에 `use`되어 있어야 함.
+/// 완전 수식할 수 없음. `Boss` `Character` `CharacterOps` `SkillMeta` `SkillOps` `SkillType`
+/// `NonNull`은 전부 호출부에 `use`되어 있어야 함.
 #[macro_export]
 macro_rules! create_boss_skill {
     (
@@ -57,7 +57,7 @@ macro_rules! create_boss_skill {
             }
         }
 
-        impl SkillOps for $name {
+        impl SkillMeta for $name {
             fn name(&self) -> &str {
                 &self.name
             }
@@ -85,7 +85,9 @@ macro_rules! create_boss_skill {
             fn skill_type(&self) -> SkillType {
                 $skill_type
             }
+        }
 
+        impl SkillOps for $name {
             $($rest)*
         }
     };
@@ -156,7 +158,7 @@ macro_rules! create_boss_skill {
     };
 
     (@ops $name:ident, $cost:literal, $duration:expr, $frames:expr, $skill_type:path, { $($rest:tt)* }) => {
-        impl SkillOps for $name {
+        impl SkillMeta for $name {
             fn name(&self) -> &str {
                 &self.name
             }
@@ -184,7 +186,9 @@ macro_rules! create_boss_skill {
             fn skill_type(&self) -> SkillType {
                 $skill_type
             }
+        }
 
+        impl SkillOps for $name {
             $($rest)*
         }
     };

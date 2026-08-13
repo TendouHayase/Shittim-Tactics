@@ -2,7 +2,7 @@ use crate::create_boss_skill;
 use core::{
     boss::Boss,
     character::{Character, CharacterOps},
-    skill::{Skill, SkillEffect, SkillOps, SkillType},
+    skill::{Skill, SkillEffect, SkillMeta, SkillOps, SkillType},
     state::{State, StateData},
     utils::time_to_ticks,
 };

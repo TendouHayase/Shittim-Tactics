@@ -10,3 +10,4 @@ proc-macro = true
 syn = {version="3.0.2", features = ["full"]}
 quote ="1.0.47"
 heck = "0.5.0"
+proc-macro2 = "1.0.107"

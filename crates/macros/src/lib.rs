@@ -2,10 +2,11 @@ extern crate proc_macro;
 
 use heck::ToSnakeCase;
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    Data, DeriveInput, Fields, Ident, ItemTrait, Signature, Token, TraitItem, parse::Parse,
-    parse::ParseStream, parse_macro_input,
+    Data, DeriveInput, Fields, Ident, ItemStruct, ItemTrait, LitInt, Signature, Token, TraitItem,
+    Type, parse::Parse, parse::ParseStream, parse_macro_input, parse_quote,
 };
 
 #[proc_macro_attribute]
@@ -182,6 +183,271 @@ pub fn enum_accessors_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// Generates the mechanical half of a skill: the five fields every skill carries, the
+/// [`SkillMeta`] implementation, and [`FromParams`].
+///
+/// The struct must be a unit struct, because every field is generated. Per-skill data belongs
+/// in the `params` type.
+///
+/// ```ignore
+/// #[skill(owner = Student, ty = Ex, index = 0, params = params::ExParams)]
+/// #[derive(Debug)]
+/// pub struct ExSkill;
+///
+/// impl SkillOps for ExSkill {
+///     fn skill_effects(&self) -> Vec<SkillEffect> { /* ... */ }
+///     fn apply<'a: 'b, 'b, 'c: 'b>(/* ... */) { /* ... */ }
+/// }
+/// ```
+///
+/// | argument | required | meaning                                                    |
+/// | -------- | -------- | ---------------------------------------------------------- |
+/// | `owner`  | yes      | `Student` or `Boss`; picks the `Character` variant          |
+/// | `ty`     | yes      | a `SkillType` variant                                       |
+/// | `index`  | yes      | second half of `id`; Ex 0, Basic 1, Sub 2                   |
+/// | `params` | no       | numeric parameters; defaults to `()` for skills without any |
+///
+/// `cost`, `duration` and `frames` are always delegated to [`SkillParams`]. A proc macro only
+/// sees the tokens handed to it, so it cannot tell whether the params type has a `cost` field;
+/// the trait's default implementations decide that instead.
+///
+/// Paths are not qualified, because these source files are copied verbatim into `core` by
+/// xtask and must compile in both crates. `Character`, `CharacterOps`, `SkillMeta`,
+/// `SkillParams`, `SkillType`, `FromParams` and the owner type must all be in scope at the
+/// call site.
+#[proc_macro_attribute]
+pub fn skill(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as ItemStruct);
+
+    let args = match syn::parse::<SkillArgs>(attr) {
+        Ok(args) => args,
+        Err(err) => return skill_fallback(&input, None, err),
+    };
+
+    match expand_skill(&args, &input) {
+        Ok(expanded) => expanded.into(),
+        Err(err) => skill_fallback(&input, Some(&args), err),
+    }
+}
+
+/// Emits the struct alongside the error so that the failure stays a single diagnostic.
+///
+/// Dropping the struct would make every later reference to it a second "cannot find type" error
+/// and bury the real one.
+fn skill_fallback(input: &ItemStruct, args: Option<&SkillArgs>, err: syn::Error) -> TokenStream {
+    let attrs = &input.attrs;
+    let vis = &input.vis;
+    let name = &input.ident;
+    let params = skill_params_type(args.and_then(|a| a.params.as_ref()));
+    let owner = args.map(|a| {
+        let owner = &a.owner;
+        quote! { owner: ::std::ptr::NonNull<#owner>, }
+    });
+
+    let err = compile_errors(err);
+
+    quote! {
+        #err
+
+        #(#attrs)*
+        #vis struct #name {
+            #owner
+            skill_mask_offset: usize,
+            name: String,
+            id: (u32, u8),
+            params: #params,
+        }
+    }
+    .into()
+}
+
+/// Turns a `syn::Error` into `compile_error!` invocations that keep their spans.
+///
+/// `syn::Error::into_compile_error` cannot be used here: it emits `::core::compile_error!`, and
+/// this workspace has a crate of its own named `core` that shadows the standard one, so that
+/// path fails to resolve.
+fn compile_errors(err: syn::Error) -> TokenStream2 {
+    err.into_iter()
+        .map(|err| {
+            let message = err.to_string();
+            quote_spanned! { err.span() => ::std::compile_error!(#message); }
+        })
+        .collect()
+}
+
+struct SkillArgs {
+    /// `Student` or `Boss`. Doubles as the `Character` variant and the `NonNull` pointee.
+    owner: Ident,
+    ty: Ident,
+    index: LitInt,
+    params: Option<Type>,
+}
+
+impl Parse for SkillArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        // Held for the "missing argument" errors, which have no token of their own to point at.
+        let span = input.span();
+
+        let mut owner = None;
+        let mut ty = None;
+        let mut index = None;
+        let mut params = None;
+
+        while !input.is_empty() {
+            let key: Ident = input.parse()?;
+            input.parse::<Token![=]>()?;
+
+            match key.to_string().as_str() {
+                "owner" => {
+                    let value: Ident = input.parse()?;
+                    if value != "Student" && value != "Boss" {
+                        return Err(syn::Error::new_spanned(
+                            &value,
+                            "owner must be `Student` or `Boss`",
+                        ));
+                    }
+                    set_once(&mut owner, value, &key)?;
+                }
+                "ty" => set_once(&mut ty, input.parse::<Ident>()?, &key)?,
+                "index" => set_once(&mut index, input.parse::<LitInt>()?, &key)?,
+                "params" => set_once(&mut params, input.parse::<Type>()?, &key)?,
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &key,
+                        "unknown argument; expected `owner`, `ty`, `index` or `params`",
+                    ));
+                }
+            }
+
+            if input.is_empty() {
+                break;
+            }
+            input.parse::<Token![,]>()?;
+        }
+
+        Ok(SkillArgs {
+            owner: owner
+                .ok_or_else(|| syn::Error::new(span, "missing `owner = Student | Boss`"))?,
+            ty: ty.ok_or_else(|| syn::Error::new(span, "missing `ty = <SkillType variant>`"))?,
+            index: index.ok_or_else(|| syn::Error::new(span, "missing `index = <u8>`"))?,
+            params,
+        })
+    }
+}
+
+fn set_once<T>(slot: &mut Option<T>, value: T, key: &Ident) -> syn::Result<()> {
+    if slot.is_some() {
+        return Err(syn::Error::new_spanned(
+            key,
+            format!("`{key}` is given more than once"),
+        ));
+    }
+    *slot = Some(value);
+    Ok(())
+}
+
+/// Skills without numeric parameters still go through [`SkillParams`], via its `()` impl.
+fn skill_params_type(params: Option<&Type>) -> Type {
+    params.cloned().unwrap_or_else(|| parse_quote!(()))
+}
+
+fn expand_skill(args: &SkillArgs, input: &ItemStruct) -> syn::Result<TokenStream2> {
+    if !matches!(input.fields, Fields::Unit) {
+        return Err(syn::Error::new_spanned(
+            &input.fields,
+            "#[skill] generates every field, so the struct must be a unit struct; \
+             put per-skill data in the `params` type",
+        ));
+    }
+
+    if !input.generics.params.is_empty() {
+        return Err(syn::Error::new_spanned(
+            &input.generics,
+            "#[skill] does not support generic parameters",
+        ));
+    }
+
+    let attrs = &input.attrs;
+    let vis = &input.vis;
+    let name = &input.ident;
+
+    let SkillArgs {
+        owner, ty, index, ..
+    } = args;
+    let params = skill_params_type(args.params.as_ref());
+
+    // Reached only when the assembly code hands a skill the wrong kind of owner, which is a bug
+    // in the generator rather than in the data.
+    let wrong_owner = format!("`{name}` was built with an owner that is not a {owner}");
+
+    Ok(quote! {
+        #(#attrs)*
+        #vis struct #name {
+            owner: ::std::ptr::NonNull<#owner>,
+            skill_mask_offset: usize,
+            name: String,
+            id: (u32, u8),
+            params: #params,
+        }
+
+        impl SkillMeta for #name {
+            fn name(&self) -> &str {
+                &self.name
+            }
+
+            fn owner(&self) -> Character<'_> {
+                // SAFETY: an owner is allocated behind a `Box` before any of its skills exist
+                // and is pinned afterwards, so the address recorded at construction stays valid
+                // for as long as the skill does.
+                unsafe { Character::#owner(self.owner.as_ref()) }
+            }
+
+            fn cost(&self) -> u8 {
+                SkillParams::cost(&self.params)
+            }
+
+            fn duration(&self) -> u16 {
+                SkillParams::duration(&self.params)
+            }
+
+            fn frames(&self) -> u16 {
+                SkillParams::frames(&self.params)
+            }
+
+            fn skill_mask_offset(&self) -> usize {
+                self.skill_mask_offset
+            }
+
+            fn skill_type(&self) -> SkillType {
+                SkillType::#ty
+            }
+        }
+
+        impl FromParams for #name {
+            type Params = #params;
+
+            fn new(
+                name: &str,
+                owner: Character<'_>,
+                skill_mask_offset: usize,
+                params: Self::Params,
+            ) -> Self {
+                let Character::#owner(owner) = owner else {
+                    panic!(#wrong_owner)
+                };
+
+                Self {
+                    owner: ::std::ptr::NonNull::from_ref(owner),
+                    skill_mask_offset,
+                    name: name.to_string(),
+                    id: (CharacterOps::id(owner), #index),
+                    params,
+                }
+            }
+        }
+    })
+}
+
 struct DispatchInput {
     enum_name: Ident,
     sig: Signature,
@@ -230,9 +496,10 @@ pub fn dispatch_method(input: TokenStream) -> TokenStream {
         .skip(1)
         .filter_map(|fn_arg| {
             if let syn::FnArg::Typed(pat_type) = fn_arg
-                && let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
-                    return Some(&pat_ident.ident);
-                }
+                && let syn::Pat::Ident(pat_ident) = &*pat_type.pat
+            {
+                return Some(&pat_ident.ident);
+            }
             None
         })
         .collect();

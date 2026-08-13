@@ -1,5 +1,6 @@
 use core::{
-    character::CharacterOps, damage::Damage, simulator::Simulator, skill::SkillOps, state::Stateful,
+    character::CharacterOps, damage::Damage, simulator::Simulator, skill::SkillMeta,
+    state::Stateful,
 };
 
 pub fn heuristics<'a>(sim: &impl Simulator, state: &impl Stateful<'a>) -> u64 {

@@ -6,7 +6,7 @@ use core::{
     actions::ActionContext,
     character::CharacterOps,
     simulator::Simulator,
-    skill::{Skill, SkillEffectTarget, SkillOps},
+    skill::{Skill, SkillEffectTarget, SkillMeta, SkillOps},
     state::Stateful,
     utils::Position,
     utils::{euclidean_distance, is_inside},

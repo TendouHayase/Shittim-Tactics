@@ -5,7 +5,7 @@ use core::{
     constants::TPS,
     damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
-    skill::{Skill, SkillEffectTarget::Land, SkillOps},
+    skill::{Skill, SkillEffectTarget::Land, SkillMeta, SkillOps},
     state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
     student::Student,
     utils::is_inside,
