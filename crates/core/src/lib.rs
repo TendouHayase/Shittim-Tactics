@@ -28,6 +28,9 @@ pub mod utils;
 
 pub use std::default;
 pub use std::marker;
+
+// 아래 세 모듈은 `cargo xtask`가 만듦. 저장소에 없으므로 클론 직후에는 파일이 없고, 그래서
+// 생성기를 안 돌리면 여기서 컴파일이 멈춤. 선언 자체는 xtask가 넣으므로 지워도 다시 생김.
 pub mod boss_macros;
 pub mod skills;
 pub mod states;

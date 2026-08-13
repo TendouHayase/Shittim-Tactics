@@ -1,48 +1,21 @@
-//! `cargo run -p xtask`
+//! Copies skill and state sources from the leaf crates into `core`.
 //!
-//! `core::skill::Skill`은 `define_skill!` 매크로로 생성되는 닫힌 enum이고,
-//! `core`의 여러 타입(`Student::skills`, `Character::skill_list`, `Simulator` 등)이
-//! 이 enum을 직접 참조하기 때문에 enum 정의는 반드시 `core` 크레이트 안에 있어야 한다.
+//! `Skill` is a closed enum that `core` itself refers to, so it has to live in `core`. The
+//! implementations live in `students` and `bosses`, which `core` cannot depend on without a
+//! cycle. This copies them in, and generates the `define_skill!` call from what it finds.
 //!
-//! 반면 실제 스킬 구현체는 학생별로 `students/src/skills/*.rs`에, 보스별로
-//! `bosses/src/<보스>/skills.rs`에 작성한다(leaf 크레이트). 그 스킬들이 쓰는 상태
-//! 구조체는 크레이트마다 파일 하나씩, `students/src/states.rs`와
-//! `bosses/src/states.rs`에 모아둔다.
-//! `core`는 `students`/`bosses`에 의존할 수 없으므로(순환 의존), 이 xtask가 이들을 읽어
-//! `core/src/skills/*.rs`, `core/src/states.rs`로 복제하고
-//! `core/src/skill.rs` 끝에 `define_skill!(...)` 호출을 생성해 넣는다.
+//! Sources are `students/src/**` and `bosses/src/**`. Outputs are `core/src/skills/**`,
+//! `core/src/states.rs`, `core/src/boss_macros.rs` and `core/src/skill_defs.rs`; all four are
+//! rewritten from scratch on every run, and none of them are in the repository.
 //!
-//! 보스 스킬도 같은 `Skill` enum에 들어가야 하므로 동일하게 복제한다. 다만 디렉터리
-//! 구조가 달라서(`bosses/src/<보스>/skills.rs`) 모듈 이름은 파일명이 아니라 보스
-//! 디렉터리 이름으로 잡는다: `bosses/src/binah/skills.rs` -> `core/src/skills/binah.rs`.
-//! 보스 스킬 파일이 쓰는 `create_boss_skill!`은 `bosses` 크레이트에 있고 `core`는
-//! `bosses`에 의존할 수 없으므로, `bosses/src/macros.rs`도 `core/src/boss_macros.rs`로
-//! 함께 복제한다(`#[macro_export]`라 복제 후 `crate::create_boss_skill`로 해석된다).
+//! Skill struct names get their module as a prefix, because files reuse generic names like
+//! `ExSkill` and they all land in one enum. State structs keep their names, because
+//! `use crate::states::KeiState;` has to resolve identically before and after the copy; a
+//! collision fails the run instead of silently merging.
 //!
-//! `students/src/**`, `bosses/src/**`가 소스이고 `core/src/skills/**`,
-//! `core/src/states.rs`, `core/src/boss_macros.rs`는 매번 재생성되는 산출물이다.
-//! 소스 쪽은 건드리지 않는다.
-//!
-//! `core/src/states.rs`에는 두 소스 파일의 내용을 이어붙인 뒤 `MAX_EXTRA_STATE_SIZE`
-//! 상수를 덧붙인다. 이 값은 모든 state 구조체를 담을 수 있는 `StateData::extra`의
-//! 최소 크기이므로 state 구조체 전체를 봐야 정해진다. xtask는 레이아웃을 모르니
-//! `size_of`를 직접 계산하지 않고, 컴파일러가 const 평가로 최댓값을 구하도록 코드를 뱉는다.
-//!
-//! 이 상수를 `states.rs`가 아닌 곳에 손으로 적어두면 안 된다. 이 파일들은 매번
-//! 통째로 덮어써지므로 손으로 넣은 정의는 다음 실행 때 사라진다.
-//! `students` 쪽에서 참조할 때는 `core::states::MAX_EXTRA_STATE_SIZE`로 쓴다
-//! (복제 시 `core::` -> `crate::`로 치환되어 양쪽 크레이트에서 모두 성립한다).
-//!
-//! skills와 states의 처리 방식 차이:
-//! - skills: 모든 학생/보스의 스킬 구조체가 하나의 `Skill` enum으로 합쳐지므로 이름이
-//!   충돌한다 (파일마다 `ExSkill`, `BasicSkill` 같은 범용 이름을 쓴다). 그래서 모듈명을
-//!   접두어로 붙인다: `kei.rs`의 `ExSkill` -> `KeiExSkill`,
-//!   `binah/skills.rs`의 `AtsilutsLight` -> `BinahAtsilutsLight`.
-//! - states: `students`와 `bosses` 양쪽이 하나의 `crate::states` 모듈로 합쳐지지만
-//!   이름은 바꾸지 않는다. `skills/kei.rs`의 `use crate::states::KeiState;`가 복제
-//!   전후 양쪽 크레이트에서 똑같이 성립해야 하기 때문이다. 대신 두 파일에 같은 이름의
-//!   struct가 있으면 조용히 합쳐지는 대신 실패시킨다 (`KeiState`, `GozState`처럼
-//!   소유자 이름을 접두어로 직접 붙여서 쓸 것).
+//! `MAX_EXTRA_STATE_SIZE` is appended to `states.rs` as a `const` block rather than a number,
+//! since xtask cannot know field layout. Writing it anywhere else is pointless: these files
+//! are overwritten wholesale.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -118,7 +91,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         &core_src.join("lib.rs"),
         &["states", "skills", "boss_macros"],
     )?;
-    rewrite_skill_rs(&core_src.join("skill.rs"), &skill_structs)?;
+    write_skill_defs(&core_src.join("skill_defs.rs"), &skill_structs)?;
 
     println!(
         "gen-skills done: {} skill file(s) / {} struct(s), {} state struct(s)",
@@ -139,20 +112,19 @@ fn workspace_root() -> Result<PathBuf, Box<dyn std::error::Error>> {
     Ok(root)
 }
 
-/// 최상위 struct 이름에 파일명 접두어를 붙일지 여부.
+/// Whether top-level struct names get the file name as a prefix.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Prefixing {
-    /// `kei.rs`의 `ExSkill` -> `KeiExSkill`
+    /// `ExSkill` in `kei.rs` becomes `KeiExSkill`.
     ByFileName,
-    /// 이름을 그대로 둔다.
     Off,
 }
 
-/// `students/src/<kind>/*.rs`를 전부 읽어 `core/src/<kind>/*.rs`로 복제한다.
+/// Copies every `students/src/<kind>/*.rs` into `core/src/<kind>/*.rs`.
 ///
-/// 반환값은 (모듈 이름 목록, (최상위 struct ident, 모듈명) 목록)이며 둘 다 정렬되어 있다.
-/// `fs::read_dir` 순서는 OS/파일시스템마다 다르므로, 정렬하지 않으면 실행할 때마다
-/// `define_skill!(...)`의 인자 순서가 바뀌어 불필요한 diff가 생긴다.
+/// Returns the module names and the (struct ident, module) pairs, both sorted. `fs::read_dir`
+/// order varies by filesystem, and an unsorted result would reshuffle `define_skill!`'s
+/// arguments on every run.
 fn process_tree(
     src_dir: &Path,
     out_dir: &Path,
@@ -188,11 +160,10 @@ fn process_tree(
     Ok((modules, structs))
 }
 
-/// `bosses/src/<보스>/skills.rs`를 전부 읽어 `core/src/skills/<보스>.rs`로 복제한다.
+/// Copies every `bosses/src/<boss>/skills.rs` into `core/src/skills/<boss>.rs`.
 ///
-/// 학생 쪽과 달리 파일이 보스별 디렉터리 안에 있으므로, 모듈 이름(과 struct 접두어)은
-/// 파일명(`skills`)이 아니라 디렉터리 이름(`binah`, `goz`)에서 가져온다.
-/// 반환값 형식과 정렬 규칙은 [`process_tree`]와 같다.
+/// The module name comes from the directory rather than the file name, which is always
+/// `skills`. Return value and sorting match [`process_tree`].
 fn process_boss_tree(
     bosses_src: &Path,
     out_dir: &Path,
@@ -228,13 +199,13 @@ fn process_boss_tree(
     Ok((modules, structs))
 }
 
-/// `students/src/states.rs`와 `bosses/src/states.rs`를 이어붙여 `core/src/states.rs`를 만든다.
+/// Concatenates both `states.rs` sources into `core/src/states.rs`.
 ///
-/// 스킬과 달리 파일별 모듈로 나누지 않고 하나의 `crate::states` 모듈로 합친다. 소스 쪽
-/// `use crate::states::KeiState;`가 복제 후에도 그대로 성립해야 하므로 이름을 바꾸거나
-/// 모듈로 감쌀 수 없기 때문이다. 대신 이름이 겹치면 한쪽이 조용히 사라지는 대신 실패한다.
+/// Unlike skills these are not split into per-file modules, because
+/// `use crate::states::KeiState;` in a source file has to resolve the same way after the copy.
+/// Duplicate names therefore fail the run instead of one quietly winning.
 ///
-/// 반환값은 정렬된 최상위 struct ident 목록이다.
+/// Returns the struct idents, sorted.
 fn process_states(
     sources: &[PathBuf],
     out_file: &Path,
@@ -275,10 +246,10 @@ fn process_states(
     Ok(idents)
 }
 
-/// `bosses/src/macros.rs`를 `core/src/boss_macros.rs`로 그대로 복제한다.
+/// Copies `bosses/src/macros.rs` to `core/src/boss_macros.rs` verbatim.
 ///
-/// AST 왕복을 시키지 않는다: `skill.rs`와 같은 이유로 prettyplease가 `macro_rules!`
-/// 본문을 토큰 단위로만 찍어내 사람이 맞춰둔 formatting이 망가진다.
+/// No AST round trip: prettyplease prints `macro_rules!` bodies token by token and would
+/// destroy their hand-tuned formatting.
 fn copy_boss_macros(src: &Path, out: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let content = fs::read_to_string(src)?;
     let header =
@@ -287,8 +258,8 @@ fn copy_boss_macros(src: &Path, out: &Path) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-/// 파일 하나를 파싱해 struct 이름을 (필요하면) 리네이밍하고 `core::` 경로를 `crate::`로
-/// 바꾼 뒤, (최상위 struct ident 목록, 생성된 소스)를 반환한다.
+/// Parses one file, renames its structs if asked, rewrites `core::` paths to `crate::`, and
+/// returns the struct idents along with the generated source.
 fn process_file(
     path: &Path,
     module_name: &str,
@@ -340,9 +311,10 @@ fn process_file(
     Ok((idents, quote! { #file }.to_string()))
 }
 
-/// `create_boss_skill!(Name, ...)` 호출이면 `Name`을 돌려준다.
+/// Returns `Name` if this is a `create_boss_skill!(Name, ...)` invocation.
 ///
-/// `crate::create_boss_skill!`처럼 경로로 부를 수도 있으므로 마지막 세그먼트로 판단한다.
+/// Matched on the last path segment, since it can also be called as
+/// `crate::create_boss_skill!`.
 fn boss_skill_macro_name(mac: &syn::Macro) -> Option<String> {
     let is_boss_skill = mac
         .path
@@ -359,7 +331,7 @@ fn boss_skill_macro_name(mac: &syn::Macro) -> Option<String> {
     }
 }
 
-/// struct 식별자를 리네이밍하고, `core::` 경로 선두를 `crate::`로 바꾼다.
+/// Renames struct identifiers and rewrites a leading `core::` path segment to `crate::`.
 struct RelocateVisitor {
     rename_map: BTreeMap<String, Ident>,
 }
@@ -389,11 +361,9 @@ impl VisitMut for RelocateVisitor {
         syn::visit_mut::visit_path_mut(self, path);
     }
 
-    // syn does not walk into a macro invocation's token stream (e.g. `vec![...]`),
-    // since it can't know the callee's grammar in general. Renames/path rewrites
-    // inside macro args (very common here via `vec![SkillEffect { .. }]`) would
-    // otherwise be silently skipped. Best-effort: try to reparse the body as a
-    // comma-separated expression list, visit that, and write it back.
+    // syn은 매크로 호출의 토큰 스트림 안으로 들어가지 않음(문법을 알 수 없으므로). 여기서는
+    // `vec![SkillEffect { .. }]` 안의 리네이밍과 경로 치환이 조용히 빠지게 되므로, 본문을
+    // 쉼표로 구분된 식 목록으로 다시 파싱해 훑고 되돌려씀
     fn visit_macro_mut(&mut self, mac: &mut syn::Macro) {
         self.visit_path_mut(&mut mac.path);
         if let Ok(mut exprs) = mac.parse_body_with(
@@ -416,11 +386,11 @@ impl VisitMut for RelocateVisitor {
 }
 
 impl RelocateVisitor {
-    /// 토큰 스트림을 재귀적으로 훑으며 ident를 치환한다.
+    /// Walks a token stream and substitutes identifiers.
     ///
-    /// 문법을 모르는 채로 훑으므로 `core`는 경로 선두인지 따지지 않고 전부 `crate`로
-    /// 바꾼다. 스킬 소스에서 `core`는 크레이트 이름으로만 쓰이므로 실제로 문제되지 않지만,
-    /// 매크로 인자로 `core`라는 이름의 변수나 필드를 넘기면 여기서 잘못 치환된다.
+    /// Without a grammar every `core` is rewritten, not just leading path segments. Skill
+    /// sources only use it as a crate name, but a variable or field named `core` passed to a
+    /// macro would be rewritten wrongly here.
     fn rewrite_tokens(&self, tokens: proc_macro2::TokenStream) -> proc_macro2::TokenStream {
         tokens
             .into_iter()
@@ -464,10 +434,10 @@ fn write_mod_aggregator(
     Ok(())
 }
 
-/// `MAX_EXTRA_STATE_SIZE` 정의를 만든다.
+/// Builds the `MAX_EXTRA_STATE_SIZE` definition.
 ///
-/// 크기 계산은 컴파일러에게 맡긴다. xtask는 필드 레이아웃과 정렬을 알 수 없으므로
-/// 여기서 숫자를 직접 박으면 틀린다. state 구조체가 하나도 없으면 0이 된다.
+/// The size is left to const evaluation. xtask knows neither field layout nor alignment, so a
+/// literal written here would be wrong. Yields 0 when there are no state structs.
 fn max_extra_state_size_const(state_structs: &[Ident]) -> String {
     let mut body = String::new();
     for ident in state_structs {
@@ -481,8 +451,7 @@ fn max_extra_state_size_const(state_structs: &[Ident]) -> String {
     format!(
         "/// 모든 state 구조체를 담을 수 있는 `StateData::extra`의 최소 크기.\n\
          ///\n\
-         /// xtask가 `students/src/states.rs`와 `bosses/src/states.rs`를 보고 생성한다.\n\
-         /// 손으로 고치지 말 것.\n\
+         /// Generated by xtask from both `states.rs` sources. Do not edit by hand.\n\
          pub const MAX_EXTRA_STATE_SIZE: usize = {{\n    \
          let mut max = 0usize;\n{body}    max\n}};\n"
     )
@@ -514,37 +483,29 @@ fn ensure_mods_declared(
     Ok(())
 }
 
-const GENERATED_MARKER: &str = "// === xtask gen-skills: generated below, do not edit by hand ===";
+const SKILL_DEFS_HEADER: &str = "// === xtask gen-skills: generated, do not edit by hand ===\n\
+                                 // `core/src/skill.rs`가 `define_skill!` 정의 뒤에서 \
+                                 `include!`한다.\n\n";
 
-/// `core/src/skill.rs`는 사람이 손으로 쓴 `macro_rules! define_skill { ... }` 정의와
-/// xtask가 생성하는 `use` + `define_skill!(...)` 호출부가 한 파일에 섞여 있다.
-/// 이 파일 전체를 syn -> prettyplease로 왕복시키면(다른 완전 생성 파일들과 달리)
-/// 사람이 formatting해둔 macro_rules! 본문까지 다시 출력되면서 스페이싱이 망가진다
-/// (prettyplease는 macro 본문을 토큰 단위로만 찍어내지 Rust-aware하게 정리하지 않음).
-/// 그래서 이 파일은 절대 AST로 왕복시키지 않고, 마커 주석 뒤쪽 텍스트만 잘라내고
-/// 새 텍스트를 이어붙이는 방식으로 처리한다 (원본 텍스트는 바이트 단위로 그대로 유지).
-fn rewrite_skill_rs(
+/// Writes the imports and the `define_skill!` call to `core/src/skill_defs.rs`.
+///
+/// Kept out of `skill.rs` so that a list which grows with every student does not sit in a
+/// hand-written file. `skill.rs` is now untouched by xtask.
+///
+/// No prettyplease: `define_skill!` is a macro invocation, and an AST round trip reprints its
+/// arguments as bare tokens on one line. Written as text and left to rustfmt.
+fn write_skill_defs(
     path: &Path,
     skill_structs: &[(Ident, String)],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(path)?;
-
-    let base = match content.find(GENERATED_MARKER) {
-        Some(idx) => content[..idx].trim_end(),
-        None => strip_demo_section(&content),
-    };
-
     let mut by_module: BTreeMap<&str, Vec<&Ident>> = BTreeMap::new();
     for (ident, module) in skill_structs {
         by_module.entry(module.as_str()).or_default().push(ident);
     }
 
-    let mut generated = String::new();
-    generated.push_str(GENERATED_MARKER);
-    generated.push('\n');
+    let mut generated = String::from(SKILL_DEFS_HEADER);
     for (module, idents) in &by_module {
-        // idents are already the prefixed names as they appear in `crate::skills::<module>`
-        // (process_file renamed the struct defs themselves), so a plain import is enough.
+        // ident는 이미 접두어가 붙은 이름이라(process_file이 정의 자체를 리네이밍) 그대로 import
         let imports = idents
             .iter()
             .map(|ident| ident.to_string())
@@ -553,6 +514,7 @@ fn rewrite_skill_rs(
         generated.push_str(&format!("use crate::skills::{module}::{{{imports}}};\n"));
     }
     generated.push('\n');
+
     let all_idents = skill_structs
         .iter()
         .map(|(ident, _)| ident.to_string())
@@ -560,19 +522,9 @@ fn rewrite_skill_rs(
         .join(", ");
     generated.push_str(&format!("define_skill!({all_idents});\n"));
 
-    let new_content = format!("{base}\n\n{generated}");
-    fs::write(path, &new_content)?;
+    fs::write(path, &generated)?;
     let _ = Command::new("rustfmt").arg(path).output();
     Ok(())
-}
-
-/// 첫 실행 시 남아있는 `struct A {} define_skill!(A);` 데모 섹션을 제거한다.
-fn strip_demo_section(content: &str) -> &str {
-    if let Some(idx) = content.find("struct A {}") {
-        content[..idx].trim_end()
-    } else {
-        content.trim_end()
-    }
 }
 
 const STATES_HEADER: &str = "// === xtask gen-skills: merged from students/src/states.rs and \

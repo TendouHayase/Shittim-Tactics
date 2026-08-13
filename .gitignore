@@ -21,3 +21,11 @@ target
 #.idea/
 
 .docs
+
+# xtask 생성물. `crates/students/src/skills/**`와 `crates/bosses/src/**`가 원본이고 여기는
+# 복제본이라 저장소에 두면 학생 수만큼 그대로 불어남. 클론 후 `cargo xtask`로 만들 것.
+crates/core/src/skills.rs
+crates/core/src/skills/
+crates/core/src/states.rs
+crates/core/src/boss_macros.rs
+crates/core/src/skill_defs.rs
