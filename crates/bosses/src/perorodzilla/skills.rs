@@ -23,8 +23,6 @@ use params::Params;
 /// json에 없는 패턴 수치. 아직 데이터가 없는 항목은 `None`/`0`이고, 그 값을 쓰는 효과는
 /// 조용히 빠진다.
 ///
-/// # Warning
-///
 /// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
 mod params {
     use core::constants::MAX_STUDENT_COUNT;

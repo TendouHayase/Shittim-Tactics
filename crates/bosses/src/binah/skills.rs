@@ -14,8 +14,6 @@ use std::ptr::NonNull;
 
 /// json의 `skills` 객체를 받는 원본 구조체(`Raw*`)와, 난이도 하나를 골라낸 결과(`*Params`).
 ///
-/// # Warning
-///
 /// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣음. 모듈 안에 둘 것.
 pub mod params {
     use core::difficulty::{ByDifficulty, Difficulty};

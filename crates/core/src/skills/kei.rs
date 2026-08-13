@@ -12,8 +12,6 @@ use crate::{
 use std::{cmp::Reverse, ptr::NonNull};
 /// json에 없는 스킬 수치. 파서가 붙으면 각 `new`에 넘길 값만 데이터에서 읽으면 된다.
 ///
-/// # Warning
-///
 /// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
 pub mod params {
     use crate::skill::Region;
