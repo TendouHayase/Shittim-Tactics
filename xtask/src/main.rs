@@ -373,17 +373,19 @@ impl VisitMut for RelocateVisitor {
 
     fn visit_use_tree_mut(&mut self, tree: &mut UseTree) {
         if let UseTree::Path(use_path) = tree
-            && use_path.ident == "core" {
-                use_path.ident = Ident::new("crate", use_path.ident.span());
-            }
+            && use_path.ident == "core"
+        {
+            use_path.ident = Ident::new("crate", use_path.ident.span());
+        }
         syn::visit_mut::visit_use_tree_mut(self, tree);
     }
 
     fn visit_path_mut(&mut self, path: &mut syn::Path) {
         if let Some(first) = path.segments.first_mut()
-            && first.ident == "core" {
-                first.ident = Ident::new("crate", first.ident.span());
-            }
+            && first.ident == "core"
+        {
+            first.ident = Ident::new("crate", first.ident.span());
+        }
         syn::visit_mut::visit_path_mut(self, path);
     }
 

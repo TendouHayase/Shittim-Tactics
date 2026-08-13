@@ -1,4 +1,3 @@
-
 use crate::{actions::ActionContext, skill::Skill, state::Stateful};
 
 pub trait Agent {
