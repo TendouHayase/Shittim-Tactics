@@ -18,6 +18,7 @@ use crate::{
         level::calcul_stat,
     },
     terrains::{Terrain, TerrainCombatPower, TerrainCombatPowerState},
+    utils::Ratio,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -27,6 +28,7 @@ pub struct StudentSpec {
 
     pub level: u8,
     pub star: u8,
+    pub weapon_star: u8,
 
     /// The elements in this array represent the levels of the following skills.
     /// Ex skill, Basic Skill, Enhanced Skill, Sub Skill
@@ -133,7 +135,7 @@ pub struct UniqueWeapon {
 pub struct EnhancedSkillPlus {
     pub stat: StatKind,
     pub kind: StatValueKind,
-    pub curve: [u32; MAX_SKILL_LEVEL],
+    pub curve: [Ratio; MAX_SKILL_LEVEL],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -251,6 +253,20 @@ fn build_stats(
             match stat.kind {
                 StatValueKind::Amount => entry.0 += stat.value.0,
                 StatValueKind::Scale => entry.1 += stat.value.0,
+            }
+        }
+    }
+
+    if spec.weapon_star >= 2 {
+        let star2_option = &file.unique_weapon.star2_option;
+        let entry = mods.entry(star2_option.stat).or_insert((0.0, 0.0));
+
+        match star2_option.kind {
+            StatValueKind::Amount => {
+                entry.0 += star2_option.curve[spec.skill_levels[2] as usize - 1].to_f64()
+            }
+            StatValueKind::Scale => {
+                entry.1 += star2_option.curve[spec.skill_levels[2] as usize - 1].to_f64()
             }
         }
     }
@@ -379,6 +395,7 @@ mod tests {
             .gear_levels([0, 0, 0])
             .talent_levels([0, 0, 0])
             .unique_item_level(None)
+            .weapon_star(0)
             .build()
     }
 
@@ -509,6 +526,33 @@ mod tests {
             "hp = {}, expected 47455",
             kei.stats().hp
         );
+    }
+
+    /// Weapon star 2 folds in the enhanced skill plus, which for this student is a flat hp
+    /// amount.
+    ///
+    /// `curve` is indexed by enhanced skill level minus one, so level 1 takes the first entry
+    /// and level 10 the last. Reading it without the offset would silently pick the next rank
+    /// and go out of bounds at 10.
+    #[test]
+    fn weapon_star_two_adds_the_enhanced_skill_plus() {
+        let kei = |weapon_star, enhanced_level| {
+            let mut with_weapon = spec(90, 5);
+            with_weapon.weapon_level = 40;
+            with_weapon.weapon_star = weapon_star;
+            with_weapon.skill_levels[2] = enhanced_level;
+            load(with_weapon)
+        };
+
+        let star1 = kei(1, 10);
+        let maxed = kei(2, 10);
+        let lowest = kei(2, 1);
+
+        assert_eq!(maxed.stats().hp - star1.stats().hp, 6020);
+        assert_eq!(lowest.stats().hp - star1.stats().hp, 3168);
+
+        // An amount on hp alone; the enhanced skill level moves nothing else.
+        assert_eq!(maxed.stats().atk, star1.stats().atk);
     }
 
     #[test]
