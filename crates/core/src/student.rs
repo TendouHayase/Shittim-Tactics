@@ -13,7 +13,6 @@ use crate::{
     stat::{StatKind, StatValueKind},
     table::gear::GearKind,
     terrains::{Terrain, TerrainCombatPower, TerrainCombatPowerState},
-    utils::Ratio,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -30,8 +29,8 @@ pub struct StudentSpec {
     /// Affinity Level of the Separated Character
     pub alter_bond_levels: Vec<u8>,
 
+    pub gear_kinds: [GearKind; 3],
     pub gear_tiers: [u8; 3],
-
     pub gear_levels: [u8; 3],
 
     /// Each element in this array represents the following.
@@ -57,8 +56,8 @@ pub struct StudentFile {
     /// 1레벨 스탯. `level`은 런타임 값이라 파일에 없고 0으로 들어옴.
     pub lvl1_stats: BaseStats,
 
-    pub delta: GrowthDelta,
-    pub stats_at_90: LevelStats,
+    /// 1~5성까지의 각각의 스탯
+    pub level_stats: StarCurves,
     pub unique_weapon: UniqueWeapon,
 
     /// 스킬별 수치. 학생마다 필드가 달라 여기서는 열어보지 않고, 해당 학생 크레이트가
@@ -66,14 +65,18 @@ pub struct StudentFile {
     pub skills: serde_json::Value,
 }
 
-/// 레벨 1당 증가량. `lvl1_stats`와 `stats_at_90` 두 끝점에서 유도되는 값이지만 게임이
-/// 표시하는 자릿수 그대로를 담고 있어 그 나눗셈과 정확히 일치하지는 않음.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+pub struct StarCurves {
+    pub hp: StarValue<u64>,
+    pub atk: StarValue<u32>,
+    pub def: StarValue<u32>,
+    pub healing: StarValue<u32>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
-pub struct GrowthDelta {
-    pub hp: Ratio,
-    pub atk: Ratio,
-    pub def: Ratio,
-    pub healing: Ratio,
+pub struct StarValue<T> {
+    pub lvl1: [T; 5],
+    pub lvl90: [T; 5],
 }
 
 /// 레벨에 따라 자라는 네 스탯만. 나머지는 레벨과 무관해 `lvl1_stats`가 그대로 쓰임.
@@ -83,6 +86,14 @@ pub struct LevelStats {
     pub atk: u32,
     pub def: u32,
     pub healing: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RawStats {
+    pub hp: f64,
+    pub atk: f64,
+    pub def: f64,
+    pub healing: f64,
 }
 
 /// 고유무기/전용무기
@@ -152,7 +163,7 @@ pub struct Student {
 
     /// Ex, Basic, Sub. 강화스킬은 늘 수치 증가라 스킬로 두지 않고 [`StudentStats::base_stats`]에
     /// 미리 접어넣음.
-    pub skills: [Skill; 3],
+    pub skills: Vec<Skill>,
 
     _pin: PhantomPinned,
 }
@@ -211,23 +222,7 @@ mod tests {
         assert_eq!(file.id, 10135);
         assert_eq!(file.lvl1_stats.attack_type, AttackType::Mystic);
         assert_eq!(file.lvl1_stats.level, 0);
-        assert_eq!(file.stats_at_90.hp, 15479);
         assert_eq!(file.gear_slots[0], GearKind::Shoes);
-    }
-
-    /// 소수가 `f64`를 거쳐도 자릿수 그대로 복원되는지. 여기가 깨지면 스탯이 조용히 몇씩
-    /// 어긋남.
-    #[test]
-    fn delta_keeps_decimals() {
-        let file = StudentFile::from_file("../../data/students/kei.json").expect("failed to load");
-
-        assert_eq!(file.delta.def.num(), 35);
-        assert_eq!(file.delta.def.den(), 10);
-        assert_eq!(file.delta.healing.num(), 268);
-        assert_eq!(file.delta.hp.den(), 1);
-
-        // 89레벨분을 한 번에 곱하므로 레벨마다 버리는 것과 결과가 다름.
-        assert_eq!(file.delta.def.apply(89), 311);
     }
 
     #[test]
