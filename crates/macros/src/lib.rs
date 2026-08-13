@@ -184,7 +184,7 @@ pub fn enum_accessors_derive(input: TokenStream) -> TokenStream {
 }
 
 /// Generates the mechanical half of a skill: the five fields every skill carries, the
-/// [`SkillMeta`] implementation, and [`FromParams`].
+/// `SkillMeta` implementation, and `FromParams`.
 ///
 /// The struct must be a unit struct, because every field is generated. Per-skill data belongs
 /// in the `params` type.
@@ -200,21 +200,16 @@ pub fn enum_accessors_derive(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// | argument | required | meaning                                                    |
-/// | -------- | -------- | ---------------------------------------------------------- |
-/// | `owner`  | yes      | `Student` or `Boss`; picks the `Character` variant          |
-/// | `ty`     | yes      | a `SkillType` variant                                       |
-/// | `index`  | yes      | second half of `id`; Ex 0, Basic 1, Sub 2                   |
-/// | `params` | no       | numeric parameters; defaults to `()` for skills without any |
+/// `owner` is `Student` or `Boss` and picks the `Character` variant; `ty` names a `SkillType`
+/// variant; `index` is the second half of `id`; `params` defaults to `()`.
 ///
-/// `cost`, `duration` and `frames` are always delegated to [`SkillParams`]. A proc macro only
-/// sees the tokens handed to it, so it cannot tell whether the params type has a `cost` field;
-/// the trait's default implementations decide that instead.
+/// `cost`, `duration` and `frames` are always delegated to `SkillParams`. A proc macro only
+/// sees the tokens handed to it and cannot tell whether the params type has a `cost` field, so
+/// that trait's defaults decide instead.
 ///
-/// Paths are not qualified, because these source files are copied verbatim into `core` by
-/// xtask and must compile in both crates. `Character`, `CharacterOps`, `SkillMeta`,
-/// `SkillParams`, `SkillType`, `FromParams` and the owner type must all be in scope at the
-/// call site.
+/// Paths are left unqualified: these files are copied into `core` by xtask and must compile in
+/// both crates. `Character`, `CharacterOps`, `SkillMeta`, `SkillParams`, `SkillType`,
+/// `FromParams` and the owner type must be in scope at the call site.
 #[proc_macro_attribute]
 pub fn skill(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemStruct);

@@ -40,28 +40,28 @@ pub struct StudentSpec {
     pub unique_item_level: Option<u8>,
 }
 
-/// `data/students/<학생>.json`의 최상위.
+/// Top level of `data/students/<student>.json`.
 ///
-/// 레벨·성급·성작·능력개방에 따른 증가는 전부 공용 수식이라 여기 없음. 이 파일에 있는 것은
-/// 그 수식의 입력이 되는 학생 고유값뿐임.
+/// Growth from level, star tier and talent follows shared formulas and is not stored here. This
+/// holds only the per-student values those formulas take as input.
 #[derive(Debug, Clone, Deserialize)]
 pub struct StudentFile {
     pub id: u32,
     pub name: LocalizedName,
     pub terrain_adaptation: TerrainCombatPower,
 
-    /// 이 학생이 낄 수 있는 장비 3종. 수치는 여기 없고 장비 쪽 데이터에 있음.
+    /// The three gear kinds this student can equip. Their numbers live in the gear data.
     pub gear_slots: [GearKind; 3],
 
-    /// 1레벨 스탯. `level`은 런타임 값이라 파일에 없고 0으로 들어옴.
+    /// Level 1 stats. `level` is a runtime value, absent from the file and left at 0.
     pub lvl1_stats: BaseStats,
 
-    /// 1~5성까지의 각각의 스탯
+    /// Level 1 and level 90 observations for each star tier.
     pub level_stats: StarCurves,
     pub unique_weapon: UniqueWeapon,
 
-    /// 스킬별 수치. 학생마다 필드가 달라 여기서는 열어보지 않고, 해당 학생 크레이트가
-    /// 자기 `params` 구조체로 읽음.
+    /// Per-skill numbers. The fields differ by student, so this is left unopened here and read
+    /// by that student's own crate into its `params` type.
     pub skills: serde_json::Value,
 }
 
@@ -86,7 +86,7 @@ pub struct StarValue<T> {
     pub lvl90: [T; 5],
 }
 
-/// 레벨에 따라 자라는 네 스탯만. 나머지는 레벨과 무관해 `lvl1_stats`가 그대로 쓰임.
+/// The four stats that grow with level. The rest do not, and `lvl1_stats` carries them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub struct LevelStats {
     pub hp: u64,
@@ -103,19 +103,19 @@ pub struct RawStats {
     pub healing: f64,
 }
 
-/// 고유무기/전용무기
+/// The student's unique weapon.
 #[derive(Debug, Clone, Deserialize)]
 pub struct UniqueWeapon {
-    /// [1렙시 수치, 1성 최대 레벨시 수치(30레벨), 2성 최대 레벨시 수치(40레벨)..]
+    /// Values at levels 1, 30, 40, 50 and 60, which are the caps of each star tier.
     pub hp: [u32; UniqueWeapon::MAX_STAR as usize + 1],
 
-    /// [1렙시 수치, 1성 최대 레벨시 수치(30레벨), 2성 최대 레벨시 수치(40레벨)..]
+    /// Values at levels 1, 30, 40, 50 and 60, which are the caps of each star tier.
     pub atk: [u32; UniqueWeapon::MAX_STAR as usize + 1],
 
-    /// 고유무기 2성에 추가되는 스탯
+    /// Stat added at weapon star 2.
     pub star2_option: EnhancedSkillPlus,
 
-    /// 고유무기 3성에 증가되는 지형 적성과 그 값
+    /// Terrain adaptation raised at weapon star 3, and the value it reaches.
     pub star3_option: (Terrain, TerrainCombatPowerState),
 
     pub star4_option: UniqueWeapon4StarOption,
@@ -131,7 +131,7 @@ pub struct EnhancedSkillPlus {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UniqueWeapon4StarOption {
-    /// 최대 코스트 0.5 증가
+    /// Maximum cost up by 0.5.
     MaxCostUp,
     ExplosiveEffectiveness,
     PiercingEffectiveness,
@@ -168,8 +168,8 @@ impl Hash for StudentStats {
 pub struct Student {
     pub stats: StudentStats,
 
-    /// Ex, Basic, Sub. 강화스킬은 늘 수치 증가라 스킬로 두지 않고 [`StudentStats::base_stats`]에
-    /// 미리 접어넣음.
+    /// Ex, Basic and Sub. The enhanced skill is always a stat increase, so it is folded into
+    /// [`StudentStats::base_stats`] instead of being a skill.
     pub skills: Vec<Skill>,
 
     _pin: PhantomPinned,

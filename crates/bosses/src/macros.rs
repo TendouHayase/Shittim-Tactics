@@ -1,25 +1,27 @@
-/// create_boss_skill!(name: ident, params: <Params 타입>, skill_type: SkillType, skill_id: u8, { 나머지 SkillOps 메서드 })
-/// create_boss_skill!(name: ident, cost: u8, duration: u16, frames: u16, skill_type: SkillType, skill_id: u8, { 나머지 SkillOps 메서드 })
-/// create_boss_skill!(.., skill_id: u8, params: <Params 타입>, { 나머지 SkillOps 메서드 })
+/// Declares a boss skill struct together with its `SkillMeta` implementation.
 ///
-/// 마지막 블록에는 `SkillOps` 메서드(`skill_effects`, `apply`)를 넣음. 트레이트 impl은 여러
-/// 블록으로 쪼갤 수 없어서 호출부가 따로 `impl SkillOps for`를 열 수 없기 때문임. 매크로가
-/// 만드는 것은 `SkillMeta` 쪽 일곱 개고, `new`처럼 어느 트레이트에도 없는 항목은 별도 inherent
-/// impl로 나감.
+/// ```ignore
+/// create_boss_skill!(Name, params: <Params>, SkillType::Ex, 0, { /* SkillOps methods */ });
+/// create_boss_skill!(Name, cost, duration, frames, SkillType::Ex, 0, { /* ... */ });
+/// create_boss_skill!(Name, cost, duration, frames, SkillType::Ex, 0, params: <Params>, { /* ... */ });
+/// ```
 ///
-/// 첫 번째 형태가 목표. 이름과 수치를 전부 밖에서 받으므로 스킬이 난이도도 json도 모름.
-/// `$params`에 `cost: u8`, `duration: u16`, `frames: u16`이 있어야 함. 세 번째 형태는 아직
-/// 데이터가 없어 `Params::of(난이도)`로 수치를 만드는 보스용이고, 데이터가 채워지는 대로 첫
-/// 번째로 옮김.
+/// The trailing block holds the `SkillOps` methods (`skill_effects`, `apply`). It has to be
+/// passed in rather than written at the call site, since a trait can only be implemented in one
+/// block. Items belonging to no trait, such as `new`, go into a separate inherent impl.
 ///
-/// 형태를 가르는 것은 `$name` 다음 토큰이 `params`인지, 그리고 `$skill_id` 다음 토큰이
-/// `params`인지 `{`인지다. fragment 매처(`$x:ty` 등)는 파싱에 실패하면 다음 규칙으로 넘어가지
-/// 않고 그 자리에서 에러가 되므로, 분기는 반드시 fragment보다 앞의 리터럴 토큰에서 갈려야 함.
-/// 리터럴 토큰이 어긋나는 것은 그냥 다음 규칙으로 넘어감.
+/// The first form is the goal: every name and number comes from outside, so the skill knows
+/// nothing of difficulty or json, and `$params` must carry `cost`, `duration` and `frames`. The
+/// second form exists only for bosses whose data is not transcribed yet and builds its numbers
+/// with `Params::of(difficulty)`.
 ///
-/// 이 파일은 `core::`를 `crate::`로 치환하지 않고 통째로 복제되므로 매크로 안에서 경로를
-/// 완전 수식할 수 없음. `Boss` `Character` `CharacterOps` `SkillMeta` `SkillOps` `SkillType`
-/// `NonNull`은 전부 호출부에 `use`되어 있어야 함.
+/// Forms are told apart by the token after `$name` and the one after `$skill_id`. A fragment
+/// matcher such as `$x:ty` that fails to parse is a hard error rather than a fallthrough, so
+/// every branch must be decided on a literal token ahead of any fragment.
+///
+/// This file is copied into `core` without the `core::` to `crate::` rewrite, so paths cannot
+/// be fully qualified here. `Boss`, `Character`, `CharacterOps`, `SkillMeta`, `SkillOps`,
+/// `SkillType` and `NonNull` must all be in scope at the call site.
 #[macro_export]
 macro_rules! create_boss_skill {
     (

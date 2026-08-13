@@ -8,21 +8,20 @@ use crate::{
     state::Stateful,
 };
 
-/// 실제 시뮬레이션을 수행할 시뮬레이터가 구현해야할 크레이트입니다.
+/// Implemented by whatever actually runs a simulation.
 ///
-/// 이 트레이트를 구현하며 `S<'a>`의 'a 라이프타임은 실제 시뮬레이션 구조체가 가진 캐릭터의
-/// 라이프타임과 같아야합니다.
+/// The `'a` in `S<'a>` must be the lifetime of the characters the simulation struct holds.
 pub trait Simulator {
     type S<'a>: Stateful<'a>;
 
     /// 에이전트가 현재 `state`에서 할 수 있는 액션(스킬) 목록을 반환합니다.
     fn legal_actions<'a>(&self, state: &impl Stateful<'a>) -> Vec<&Skill>;
 
-    /// 실행한 `action`을 `state`에 적용하여 새로운 `state`를 반환합니다.
+    /// Applies `action` to `state` and returns the resulting state.
     ///
-    /// `action.targets`에는 캐스터 자신이 포함되어서는 안 됩니다. 캐스터에 대한 효과는
-    /// `Skill::apply`의 `caster` 인자로 처리해야 합니다. 같은 대상에 대한 가변 참조를
-    /// 두 개 만들 수 없기 때문에, 캐스터가 타깃 목록에도 들어있으면 적용이 누락됩니다.
+    /// `action.targets` must not contain the caster; effects on the caster go through the
+    /// `caster` argument of `Skill::apply`. Two mutable references to the same target cannot
+    /// coexist, so a caster listed among the targets would simply be skipped.
     fn apply<'a>(&self, state: &Self::S<'a>, action: &ActionContext) -> Self::S<'a>;
 
     /// 주어진 `state`를 `delta_ticks`만큼 진행시키고 변화된 `state`를 반환합니다.

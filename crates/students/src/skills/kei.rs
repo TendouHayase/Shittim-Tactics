@@ -15,13 +15,14 @@ use core::{
 use macros::skill;
 use std::cmp::Reverse;
 
-/// json에 없는 스킬 수치. 파서가 붙으면 각 `new`에 넘길 값만 데이터에서 읽으면 된다.
+/// Skill numbers not yet in json.
 ///
-/// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
+/// Kept inside a module: a top-level `struct` here would be mistaken for a skill by xtask and
+/// pulled into the `Skill` enum.
 pub mod params {
     use core::skill::{Region, SkillParams};
 
-    /// 계수는 전부 백분율이라 분모가 고정.
+    /// Coefficients are all percentages, so the denominator is fixed.
     pub const PERCENT_DEN: u16 = 100;
     pub const ACC_DAMAGE_CAP_PERCENT: u16 = 5000;
 
@@ -31,10 +32,10 @@ pub mod params {
         pub duration: u16,
         pub frames: u16,
         pub region: Region,
-        /// 자신을 뺀 버프 대상 수.
+        /// Buff targets excluding the caster.
         pub ally_count: u8,
         pub atk_buff_scale: u16,
-        /// 83.8 반올림.
+        /// 83.8, rounded.
         pub effective_buff_scale: u16,
     }
 

@@ -3,15 +3,15 @@ use crate::skill::Region;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// json에 소수로 적힌 값을 반올림 없이 담는 유리수. 분모는 항상 `10^exp`.
+/// A decimal from json held without rounding. The denominator is always `10^exp`.
 ///
-/// 부동소수로 접으면 스탯 몇십 차이가 반올림에서 갈리고 그게 택틱 성패를 바꾸므로, 곱셈을
-/// 먼저 하고 나눗셈을 마지막에 하려고 분자와 자릿수를 따로 들고 있음.
+/// Numerator and scale are kept apart so that multiplication happens before division: folding
+/// through a float would shift stats by tens at a rounding boundary, which changes whether a
+/// tactic works.
 ///
-/// json 숫자는 serde가 이미 `f64`로 만들어 넘겨주기 때문에 원문 문자열을 볼 수 없음. 대신
-/// `f64`의 최단 왕복 표현(`{}` 포맷)에서 자릿수를 다시 읽어냄. `26.8`처럼 소수 몇 자리짜리
-/// 게임 데이터는 이 왕복으로 정확히 복원되지만, 유효숫자 17자리를 넘는 값을 적으면 복원되지
-/// 않음.
+/// serde hands over an `f64`, so the original text is gone. The scale is recovered from the
+/// shortest round-tripping representation instead. Game data with a few decimal places restores
+/// exactly; values beyond 17 significant digits do not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Ratio {
     num: i64,
@@ -411,23 +411,19 @@ pub const fn time_to_ticks(time_num: u16, time_den: u16) -> u16 {
     time_num * TPS / time_den
 }
 
-/// `lvl == 1`에서 `start`, `lvl == lvl_max`에서 `end`가 되는 선형 보간.
+/// Linear interpolation giving `start` at `lvl == 1` and `end` at `lvl == lvl_max`.
 ///
-/// 게임의 레벨이 1부터 시작하므로 매개변수도 1을 기준으로 잡음. `t ∈ [0, 1]`을 받는 흔한
-/// `lerp`과 달리 `lvl - 1`을 `lvl_max - 1`로 나눔.
+/// One-based, because game levels are: `lvl - 1` is divided by `lvl_max - 1` rather than taking
+/// a `t` in `[0, 1]`.
 ///
-/// 반올림하지 않은 `f64`를 그대로 돌려줌. 표시값으로 접는 것은 호출자 몫이며, 중간 항을
-/// 모두 더한 뒤 마지막에 한 번만 접어야 반올림 오차가 누적되지 않음.
+/// The result is not rounded. Callers fold to a displayed value themselves, and must do so only
+/// once, after every term has been added.
 ///
-/// 다음 세 경우에 `None`.
+/// `None` when `lvl` is 0, when `lvl_max <= 1`, or when `lvl > lvl_max`. Extrapolation is
+/// refused because nothing above level 90 exists in the game.
 ///
-/// - `lvl == 0`. 레벨이 1부터라 0은 정의되지 않음
-/// - `lvl_max <= 1`. 분모가 0이 됨
-/// - `lvl > lvl_max`. 외삽을 하지 않음. 90레벨을 넘는 구간은 게임에 없으므로 허용하면 없는
-///   값을 지어내게 됨
-///
-/// `f64: From<T>` 바운드 때문에 `u64`와 `i64`는 그대로 넘길 수 없음. 표준 라이브러리가 손실
-/// 변환에는 `From`을 두지 않기 때문임. `as f64`로 미리 캐스팅해야 함.
+/// `u64` and `i64` do not satisfy `f64: From<T>`, since the standard library provides no lossy
+/// `From`. Cast with `as f64` first.
 ///
 /// # Examples
 ///
@@ -454,13 +450,16 @@ where
     Some(start_f64 + (end_f64 - start_f64) * (lvl - 1) as f64 / (lvl_max - 1) as f64)
 }
 
-/// y = mx + b에 대한 단순선형회귀로 (m, b)를 반환합니다.
-/// x,y는 스칼라 변수
+/// Ordinary least squares fit of `y = mx + b`, returning `(m, b)`.
+///
+/// # Panics
+///
+/// When `x` and `y` differ in length.
 pub fn ols<T: Clone>(x: &[T], y: &[T]) -> (f64, f64)
 where
     f64: From<T>,
 {
-    assert!(x.len() == y.len(), "");
+    assert!(x.len() == y.len(), "ols: x and y must have equal length");
     let mut m_num: f64 = 0.0;
     let mut m_den: f64 = 0.0;
 
@@ -477,8 +476,11 @@ where
     (m, y_bar - m * x_bar)
 }
 
-/// 닫힌 구간들의 교집합.
-/// 이터레이터의 길이가 0이거나 교집합이 비거나 구간에 Nan 또는 무한이 존재할 경우 `None`을 반환.
+/// Intersection of closed intervals.
+///
+/// `None` when the iterator is empty, when the intersection is empty, or when any bound is NaN
+/// or infinite. The last case is checked explicitly: `f64::max` and `f64::min` ignore NaN, so a
+/// NaN bound would otherwise drop out silently and read as an unconstrained interval.
 ///
 /// # Examples
 ///
@@ -515,8 +517,9 @@ pub fn intersect_intervals(it: impl Iterator<Item = (f64, f64)>) -> Option<(f64,
     }
 }
 
-/// 두 점을 지나는 직선 `y = mx + b`의 `(m, b)`.
-/// `p1.0 == p2.0`이면 기울기가 `inf`나 `NaN`이 되어 그대로 반환됨.
+/// `(m, b)` of the line `y = mx + b` through two points.
+///
+/// A vertical pair yields an infinite or NaN slope, returned as is.
 ///
 /// # Examples
 ///

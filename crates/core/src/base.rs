@@ -134,11 +134,11 @@ pub struct BaseStats {
 }
 
 impl BaseStats {
-    /// `(현재값 + amount) * scale`을 해당 필드에 씀.
+    /// Writes `(current + amount) * scale` to the matching field.
     ///
-    /// `amount`와 `scale`은 각각 합산이 끝난 값이어야 함. 게임이 증가량을 전부 더한 뒤 증가율의
-    /// 합을 한 번 곱하는 방식이라, 항마다 부르면 반올림과 복리가 둘 다 어긋남. `scale`은 배수라
-    /// 증가 없음이 `1.0`임.
+    /// Both arguments must already be summed. The game adds every flat increase, then
+    /// multiplies by the sum of the rates once, so calling this per term would compound the
+    /// rates and round too often. `scale` is a multiplier: no increase is `1.0`.
     pub fn apply_stat(mut self, stat: StatKind, amount: f64, scale: f64) -> Self {
         match stat {
             StatKind::Hp => self.hp = ((self.hp as f64 + amount) * scale).round() as u64,
