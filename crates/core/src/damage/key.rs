@@ -5,7 +5,7 @@ use std::{
 
 /// Which skills are currently applied.
 ///
-/// From the MSB: one bit each for boss, self and enemy, then `3 * students` bits for the
+/// From the LSB: one bit each for boss, self and enemy, then `3 * students` bits for the
 /// students' skills, then N bits for the boss's.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
