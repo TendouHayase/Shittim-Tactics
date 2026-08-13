@@ -1,7 +1,35 @@
 use crate::{
-    student::{LevelStats, RawStats, StarCurves, UniqueWeapon},
-    utils::{lerp, ols},
+    student::{RawStats, StarCurves, UniqueWeapon},
+    utils::lerp,
 };
+
+/// Levels the unique weapon's `hp` and `atk` arrays are sampled at, one per star tier cap.
+const UNIQUE_WEAPON_LEVELS: [u8; UniqueWeapon::MAX_STAR as usize + 1] = [1, 30, 40, 50, 60];
+
+/// Interpolates between the two samples bracketing `lvl`, so the five observations come back
+/// exactly.
+///
+/// A single fitted line does not: at level 60 least squares lands about 0.3 below the recorded
+/// value, which is enough to move the displayed stat by one.
+fn unique_weapon_stat(values: &[u32; UniqueWeapon::MAX_STAR as usize + 1], lvl: u8) -> f64 {
+    if lvl == 0 {
+        return 0.0;
+    }
+
+    let i = UNIQUE_WEAPON_LEVELS
+        .iter()
+        .rposition(|&sample| sample <= lvl)
+        .unwrap_or(0)
+        .min(UNIQUE_WEAPON_LEVELS.len() - 2);
+
+    let (x0, x1) = (
+        UNIQUE_WEAPON_LEVELS[i] as f64,
+        UNIQUE_WEAPON_LEVELS[i + 1] as f64,
+    );
+    let (y0, y1) = (values[i] as f64, values[i + 1] as f64);
+
+    y0 + (y1 - y0) * (lvl as f64 - x0) / (x1 - x0)
+}
 
 /// Level, star tier, talent and unique weapon, before gear and before rounding.
 ///
@@ -11,10 +39,6 @@ use crate::{
 ///
 /// Talent adds 0.2% of the **1-star** level 90 value per rank, which is why the index into
 /// `lvl90` is 0 rather than the current tier.
-///
-/// The unique weapon is a least-squares fit over five observations. Those are rounded too, so
-/// the fit is not guaranteed to reproduce them; residuals reach ±0.485 and a value at a
-/// rounding boundary can come out one off.
 ///
 /// `def` appears to have no star multiplier, but per-tier observations are used as they are, so
 /// it goes through `lerp` like the rest for symmetry.
@@ -33,12 +57,6 @@ pub fn calcul_stat(
     unique_weapon: UniqueWeapon,
     star_curve: StarCurves,
 ) -> Option<RawStats> {
-    // unique_weapon의 hp, atk 배열이 대응하는 레벨
-    let (unique_weapon_hp_delta, unique_weapon_hp_bias) =
-        ols(&[1, 30, 40, 50, 60], &unique_weapon.hp);
-    let (unique_weapon_atk_delta, unique_weapon_atk_bias) =
-        ols(&[1, 30, 40, 50, 60], &unique_weapon.atk);
-
     let mut hp: f64 = lerp(
         star_curve.hp.lvl1[star as usize - 1] as f64,
         star_curve.hp.lvl90[star as usize - 1] as f64,
@@ -46,11 +64,7 @@ pub fn calcul_stat(
         90,
     )?; // 레벨
     hp += star_curve.hp.lvl90[0] as f64 * 0.002 * talent[0] as f64; // 능력 개방
-    hp += if unique_weapon_lvl == 0 {
-        0.0
-    } else {
-        unique_weapon_hp_bias + unique_weapon_hp_delta * unique_weapon_lvl as f64
-    }; // 전무 스탯
+    hp += unique_weapon_stat(&unique_weapon.hp, unique_weapon_lvl); // 전무
 
     let mut atk: f64 = lerp(
         star_curve.atk.lvl1[star as usize - 1] as f64,
@@ -60,11 +74,7 @@ pub fn calcul_stat(
     )?; // 레벨
 
     atk += star_curve.atk.lvl90[0] as f64 * 0.002 * talent[1] as f64; // 능력개방
-    atk += if unique_weapon_lvl == 0 {
-        0.0
-    } else {
-        unique_weapon_atk_bias + unique_weapon_atk_delta * unique_weapon_lvl as f64
-    }; // 전무
+    atk += unique_weapon_stat(&unique_weapon.atk, unique_weapon_lvl); // 전무
 
     let mut healing = lerp(
         star_curve.healing.lvl1[star as usize - 1] as f64,
