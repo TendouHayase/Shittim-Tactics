@@ -8,8 +8,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// 부동소수로 접으면 스탯 몇십 차이가 반올림에서 갈리고 그게 택틱 성패를 바꾸므로, 곱셈을
 /// 먼저 하고 나눗셈을 마지막에 하려고 분자와 자릿수를 따로 들고 있음.
 ///
-/// # Warning
-///
 /// json 숫자는 serde가 이미 `f64`로 만들어 넘겨주기 때문에 원문 문자열을 볼 수 없음. 대신
 /// `f64`의 최단 왕복 표현(`{}` 포맷)에서 자릿수를 다시 읽어냄. `26.8`처럼 소수 몇 자리짜리
 /// 게임 데이터는 이 왕복으로 정확히 복원되지만, 유효숫자 17자리를 넘는 값을 적으면 복원되지
@@ -413,6 +411,36 @@ pub const fn time_to_ticks(time_num: u16, time_den: u16) -> u16 {
     time_num * TPS / time_den
 }
 
+/// `lvl == 1`에서 `start`, `lvl == lvl_max`에서 `end`가 되는 선형 보간.
+///
+/// 게임의 레벨이 1부터 시작하므로 매개변수도 1을 기준으로 잡음. `t ∈ [0, 1]`을 받는 흔한
+/// `lerp`과 달리 `lvl - 1`을 `lvl_max - 1`로 나눔.
+///
+/// 반올림하지 않은 `f64`를 그대로 돌려줌. 표시값으로 접는 것은 호출자 몫이며, 중간 항을
+/// 모두 더한 뒤 마지막에 한 번만 접어야 반올림 오차가 누적되지 않음.
+///
+/// 다음 세 경우에 `None`.
+///
+/// - `lvl == 0`. 레벨이 1부터라 0은 정의되지 않음
+/// - `lvl_max <= 1`. 분모가 0이 됨
+/// - `lvl > lvl_max`. 외삽을 하지 않음. 90레벨을 넘는 구간은 게임에 없으므로 허용하면 없는
+///   값을 지어내게 됨
+///
+/// `f64: From<T>` 바운드 때문에 `u64`와 `i64`는 그대로 넘길 수 없음. 표준 라이브러리가 손실
+/// 변환에는 `From`을 두지 않기 때문임. `as f64`로 미리 캐스팅해야 함.
+///
+/// # Examples
+///
+/// ```
+/// use core::utils::lerp;
+///
+/// assert_eq!(lerp(0u32, 89u32, 1, 90), Some(0.0));
+/// assert_eq!(lerp(0u32, 89u32, 90, 90), Some(89.0));
+/// assert_eq!(lerp(0u32, 89u32, 46, 90), Some(45.0));
+///
+/// assert_eq!(lerp(0u32, 89u32, 0, 90), None);
+/// assert_eq!(lerp(0u32, 89u32, 91, 90), None);
+/// ```
 pub fn lerp<T>(start: T, end: T, lvl: usize, lvl_max: usize) -> Option<f64>
 where
     f64: From<T>,
@@ -424,4 +452,82 @@ where
     let end_f64: f64 = end.into();
 
     Some(start_f64 + (end_f64 - start_f64) * (lvl - 1) as f64 / (lvl_max - 1) as f64)
+}
+
+/// y = mx + b에 대한 단순선형회귀로 (m, b)를 반환합니다.
+/// x,y는 스칼라 변수
+pub fn ols<T: Clone>(x: &[T], y: &[T]) -> (f64, f64)
+where
+    f64: From<T>,
+{
+    assert!(x.len() == y.len(), "");
+    let mut m_num: f64 = 0.0;
+    let mut m_den: f64 = 0.0;
+
+    let x_bar: f64 = x.iter().map(|x| f64::from(x.clone())).sum::<f64>() / x.len() as f64;
+    let y_bar: f64 = y.iter().map(|x| f64::from(x.clone())).sum::<f64>() / y.len() as f64;
+
+    for i in 0..x.len() {
+        m_num += (f64::from(x[i].clone()) - x_bar) * (f64::from(y[i].clone()) - y_bar);
+        m_den += (f64::from(x[i].clone()) - x_bar).powi(2);
+    }
+
+    let m = m_num / m_den;
+
+    (m, y_bar - m * x_bar)
+}
+
+/// 닫힌 구간들의 교집합.
+/// 이터레이터의 길이가 0이거나 교집합이 비거나 구간에 Nan 또는 무한이 존재할 경우 `None`을 반환.
+///
+/// # Examples
+///
+/// ```
+/// use core::utils::intersect_intervals;
+///
+/// let overlap = intersect_intervals([(0.0, 3.0), (1.0, 5.0)].into_iter());
+/// assert_eq!(overlap, Some((1.0, 3.0)));
+///
+/// let disjoint = intersect_intervals([(0.0, 1.0), (2.0, 3.0)].into_iter());
+/// assert_eq!(disjoint, None);
+/// ```
+pub fn intersect_intervals(it: impl Iterator<Item = (f64, f64)>) -> Option<(f64, f64)> {
+    let mut it = it.peekable();
+    if it.peek().is_none() {
+        return None;
+    }
+
+    let mut left = f64::MIN;
+    let mut right = f64::MAX;
+
+    for (lhs, rhs) in it {
+        if !lhs.is_finite() || !rhs.is_finite() {
+            return None;
+        }
+        left = left.max(lhs);
+        right = right.min(rhs);
+    }
+
+    if left > right {
+        None
+    } else {
+        Some((left, right))
+    }
+}
+
+/// 두 점을 지나는 직선 `y = mx + b`의 `(m, b)`.
+/// `p1.0 == p2.0`이면 기울기가 `inf`나 `NaN`이 되어 그대로 반환됨.
+///
+/// # Examples
+///
+/// ```
+/// use core::utils::line_through;
+///
+/// assert_eq!(line_through((1.0, 3.0), (3.0, 7.0)), (2.0, 1.0));
+/// ```
+pub fn line_through(p1: (f64, f64), p2: (f64, f64)) -> (f64, f64) {
+    let m = (p2.1 - p1.1) / (p2.0 - p1.0);
+    let b = p1.1 - m * p1.0;
+
+    (m, b)
 }
