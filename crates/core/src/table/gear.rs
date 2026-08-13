@@ -19,7 +19,7 @@ pub struct GearTable {
 impl GearTable {
     pub const MAX_TIER: usize = 10;
 
-    /// 애장품 제외
+    /// Excluding the unique item.
     pub const TOTAL_GEARS_COUNT: usize = 9;
 
     pub fn gear_stats(&self, kind: GearKind) -> &[GearStat] {
@@ -120,7 +120,7 @@ impl GearTable {
     }
 }
 
-/// 애장품은 다른 장비들과 성질이 크게 달라 따로 분리
+/// Unique items behave differently enough from gear to be kept apart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum GearKind {
@@ -136,7 +136,7 @@ pub enum GearKind {
 }
 
 impl GearKind {
-    /// 전체 장비 목록
+    /// Every gear kind.
     pub const ALL: [GearKind; GearTable::TOTAL_GEARS_COUNT] = [
         GearKind::Hat,
         GearKind::Gloves,
@@ -177,7 +177,7 @@ mod tests {
     use super::*;
     use std::collections::HashSet;
 
-    /// 워크스페이스 루트 기준이 아니라 크레이트 루트 기준으로 도는 것에 주의.
+    /// Relative to the crate root, not the workspace root.
     const GEARS: &str = "../../data/tables/gears.json";
 
     fn table() -> GearTable {
@@ -209,7 +209,8 @@ mod tests {
         assert_eq!(necklace_atk.curve[9], [ratio(15, 0), ratio(18, 0)]);
     }
 
-    /// `gear_stats`의 9줄 `match`가 한 칸 밀려도 컴파일은 통과함. 슬롯마다 다른 데이터로 짚음.
+    /// The nine-arm `match` in `gear_stats` still compiles if it is off by one slot, so each
+    /// slot is pinned with data of its own.
     #[test]
     fn gear_stats_maps_every_slot() {
         let table = table();
@@ -263,8 +264,8 @@ mod tests {
         );
     }
 
-    /// `[GearKind; 9]`는 길이만 컴파일 타임에 보장됨. 한 variant가 두 번 들어가면 다른 하나가
-    /// 빠지고, 그 슬롯은 `validate`가 영영 보지 않게 됨.
+    /// `[GearKind; 9]` only fixes the length. A variant listed twice pushes another out, and
+    /// `validate` would then never look at that slot.
     #[test]
     fn gear_kind_all_covers_every_variant() {
         let unique: HashSet<GearKind> = GearKind::ALL.into_iter().collect();
@@ -272,7 +273,8 @@ mod tests {
         assert_eq!(unique.len(), GearTable::TOTAL_GEARS_COUNT);
     }
 
-    /// 같은 `bag`에 hp/amount와 hp/scale이 정상적으로 공존하므로 중복 판정은 `stat`만으로는 안 됨.
+    /// hp/amount and hp/scale legitimately coexist in one `bag`, so `stat` alone cannot decide
+    /// whether an entry is a duplicate.
     #[test]
     fn stat_and_kind_pairs_are_unique_in_a_slot() {
         let table = table();
@@ -303,7 +305,7 @@ mod tests {
         assert!(table.validate().is_err());
     }
 
-    /// 마지막 티어를 고르는 것이 핵심임. 쌍 내부 검사가 `len() - 1`까지만 돌면 여기가 뚫림.
+    /// Picking the last tier is the point: a pairwise check that stops at `len() - 1` misses it.
     #[test]
     fn validate_rejects_reversed_last_tier() {
         let mut table = table();
@@ -312,7 +314,8 @@ mod tests {
         assert!(table.validate().is_err());
     }
 
-    /// 소수가 f64를 거쳐도 자릿수 그대로 복원되는지. `GrowthDelta`와 달리 배열 두 겹을 거침.
+    /// Whether decimals survive the trip through `f64` with their scale intact, here through
+    /// two levels of arrays.
     #[test]
     fn curve_keeps_decimals() {
         let table = table();
@@ -327,8 +330,8 @@ mod tests {
         assert!(shoes_atk.curve[0][0] < shoes_atk.curve[0][1]);
     }
 
-    /// hat/atk 1티어는 5→8에 만렙 10이라 `3(lvl-1)/9`가 lvl 1·4·7·10에서 정수로 떨어짐.
-    /// f64 오차가 끼지 않는 표본이라 허용 오차 없이 비교할 수 있음.
+    /// hat/atk tier 1 runs 5 to 8 over 10 levels, so `3(lvl-1)/9` lands on an integer at levels
+    /// 1, 4, 7 and 10. Those samples carry no `f64` error and can be compared exactly.
     #[test]
     fn stats_interpolate_between_curve_ends() {
         let table = table();
@@ -341,8 +344,8 @@ mod tests {
         assert_eq!(at(10), 8.0);
     }
 
-    /// 커브가 아니라 `max_level_with_tier`가 티어마다 다른 분모를 준다는 것. 4티어는 만렙
-    /// 40이라 분모가 39이고, 양 끝만 정수로 떨어짐.
+    /// What varies per tier is not the curve but the denominator `max_level_with_tier` gives.
+    /// Tier 4 caps at level 40, so the denominator is 39 and only the endpoints are exact.
     #[test]
     fn stats_use_the_max_level_of_that_tier() {
         let table = table();
@@ -371,8 +374,8 @@ mod tests {
         assert_eq!(badge[2].value.0, 25.0);
     }
 
-    /// 1~3티어가 [0, 0]인 행은 레벨을 올려도 0이어야 함. 패딩이 보간을 타고 값을 만들어내면
-    /// 없는 스탯이 생김.
+    /// Rows padded with `[0, 0]` for tiers 1 to 3 must stay 0 at every level. Padding that goes
+    /// through interpolation would invent a stat that does not exist.
     #[test]
     fn padded_rows_stay_zero() {
         let table = table();
@@ -382,8 +385,8 @@ mod tests {
         assert_eq!(necklace_atk(10), 0.0);
     }
 
-    /// `tier == 0`은 `max_level_with_tier[tier - 1]`이 usize 언더플로라 가드보다 인덱싱이
-    /// 먼저 오면 None이 아니라 패닉이 됨.
+    /// At `tier == 0`, `max_level_with_tier[tier - 1]` underflows. If the indexing runs before
+    /// the guard the result is a panic rather than `None`.
     #[test]
     fn stats_reject_out_of_range() {
         let table = table();

@@ -1,10 +1,9 @@
 //! # core
 //!
-//! 타 크레이트를 구현하는데 필요한 핵심 요소들을 모아둔 크레이트입니다.
+//! The pieces every other crate builds on.
 //!
-//! ## 주요 모듈
-//! - 'damage' : 데미지 관련
-//! * 데미지를 학생들 스킬 발동 여부로 O(1)에 구하도록 구현
+//! `damage` is the notable one: damage is keyed by which student skills are active, so looking
+//! it up is O(1).
 
 pub mod actions;
 pub mod agent;

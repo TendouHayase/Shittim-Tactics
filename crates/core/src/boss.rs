@@ -43,9 +43,11 @@ pub struct Boss {
     _pin: PhantomPinned,
 }
 
-/// `data/bosses/<보스>.json`의 최상위. 방어 타입 키는 보스마다 다르므로 남는 키를 전부
-/// 쓸어담는데, 그래서 `skills`처럼 방어 타입이 아닌 최상위 키는 반드시 여기 필드로 선언되어
-/// 있어야 함. 빠뜨리면 `ArmorType` 파싱 실패로 나타남.
+/// Top level of `data/bosses/<boss>.json`.
+///
+/// Armor type keys differ per boss, so every remaining key is swept up. Any top-level key that
+/// is not an armor type, such as `skills`, must therefore be declared as a field here; leaving
+/// one out surfaces as an `ArmorType` parse failure.
 #[derive(Debug, Deserialize)]
 struct BossFile {
     id: u32,
@@ -94,8 +96,8 @@ impl CharacterOps for Boss {
 }
 
 impl Boss {
-    /// `Box`로 돌려주는 이유는 스킬이 `NonNull<Boss>`로 자기 보스를 가리키기 때문임. 값으로
-    /// 돌려주면 반환하면서 보스가 이동해 그 포인터가 전부 끊김.
+    /// Returns a `Box` because the skills point back at their boss through `NonNull<Boss>`.
+    /// Returning by value would move the boss out and leave every one of those pointers dangling.
     pub fn from_file(
         kind: BossKind,
         path: &str,
@@ -142,8 +144,8 @@ impl Boss {
     }
 }
 
-/// 어느 보스의 파일을 읽는지. json의 `id`는 게임이 정한 외부 값이라 코드가 값을 알 수 없고,
-/// 그래서 스킬 목록을 고르는 열쇠로 못 씀.
+/// Which boss is being loaded. The json `id` is a value the game assigns, unknown to this code,
+/// so it cannot serve as the key that selects a skill list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BossKind {
     Binah,
@@ -151,9 +153,11 @@ pub enum BossKind {
     Perorodzilla,
 }
 
-/// [`BossKind`]와 Rust 쪽 스킬 목록을 잇는 유일한 지점. 스킬은 코드라서 데이터로 뺄 수 없음.
+/// The one place [`BossKind`] is tied to a Rust skill list. Skills are code and cannot be moved
+/// into data.
 ///
-/// 아직 수치 데이터가 없는 보스는 `skills`를 보지 않고 `Params::of(난이도)`로 만듦.
+/// Bosses whose numbers are not transcribed yet ignore `skills` and build from
+/// `Params::of(difficulty)`.
 fn build_skills(
     boss: &Boss,
     kind: BossKind,
@@ -222,7 +226,7 @@ mod tests {
     use super::*;
     use crate::skill::{SkillMeta, SkillOps};
 
-    /// 워크스페이스 루트 기준이 아니라 크레이트 루트 기준으로 도는 것에 주의.
+    /// Relative to the crate root, not the workspace root.
     const BINAH: &str = "../../data/bosses/binah.json";
 
     #[test]
@@ -246,7 +250,7 @@ mod tests {
         assert_eq!(boss.skill_list()[2].duration(), 30);
     }
 
-    /// 난이도별 배열의 색인이 어긋나면 여기서 잡힘.
+    /// Catches an off-by-one index into the per-difficulty arrays.
     #[test]
     fn skill_params_follow_difficulty() {
         let effects_of = |difficulty| {

@@ -21,7 +21,8 @@ pub enum TerrainCombatPowerState {
 }
 
 impl TerrainCombatPowerState {
-    /// 높을수록 큰 값. 선언 순서가 `SS`부터라 `Ord`를 파생하면 뒤집히므로 따로 둠.
+    /// Higher grade, larger value. Written out because the variants start at `SS`, so a derived
+    /// `Ord` would run backwards.
     pub fn rank(self) -> u8 {
         match self {
             Self::D => 0,
@@ -33,7 +34,7 @@ impl TerrainCombatPowerState {
         }
     }
 
-    /// 한 등급 위. `SS`가 상한이라 더 오르지 않고 그대로 있음.
+    /// One grade up. `SS` is the ceiling and stays where it is.
     pub fn promoted(self) -> Self {
         match self {
             Self::D => Self::C,
@@ -73,11 +74,11 @@ impl TerrainCombatPower {
         }
     }
 
-    /// 전용무기 3성 효과. 가장 높은 지형 하나만 오름.
+    /// The weapon star 3 effect: only the single highest terrain is raised.
     ///
-    /// 현재 모든 학생은 기본 지형적성에 `S`가 정확히 하나뿐이라 어느 것을 올릴지 갈리지
-    /// 않고, 결과는 `SS` 하나가 생기는 것임. 그 전제가 깨진 데이터를 조용히 넘기지 않도록
-    /// 최고 등급이 둘 이상이면 여기서 걸림.
+    /// Every student today has exactly one `S` in their base adaptation, so there is no
+    /// ambiguity and the result is one `SS`. Data that breaks that assumption is caught here
+    /// rather than passed over: two or more at the top grade fails.
     pub fn promote_best(&mut self) {
         let best = [Terrain::Street, Terrain::Outdoor, Terrain::Indoor]
             .map(|terrain| (terrain, self.get(terrain).rank()));

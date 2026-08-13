@@ -85,7 +85,7 @@ pub enum SkillEffectTarget {
 #[serde(tag = "shape", rename_all = "lowercase")]
 pub enum Region {
     Polygon {
-        /// 항상 4개를 채우고 실제로 쓰는 개수만 `count`에 적음. 남는 자리는 무시됨.
+        /// Always four entries; `count` says how many are real and the rest are ignored.
         vertex: [Position; 4],
         count: u8,
     },
@@ -108,7 +108,7 @@ pub enum SkillType {
     Enhanced,
     Sub,
     NormalAttack,
-    /// 전투 시작 시 걸린 채로 유지되는 보스 패시브.
+    /// A boss passive, applied at the start of a fight and held for its duration.
     Passive,
 }
 use macros::dispatch_method;

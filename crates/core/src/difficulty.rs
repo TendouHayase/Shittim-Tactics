@@ -31,9 +31,9 @@ pub enum Difficulty {
 impl Difficulty {
     pub const COUNT: usize = 8;
 
-    /// json의 난이도별 배열이 이 순서를 그대로 따름. [`ByDifficulty`]의 색인이 `as usize`라
-    /// 순서를 바꾸면 기존 데이터가 전부 어긋나므로 변형을 중간에 끼워넣지 말 것. 길이가 맞지
-    /// 않으면 컴파일이 깨지므로 [`Difficulty::COUNT`] 갱신을 잊을 수 없음.
+    /// Per-difficulty arrays in json follow this order, and [`ByDifficulty`] indexes with
+    /// `as usize`, so inserting a variant in the middle silently shifts every existing value.
+    /// A wrong length breaks the build, so [`Difficulty::COUNT`] cannot be forgotten.
     pub const ALL: [Difficulty; Self::COUNT] = [
         Difficulty::Normal,
         Difficulty::Hard,
@@ -46,7 +46,7 @@ impl Difficulty {
     ];
 }
 
-/// 난이도순으로 늘어놓은 값. json의 스킬 수치는 전부 이 모양임.
+/// Values laid out in difficulty order. Every skill number in json has this shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ByDifficulty<T>([T; Difficulty::COUNT]);

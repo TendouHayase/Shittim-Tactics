@@ -1,4 +1,4 @@
-//! 표시 언어. 실행 중 한 번 정해지면 끝까지 바뀌지 않음.
+//! Display language. Chosen once per run and never changed after.
 
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
@@ -25,7 +25,7 @@ pub fn set_language(language: Language) -> Result<(), error::Error> {
     Ok(())
 }
 
-/// [`set_language`] 없이 먼저 읽을시 기본값(`Ko`)으로 반환됨.
+/// Read before [`set_language`], this yields the default of `Ko`.
 pub fn language() -> Language {
     *LANGUAGE.read().expect("Failed to read language settings")
 }

@@ -1,5 +1,5 @@
-//! 패턴 수치는 전부 `data/bosses/binah.json`에서 옴. 스킬은 난이도도 json도 모르고, 생성될
-//! 때 받은 [`params`] 값만 봄.
+//! Every pattern number comes from `data/bosses/binah.json`. The skills know nothing of
+//! difficulty or json and see only the [`params`] they were built with.
 
 use crate::create_boss_skill;
 use core::{
@@ -12,24 +12,26 @@ use core::{
 };
 use std::ptr::NonNull;
 
-/// json의 `skills` 객체를 받는 원본 구조체(`Raw*`)와, 난이도 하나를 골라낸 결과(`*Params`).
+/// The `Raw*` types that deserialize the json `skills` object, and the `*Params` that result
+/// from picking one difficulty out of them.
 ///
-/// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣음. 모듈 안에 둘 것.
+/// Kept inside a module: a top-level `struct` here would be mistaken for a skill by xtask and
+/// pulled into the `Skill` enum.
 pub mod params {
     use core::difficulty::{ByDifficulty, Difficulty};
     use core::locale::LocalizedName;
     use core::skill::Region;
     use serde::Deserialize;
 
-    /// 계수는 전부 백분율이라 분모가 고정.
+    /// Coefficients are all percentages, so the denominator is fixed.
     pub const PERCENT_DEN: u16 = 100;
 
-    /// 비나전 온필드 최대 인원. 실제로 몇 명이 서는지는 런타임에야 알 수 있으므로 이건
-    /// `skill_effects`가 효과를 선언할 때 쓰는 상한일 뿐이고, `apply`는 받은 대상을 그대로 씀.
-    /// `core::utils::MAX_STUDENT_COUNT`는 편성 최대(10)라 여기 쓰면 안 됨.
+    /// On-field capacity for this fight. How many actually stand there is a runtime fact, so
+    /// this is only the bound `skill_effects` declares with; `apply` uses the targets it is
+    /// given. Not `MAX_STUDENT_COUNT`, which is the party size of 10.
     pub const ON_FIELD_COUNT: u8 = 4;
 
-    /// json `skills`의 키는 보스 이름 접두사를 뺀 스킬 구조체 이름.
+    /// Keys of the json `skills` object are skill struct names without the boss prefix.
     #[derive(Debug, Deserialize)]
     pub struct RawSkills {
         #[serde(rename = "AtsilutsLight")]
@@ -51,7 +53,7 @@ pub mod params {
         pub dot_percent: u16,
         pub dot_interval: u16,
         pub dot_duration: u16,
-        /// 빛이 덮는 세로 직사각형. 보스 기준 상대 좌표.
+        /// Vertical rectangle the light covers, relative to the boss.
         pub region: Region,
     }
 
@@ -83,14 +85,15 @@ pub mod params {
         }
     }
 
-    /// 한 번에 두 방이 나감. 모든 적에게 한 대, 가까운 스트라이커 4명에게 추가로 한 대씩.
+    /// Fires twice at once: one hit on everyone, plus one on each of the four nearest strikers.
     #[derive(Debug, Clone, Copy)]
     pub struct FiresOfSeverityParams {
         pub cost: u8,
         pub duration: u16,
         pub frames: u16,
         pub all_percent: u16,
-        /// 비나에게 가까운 순서대로 물림. 인원이 고정이라 `(계수, 인원)`이 아니라 순서 배열.
+        /// Applied in order of distance from Binah. The count is fixed, so this is an ordered
+        /// array rather than `(coefficient, count)` pairs.
         pub nearest_percents: [u16; 4],
     }
 
@@ -161,10 +164,11 @@ fn damage_effect(percent: u16) -> EffectKind {
     }
 }
 
-/// `percents`를 대상에 앞에서부터 하나씩 물림. 대상이 모자라면 남은 값은 버려지고, 값이
-/// 모자라면 남은 대상은 맞지 않음.
+/// Zips `percents` onto targets from the front. Surplus values are dropped and surplus targets
+/// are left alone.
 ///
-/// 순서가 곧 대상 선정이므로 거리순 패턴은 `targets`가 이미 정렬되어 있다고 보고 씀.
+/// Order is the target selection, so distance-ordered patterns rely on `targets` already being
+/// sorted.
 fn append_damage(
     caster: &StateData<'_>,
     targets: &mut [&mut StateData<'_>],

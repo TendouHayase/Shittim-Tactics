@@ -17,7 +17,7 @@ pub trait Stateful<'a>: Clone + Send + Sync + Eq + Hash {
     fn students_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut [StateData<'a>];
     fn boss<'b: 'c, 'c>(&'b self) -> &'c StateData<'a>;
     fn boss_mut<'b: 'c, 'c>(&'b mut self) -> &'c mut StateData<'a>;
-    /// 보스와 학생들을 단 한 번의 가변 대여로 동시에 꺼냅니다.
+    /// Hands out the boss and the students together, through a single mutable borrow.
     fn split_mut<'b>(&'b mut self) -> (&'b mut StateData<'a>, &'b mut [StateData<'a>]);
     fn cost(&self) -> i8;
     fn frames(&self) -> u16;

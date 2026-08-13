@@ -3,10 +3,10 @@ use std::{
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut},
 };
 
-/// 스킬이 적용되었는지 여부를 저장하는 구조체
+/// Which skills are currently applied.
 ///
-/// MSB부터 보스여부 1비트, 자신인지 여부 1비트, 적인지 여부 1비트,
-/// 각 학생의 스킬 적용 여부 `3 * 학생수` 비트, 보스 스킬 N비트입니다.
+/// From the MSB: one bit each for boss, self and enemy, then `3 * students` bits for the
+/// students' skills, then N bits for the boss's.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct SkillsBitMask(pub u64);

@@ -8,7 +8,7 @@ use stochastic::{
 pub mod cache;
 pub mod key;
 
-/// 데미지 분포를 저장하는 구조체입니다.
+/// A damage distribution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Damage {
     pub normal: Uniform,

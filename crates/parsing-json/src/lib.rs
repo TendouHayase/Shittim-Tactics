@@ -15,7 +15,7 @@ pub fn read_json<'a, T: serde::de::DeserializeOwned>(path: &str) -> Result<T, Er
 mod tests {
     use crate::read_json;
 
-    /// 타입을 붙인 파싱은 `core::boss`가 하고, 여기서는 파일을 읽어오는 것까지만 봄.
+    /// Typed parsing belongs to `core::boss`; this only covers reading the file.
     #[test]
     fn read_test() {
         let data: serde_json::Value = read_json(r"./tests/test.json").unwrap();

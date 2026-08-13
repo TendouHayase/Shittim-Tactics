@@ -1,5 +1,5 @@
-//! 패턴 수치는 [`params`] 한 곳에 모아뒀다. `data/bosses/perorodzilla.json` 파서가 붙으면
-//! [`params::Params::of`]와 프레임 상수만 갈아끼우면 된다.
+//! Pattern numbers are collected in [`params`]. Once `data/bosses/perorodzilla.json` is parsed,
+//! only [`params::Params::of`] and the frame constants need replacing.
 
 use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
@@ -22,29 +22,29 @@ use std::ptr::NonNull;
 
 use params::Params;
 
-/// json에 없는 패턴 수치. 아직 데이터가 없는 항목은 `None`/`0`이고, 그 값을 쓰는 효과는
-/// 조용히 빠진다.
+/// Pattern numbers not yet in json. Anything still unmeasured is `None` or `0`, and the effects
+/// that use it drop out silently.
 ///
-/// 최상위 `struct`로 두면 xtask가 스킬 구조체로 오인해 `Skill` enum에 넣는다. 모듈 안에 둘 것.
+/// Kept inside a module: a top-level `struct` here would be mistaken for a skill by xtask and
+/// pulled into the `Skill` enum.
 mod params {
     use core::constants::MAX_STUDENT_COUNT;
     use core::difficulty::Difficulty;
     use core::skill::Region;
     use core::utils::time_to_ticks;
 
-    /// 계수는 전부 백분율이라 분모가 고정.
+    /// Coefficients are all percentages, so the denominator is fixed.
     pub const PERCENT_DEN: u16 = 100;
 
-    /// `0`은 미측정.
-    ///
-    /// 3.666초. `time_to_ticks(3666, 1000)`은 `3666 * 30`이 u16을 넘어 터진다.
+    /// 3.666 seconds. Written as a reduced fraction because `time_to_ticks(3666, 1000)`
+    /// overflows a u16 at `3666 * 30`.
     pub const WHITE_HOT_HEAT_VISION_FRAMES: u16 = time_to_ticks(1833, 500);
     pub const AQUA_BALL_FRAMES: u16 = 0;
     pub const SUMMON_MINION_FRAMES: u16 = 0;
     pub const ABSORB_MINION_FRAMES: u16 = 0;
     pub const HYPER_SPIRAL_GLARE_BEAM_FRAMES: u16 = 0;
 
-    /// 매크로 인자는 `self`를 볼 수 없어서 상수로 뺀다.
+    /// A constant because macro arguments cannot see `self`.
     pub const DOT_DURATION: u16 = time_to_ticks(10, 1);
 
     #[derive(Debug, Clone, Copy)]
@@ -57,7 +57,7 @@ mod params {
 
         pub heat_vision_percent: u16,
         pub chain_count: u8,
-        /// 대상이 더 많으면 마지막 값을 반복한다.
+        /// The last value repeats when there are more targets.
         pub chain_percents: [u16; 2],
 
         pub blast_percent: u16,
@@ -223,9 +223,9 @@ fn summon_minion_wave(boss: &mut StateData<'_>, params: Params) {
     pero.damage_record_start = record_start;
 }
 
-/// 미니온이 받은 데미지 100%가 보스에게 들어가므로 보스 데미지 기록의 증가분을 미니온이
-/// 받은 몫으로 본다. 웨이브 중에는 미니온이 우선 타깃이라 대부분의 데미지가 미니온을
-/// 거친다고 가정한 근사다.
+/// All damage a minion takes passes to the boss, so growth in the boss damage log is read as
+/// the minions' share. An approximation: it assumes most damage during a wave goes through the
+/// minions, which are targeted first.
 fn damage_since_wave_start(boss: &StateData<'_>) -> u64 {
     let record_start = boss
         .extra_as::<PerorodzillaState>()
@@ -239,8 +239,8 @@ fn damage_since_wave_start(boss: &StateData<'_>) -> u64 {
         .sum()
 }
 
-/// 미니온은 한 마리씩 우선 타깃이 되므로 웨이브 전체가 받은 데미지를 체력의 50%로 나눈
-/// 몫을 넘어진 마리 수로 본다. 체력을 모르면(`big_minion_hp == 0`) 판정할 수 없다.
+/// Minions are targeted one at a time, so the wave's total damage divided by 50% of one
+/// minion's hp is taken as the number knocked down. Undecidable when `big_minion_hp` is 0.
 fn knockdown_count(boss: &StateData<'_>) -> u8 {
     let pero = boss.extra_as::<PerorodzillaState>();
     let threshold = pero.big_minion_hp / 2;
@@ -252,10 +252,10 @@ fn knockdown_count(boss: &StateData<'_>) -> u8 {
     ((pero.minion_damage / threshold) as u8).min(pero.big_minions)
 }
 
-/// 폭발 범위 안의 모든 대상에게 데미지가 들어가고 보스는 그 합을 받는다. 반환값은 큰
-/// 미니온이 받은 몫으로, 다시 넘어짐 판정에 들어간다.
+/// Everything inside the blast takes damage and the boss takes the sum. Returns the big
+/// minions' share, which feeds the knockdown count.
 ///
-/// 큰 미니온은 개별 좌표가 없어 아직 서 있는 미니온 전부가 범위 안이라고 본다.
+/// Big minions have no individual coordinates, so every one still standing counts as in range.
 fn apply_shiny_minion_blast(
     boss: &mut StateData<'_>,
     students: &mut [&mut StateData<'_>],
@@ -303,7 +303,7 @@ fn apply_shiny_minion_blast(
     minion_share
 }
 
-/// 그로기 게이지가 다 찼으면 `true`.
+/// `true` once the groggy gauge is full.
 fn absorb_minion_wave(
     boss: &mut StateData<'_>,
     students: &mut [&mut StateData<'_>],
@@ -343,8 +343,8 @@ fn absorb_minion_wave(
     }
 }
 
-/// json을 읽는 쪽에서 전투 시작 시 한 번 호출해야 한다. 채우지 않으면 넘어짐 판정이
-/// 비활성화된다.
+/// Must be called once at the start of a fight by whoever reads the json. Left unset, knockdown
+/// detection stays disabled.
 pub fn init_big_minion_hp(boss: &mut StateData<'_>, hp: u64) {
     boss.extra_as_mut::<PerorodzillaState>().big_minion_hp = hp;
 }

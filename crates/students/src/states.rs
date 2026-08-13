@@ -1,8 +1,8 @@
 #[derive(Debug, Clone, Default)]
 pub struct KeiState {
-    /// 서브 스킬 효과로 누적된 데미지
+    /// Damage stored by the sub skill.
     pub acc_damage: u64,
 
-    /// 데미지 기록 직전까지 누적된 데미지 기록
+    /// Length of the boss damage log when recording started.
     pub recording_start_len: usize,
 }

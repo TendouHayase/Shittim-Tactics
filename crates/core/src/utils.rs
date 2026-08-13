@@ -19,11 +19,11 @@ pub struct Ratio {
 }
 
 impl Ratio {
-    /// `10^exp`가 `i64`를 넘지 않는 한계.
+    /// The largest `exp` for which `10^exp` fits in an `i64`.
     pub const MAX_EXP: u8 = 18;
 
-    /// 뒤따르는 0을 떼어 같은 값이 항상 같은 표현을 갖게 함. `Eq`/`Hash`가 값 비교가 되려면
-    /// 필요함 (`2.50`과 `2.5`).
+    /// Strips trailing zeros so that equal values share one representation. Without this,
+    /// `2.50` and `2.5` would differ under `Eq` and `Hash`.
     pub fn new(num: i64, exp: u8) -> Self {
         let mut num = num;
         let mut exp = exp.min(Self::MAX_EXP);
@@ -44,8 +44,9 @@ impl Ratio {
         10i64.pow(self.exp as u32)
     }
 
-    /// `value * self`를 정수로. 중간 반올림이 없도록 곱셈이 먼저 가고, 나눗셈은 0 쪽으로 버림.
-    /// 곱한 값이 `i64`를 넘길 수 있어 `i128`을 거침.
+    /// `value * self` as an integer. Multiplication comes first so nothing is rounded in
+    /// between, and the division truncates toward zero. Goes through `i128` because the product
+    /// can leave `i64`.
     pub fn apply(self, value: i64) -> i64 {
         ((value as i128 * self.num as i128) / self.den() as i128) as i64
     }
@@ -116,8 +117,8 @@ pub struct Position {
     pub y: OrderedFloat<f32>,
 }
 
-/// json에서는 `[x, y]`. `ordered-float`의 serde 기능을 켜지 않으려고 직접 붙인 것이고, 덤으로
-/// 데이터 파일에 필드 이름이 반복되지 않음.
+/// `[x, y]` in json. Written by hand to avoid enabling the serde feature of `ordered-float`,
+/// and it keeps field names from repeating throughout the data files.
 impl Serialize for Position {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         (self.x.0, self.y.0).serialize(serializer)
@@ -186,8 +187,8 @@ pub fn euclidean_distance(lhs: Position, rhs: Position) -> f64 {
         .into()
 }
 
+/// Cross product of the vectors `p1 -> p2` and `q1 -> q2`.
 #[inline]
-/// p 벡터와 q벡터 크로스곱
 pub fn cross_product(p1: Position, p2: Position, q1: Position, q2: Position) -> OrderedFloat<f32> {
     let (px, py) = (p2.x - p1.x, p2.y - p1.y);
     let (qx, qy) = (q2.x - q1.x, q2.y - q1.y);
