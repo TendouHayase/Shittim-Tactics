@@ -7,6 +7,7 @@
 
 pub mod actions;
 pub mod agent;
+pub mod algorithm;
 pub mod base;
 pub mod boss;
 pub mod character;

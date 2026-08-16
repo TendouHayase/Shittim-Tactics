@@ -1,43 +1,75 @@
 use core::{
-    actions::ActionContext::{self},
+    actions::{
+        Action,
+        ActionContext::{self},
+    },
     boss::Boss,
     character::{Character, CharacterOps},
     constants::TPS,
     damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget::Land, SkillMeta, SkillOps},
-    state::{AccumulatedDamage, RemainedEffects, StateData, Stateful},
+    state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
     student::Student,
     utils::is_inside,
 };
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
-    marker::PhantomData,
 };
 
-pub struct Simulation<'a, const N: usize, S: Stateful<'a>> {
-    pub students: [Student; N],
-    pub boss: Boss,
+pub struct Simulation {
+    pub students: Vec<Box<Student>>,
+    pub boss: Box<Boss>,
 
     limit_ticks: u16,
 
-    damage_list: HashMap<SkillsBitMask, Damage>,
+    damage_map: HashMap<SkillsBitMask, Damage>,
     cost_charge_time: HashMap<SkillsBitMask, u16>,
-
-    _marker: PhantomData<&'a S>,
 }
 
-impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S> {
-    type S<'a> = S;
-    fn legal_actions<'a>(&self, state: &impl core::state::Stateful<'a>) -> Vec<&Skill> {
+impl<'a> Simulator<'a, State<'a>> for Simulation {
+    fn initial_state(&'a self) -> State<'a> {
+        let mut it = self.students.iter();
+
+        if self.students.len() == 6 {
+            State {
+                students: core::state::StudentState::TotalAssault(std::array::from_fn(|_| {
+                    StateData::new(Character::Student(it.next().unwrap()), &self.damage_map)
+                })),
+                boss: StateData::new(Character::Boss(&self.boss), &self.damage_map),
+                frames: 0,
+                cost: 0,
+            }
+        } else if self.students.len() == 10 {
+            State {
+                students: core::state::StudentState::FinalRestrictionRelease(std::array::from_fn(
+                    |_| StateData::new(Character::Student(it.next().unwrap()), &self.damage_map),
+                )),
+                boss: StateData::new(Character::Boss(&self.boss), &self.damage_map),
+                frames: 0,
+                cost: 0,
+            }
+        } else {
+            panic!("unsupported students party size: {}", self.students.len())
+        }
+    }
+
+    fn legal_actions(&self, state: &State<'a>) -> Vec<ActionContext<'a>> {
         let cost = state.cost();
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
             for (j, cooltime) in stat.cooldowns.iter().enumerate() {
-                let skill = &self.students[i].skills[j];
+                let skill = &stat.character.skill_list()[j];
                 if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
-                    result.push(skill);
+                    let caster = stat.character.id();
+                    let targets = self.resolve_targets(state, skill);
+
+                    result.push(ActionContext::Use(Action {
+                        caster,
+                        targets,
+                        skill,
+                    }));
                 }
             }
         }
@@ -45,7 +77,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         result
     }
 
-    fn apply<'a>(&self, state: &Self::S<'a>, action: &core::actions::ActionContext) -> Self::S<'a> {
+    fn apply(&self, state: &State<'a>, action: &core::actions::ActionContext) -> State<'a> {
         let action = match action {
             ActionContext::Wait => return state.clone(),
             ActionContext::Use(action) => action,
@@ -99,11 +131,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         state
     }
 
-    fn advance<'a>(
-        &self,
-        state: &Self::S<'a>,
-        delta_ticks: u16,
-    ) -> Result<Self::S<'a>, error::Error> {
+    fn advance(&self, state: &State<'a>, delta_ticks: u16) -> Result<State<'a>, error::Error> {
         let mut skill_mask = 0u64;
 
         let damage_map = state.boss().damage_map;
@@ -114,13 +142,13 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
 
         skill_mask |= state.boss().effects.data();
 
-        let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()];
+        let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()]; // TODO
 
         let boss_effects_len = state.boss().remained_effects.len();
         let boss_remain_effects_ref = &state.boss().remained_effects;
         let mut new_boss_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
             BinaryHeap::with_capacity(boss_effects_len);
-        let mut boss_effects_mask = state.boss().effects.clone().data();
+        let mut boss_effects_mask = state.boss().effects.data();
         let mut boss_acc_damage = state.boss().accumulated_damage.clone();
         let damage = state.boss().damage_with_effects();
         for item in boss_remain_effects_ref {
@@ -150,81 +178,91 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
 
         let boss_effects = boss_effects_mask.into();
 
-        let cooldowns_lambda = |t: &u16| t - delta_ticks;
+        let cooldowns_lambda = |t: &u16| t.saturating_sub(delta_ticks);
 
-        let mut student_effects_lambda = state.students().iter().map(|student: &StateData<'a>| {
-            let damage = student.damage_with_effects();
-            let mut acc_damage = student.accumulated_damage.clone();
+        let new_students: Vec<StateData<'_>> = state
+            .students()
+            .iter()
+            .map(|student: &StateData<'a>| {
+                let damage = student.damage_with_effects();
+                let mut acc_damage = student.accumulated_damage.clone();
 
-            let effects_len = student.remained_effects.len();
-            let mut new_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
-                BinaryHeap::with_capacity(effects_len);
-            let mut effects_mask = student.effects.clone().data();
-            for item in &student.remained_effects {
-                let bit = 1u64 << item.0.offset;
+                let effects_len = student.remained_effects.len();
+                let mut new_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
+                    BinaryHeap::with_capacity(effects_len);
+                let mut effects_mask = student.effects.clone().data();
+                for item in &student.remained_effects {
+                    let bit = 1u64 << item.0.offset;
 
-                if item.0.ticks <= delta_ticks {
-                    if damage.is_some() {
-                        acc_damage.push(AccumulatedDamage {
-                            ticks: item.0.ticks,
-                            damage: damage_map.get(&effects_mask.into()).copied(),
-                        });
-                    }
-                    effects_mask &= !bit;
-                } else {
-                    if damage.is_some() {
-                        acc_damage.push(AccumulatedDamage {
-                            ticks: delta_ticks,
-                            damage: damage_map.get(&effects_mask.into()).copied(),
-                        });
-                    }
+                    if item.0.ticks <= delta_ticks {
+                        if damage.is_some() {
+                            acc_damage.push(AccumulatedDamage {
+                                ticks: item.0.ticks,
+                                damage: damage_map.get(&effects_mask.into()).copied(),
+                            });
+                        }
+                        effects_mask &= !bit;
+                    } else {
+                        if damage.is_some() {
+                            acc_damage.push(AccumulatedDamage {
+                                ticks: delta_ticks,
+                                damage: damage_map.get(&effects_mask.into()).copied(),
+                            });
+                        }
 
-                    let skill_type = self.lookup_skill(item.0.offset.into());
-                    if let Ok(sk) = skill_type {
-                        for skill_effect in sk.skill_effects() {
-                            for target in skill_effect.targets {
-                                // 장판스킬일 경우 범위 안에 있는지 고려
-                                if let Land { kind, region } = target {
-                                    if kind.is_other() {
-                                        todo!()
-                                    }
-                                    let caster_state = state.state_data_by_id(sk.owner().id());
-                                    if let Some(data) = caster_state
-                                        && is_inside(student.coordinate, region, data.coordinate)
-                                    {
+                        let skill_type = self.lookup_skill(item.0.offset.into());
+                        if let Ok(sk) = skill_type {
+                            for skill_effect in sk.skill_effects() {
+                                for target in skill_effect.targets {
+                                    // 장판스킬일 경우 범위 안에 있는지 고려
+                                    if let Land { kind, region } = target {
+                                        if kind.is_other() {
+                                            todo!()
+                                        }
+                                        let caster_state = state.state_data_by_id(sk.owner().id());
+                                        if let Some(data) = caster_state
+                                            && is_inside(
+                                                student.coordinate,
+                                                region,
+                                                data.coordinate,
+                                            )
+                                        {
+                                            new_remain_effects.push(Reverse(RemainedEffects {
+                                                ticks: item.0.ticks - delta_ticks,
+                                                offset: item.0.offset,
+                                            }));
+                                        }
+                                    } else {
                                         new_remain_effects.push(Reverse(RemainedEffects {
                                             ticks: item.0.ticks - delta_ticks,
                                             offset: item.0.offset,
                                         }));
                                     }
-                                } else {
-                                    new_remain_effects.push(Reverse(RemainedEffects {
-                                        ticks: item.0.ticks - delta_ticks,
-                                        offset: item.0.offset,
-                                    }));
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            StateData {
-                character: student.character,
-                coordinate: student.coordinate,
-                accumulated_damage_cache: student.accumulated_damage_cache.clone(),
-                cooldowns: student.cooldowns.iter().map(|i| i - delta_ticks).collect(),
-                effects: effects_mask.into(),
-                remained_effects: new_remain_effects,
-                accumulated_damage: acc_damage,
-                damage_map,
-                extra: student.extra,
-            }
-        });
+                StateData {
+                    character: student.character,
+                    coordinate: student.coordinate,
+                    accumulated_damage_cache: student.accumulated_damage_cache.clone(),
+                    cooldowns: student
+                        .cooldowns
+                        .iter()
+                        .map(|i| i.saturating_sub(delta_ticks))
+                        .collect(),
+                    effects: effects_mask.into(),
+                    remained_effects: new_remain_effects,
+                    accumulated_damage: acc_damage,
+                    damage_map,
+                    extra: student.extra,
+                }
+            })
+            .collect();
 
-        let new_students: [StateData<'a>; N] =
-            std::array::from_fn(|_| student_effects_lambda.next().unwrap());
-        let new_state = Self::S::new(
+        let new_state = State::new(
             &new_students,
             state
                 .boss()
@@ -235,12 +273,12 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         Ok(new_state)
     }
 
-    fn next_event_frames<'a, 'b>(&self, state: &'b impl Stateful<'a>) -> u16 {
+    fn next_event_frames(&self, state: &State<'a>) -> u16 {
         let mut result: u16 = u16::MAX;
 
         for student in state.students() {
             for (i, time) in student.cooldowns.iter().enumerate() {
-                let cost = *time / self.cost_charge_time[&student.effects];
+                let cost = *time / self.cost_charge_time[&student.effects]; // TODO
                 if student.character.skill_list()[i].cost() as u16 >= cost {
                     result = result.min(*time);
                 }
@@ -254,6 +292,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
         for (i, time) in state.boss().cooldowns.iter().enumerate() {
             if state.boss().character.skill_list()[i].cost() as u16
                 >= *time / self.cost_charge_time[&state.boss().effects]
+            // TODO
             {
                 result = result.min(*time);
             }
@@ -263,7 +302,7 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
     }
 
     fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage> {
-        &self.damage_list
+        &self.damage_map
     }
 
     fn is_time_over(&self, ticks: u16) -> bool {
@@ -271,9 +310,9 @@ impl<const N: usize, S: for<'z> Stateful<'z>> Simulator for Simulation<'_, N, S>
     }
 
     fn lookup_skill(&self, index: usize) -> Result<&Skill, error::Error> {
-        let total_skill_count = 3 + N * 3 + self.boss.skill_list().len();
+        let total_skill_count = 3 + self.students.len() * 3 + self.boss.skill_list().len();
         let student_skill_offset = 3;
-        let boss_skill_offset = 3 + 3 * N;
+        let boss_skill_offset = 3 + 3 * self.students.len();
         if index < 3 || index >= total_skill_count {
             return Err(error::Error::OutOfRange(format!(
                 "{index} must be between 3 and {}",

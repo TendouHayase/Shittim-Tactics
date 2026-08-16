@@ -343,16 +343,16 @@ impl PartialEq for Student {
     }
 }
 
-impl CharacterOps for Student {
-    fn id(&self) -> u32 {
+impl<'a> CharacterOps<'a> for &'a Student {
+    fn id(self) -> u32 {
         self.stats.student_stats.id
     }
 
-    fn stats(&self) -> &BaseStats {
+    fn stats(self) -> &'a BaseStats {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> &[Skill] {
+    fn skill_list(self) -> &'a [Skill] {
         &self.skills
     }
 }

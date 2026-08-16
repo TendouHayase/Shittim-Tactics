@@ -81,16 +81,16 @@ impl Hash for Boss {
     }
 }
 
-impl CharacterOps for Boss {
-    fn id(&self) -> u32 {
+impl<'a> CharacterOps<'a> for &'a Boss {
+    fn id(self) -> u32 {
         self.stats.id
     }
 
-    fn stats(&self) -> &BaseStats {
+    fn stats(self) -> &'a BaseStats {
         &self.stats.base_stats
     }
 
-    fn skill_list(&self) -> &[Skill] {
+    fn skill_list(self) -> &'a [Skill] {
         &self.skills
     }
 }

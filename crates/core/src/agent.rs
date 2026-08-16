@@ -1,15 +1,8 @@
-use crate::{actions::ActionContext, skill::Skill, state::Stateful};
+use crate::{actions::ActionContext, simulator::Simulator, state::Stateful};
 
-pub trait Agent {
-    type S<'a>: Stateful<'a>;
+pub trait Agent<'a, S: Stateful<'a>> {
+    type Value;
 
-    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<(&Skill, u16)>;
-}
-
-pub trait RLAgent: Agent {
-    /// Returns the prior probability/score for each action in state s
-    fn policy<'a>(&self, s: &Self::S<'a>) -> Vec<(ActionContext<'_>, f64)>;
-
-    /// Estimating the Value of State s
-    fn value<'a>(&self, s: &Self::S<'a>) -> f64;
+    fn value(&self, sim: &impl Simulator<'a, S>, state: &S) -> Self::Value;
+    fn policy(&self, sim: &impl Simulator<'a, S>, state: &S) -> Vec<(ActionContext<'a>, f64)>;
 }

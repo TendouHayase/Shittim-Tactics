@@ -3,7 +3,7 @@ use core::{
     skill::Skill,
     state::Stateful,
 };
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Node<'a, S: Stateful<'a>> {
@@ -12,7 +12,6 @@ pub struct Node<'a, S: Stateful<'a>> {
     pub f: u64,
     record: Option<Arc<Node<'a, S>>>,
     action: Option<ActionContext<'a>>,
-    _marker: PhantomData<&'a S>,
 }
 
 impl<'a, S: Stateful<'a> + Eq> PartialEq for Node<'a, S> {
@@ -43,7 +42,6 @@ impl<'a, S: Stateful<'a>> Node<'a, S> {
             f: g + h,
             record: None,
             action: None,
-            _marker: PhantomData,
         }
     }
 
@@ -60,7 +58,6 @@ impl<'a, S: Stateful<'a>> Node<'a, S> {
             f: g + h,
             record: Some(parent_node),
             action: Some(action),
-            _marker: PhantomData,
         }
     }
 

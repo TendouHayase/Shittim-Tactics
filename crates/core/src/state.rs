@@ -171,7 +171,7 @@ pub struct StateData<'a> {
     pub accumulated_damage: Vec<AccumulatedDamage>,
 
     pub damage_map: &'a HashMap<SkillsBitMask, Damage>,
-    pub character: &'a Character<'a>,
+    pub character: Character<'a>,
     pub effects: SkillsBitMask,
     pub accumulated_damage_cache: DamageCache,
 
@@ -206,7 +206,8 @@ impl Ord for RemainedEffects {
 
 impl PartialEq for StateData<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.cooldowns == other.cooldowns
+        self.character.id() == other.character.id()
+            && self.cooldowns == other.cooldowns
             && self.effects == other.effects
             && self.accumulated_damage == other.accumulated_damage
             && self.coordinate == other.coordinate
@@ -218,7 +219,7 @@ impl Eq for StateData<'_> {}
 impl Hash for StateData<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         (
-            (self.character as *const Character) as *const usize as usize,
+            self.character.id(),
             &self.cooldowns,
             &self.effects,
             &self.accumulated_damage,
@@ -249,10 +250,7 @@ impl<'a> StateData<'a> {
 }
 
 impl<'a> StateData<'a> {
-    pub fn new(
-        character: &'a Character<'_>,
-        skill_list: &'a HashMap<SkillsBitMask, Damage>,
-    ) -> Self {
+    pub fn new(character: Character<'a>, damage_map: &'a HashMap<SkillsBitMask, Damage>) -> Self {
         StateData {
             character,
             coordinate: Default::default(),
@@ -261,20 +259,20 @@ impl<'a> StateData<'a> {
             remained_effects: BinaryHeap::new(),
             accumulated_damage: Vec::new(),
             accumulated_damage_cache: Default::default(),
-            damage_map: skill_list,
+            damage_map,
             extra: [0u8; MAX_EXTRA_STATE_SIZE],
         }
     }
 
     pub fn from_parts<'b>(
-        character: &'a Character,
+        character: Character<'a>,
         coordinate: Position,
         cooldowns: &[u16],
         effects: &'b SkillsBitMask,
         remained_effects: &'b BinaryHeap<Reverse<RemainedEffects>>,
         accumulated_damage: &'b [AccumulatedDamage],
         accumulated_damage_cache: DamageCache,
-        skill_list: &'a HashMap<SkillsBitMask, Damage>,
+        damage_map: &'a HashMap<SkillsBitMask, Damage>,
         extra: [u8; MAX_EXTRA_STATE_SIZE],
     ) -> Self
     where
@@ -288,7 +286,7 @@ impl<'a> StateData<'a> {
             effects: *effects,
             remained_effects: remained_effects.clone(),
             accumulated_damage: accumulated_damage.to_vec(),
-            damage_map: skill_list,
+            damage_map,
             extra,
         }
     }

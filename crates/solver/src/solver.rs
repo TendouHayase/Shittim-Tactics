@@ -1,22 +1,20 @@
-use core::{agent::Agent, simulator::Simulator, skill::Skill, state::Stateful};
-use std::marker::PhantomData;
+use core::{algorithm::Algorithm, skill::Skill};
 
-use search::algorithm::Algorithm;
-
-pub struct Solver<'a, Sim, Alg, const N: usize, S: Stateful<'a>> {
-    sim: Sim,
-    algorithm: Alg,
-    _marker: PhantomData<&'a S>,
+/// Runs a search and hands back the skill order it found.
+///
+/// The algorithm is boxed because which one to run is decided at runtime. That is only possible
+/// because `Algorithm` mentions no state type — the algorithm holds its own simulator and builds
+/// the initial state itself.
+pub struct Solver<'a> {
+    algorithm: Box<dyn Algorithm<'a> + 'a>,
 }
 
-impl<'b, Sim, Alg, const N: usize, S: for<'a> Stateful<'a>> Agent for Solver<'b, Sim, Alg, N, S>
-where
-    Sim: for<'a> Simulator<S<'a> = S>,
-    Alg: for<'a> Algorithm<S<'a> = S>,
-{
-    type S<'a> = S;
+impl<'a> Solver<'a> {
+    pub fn new(algorithm: Box<dyn Algorithm<'a> + 'a>) -> Self {
+        Solver { algorithm }
+    }
 
-    fn solve<'a>(&self, initial: &Self::S<'a>, threshold: f64) -> Vec<(&Skill, u16)> {
-        self.algorithm.search(&self.sim, initial.clone(), threshold)
+    pub fn solve(&self, threshold: f64) -> Vec<(&'a Skill, u16)> {
+        self.algorithm.search(threshold)
     }
 }
