@@ -27,7 +27,7 @@ impl BitOr<u64> for SkillsBitMask {
 impl BitAnd<u64> for SkillsBitMask {
     type Output = Self;
     fn bitand(self, rhs: u64) -> Self::Output {
-        SkillsBitMask(self.0 & (rhs & Self::DATA_MASK))
+        SkillsBitMask(self.0 & (rhs | Self::TAG_MASK))
     }
 }
 
@@ -39,7 +39,7 @@ impl BitOrAssign<u64> for SkillsBitMask {
 
 impl BitAndAssign<u64> for SkillsBitMask {
     fn bitand_assign(&mut self, rhs: u64) {
-        self.0 = self.0 & (rhs & Self::DATA_MASK);
+        self.0 = self.0 & (rhs | Self::TAG_MASK);
     }
 }
 
@@ -61,6 +61,7 @@ impl SkillsBitMask {
     pub const SELF_BIT: u64 = 1u64 << 1;
     pub const ENEMY_BIT: u64 = 1u64 << 2;
     pub const DATA_MASK: u64 = !((1u64 << Self::DATA_BITS_COUNT) - 1);
+    pub const TAG_MASK: u64 = (1 << Self::DATA_BITS_COUNT) - 1;
 
     const DATA_BITS_COUNT: u64 = 3;
 
