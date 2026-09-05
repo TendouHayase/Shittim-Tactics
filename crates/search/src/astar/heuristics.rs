@@ -22,21 +22,18 @@ impl<'a, S: Stateful<'a>> Agent<'a, S> for Heuristic {
     fn value(&self, sim: &impl Simulator<'a, S>, state: &S) -> Self::Value {
         let boss = state.boss();
 
-        let guard = boss
+        let dealt = boss
             .accumulated_damage_cache
             .get_or_compute(&boss.damage_list());
-        let Some(dealt) = guard.as_ref() else {
-            return 0;
-        };
 
         // 누적 데미지의 최댓값을 빼야 남은 체력이 최소가 되고, 그래야 남은 프레임을
         // 과대평가하지 않는다. 과대평가하면 A*의 최적성이 조용히 깨진다.
-        let remain_hp = boss.character.stats().hp.saturating_sub(dealt.max);
+        let remain_hp = boss.character.stats().hp.saturating_sub(dealt.max());
         if remain_hp == 0 {
             return 0;
         }
 
-        let max_damage = sim.damage_map().values().max().copied().unwrap_or_default();
+        let max_damage = sim.damage_map().max_damage().unwrap_or_default();
 
         let mut all_ex_damage = 0u64;
         let mut max_ex_dps = 0u64;

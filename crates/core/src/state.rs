@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     character::{Character, CharacterOps},
-    damage::{Damage, cache::DamageCache, key::SkillsBitMask},
+    damage::{Damage, cache::DamageCache, key::SkillsBitMask, map::DamageMap},
     states::MAX_EXTRA_STATE_SIZE,
     utils::Position,
 };
@@ -115,8 +115,8 @@ impl<'a> Stateful<'a> for State<'a> {
         self.boss
             .accumulated_damage_cache
             .get_or_compute(&self.boss.damage_list())
-            .as_ref()
-            .is_some_and(|x| x.query_range(0, self.boss.character.stats().hp) >= threshold_percent)
+            .tail(self.boss.character.stats().hp)
+            >= threshold_percent
     }
 
     fn is_terminated(&self) -> bool {
@@ -126,8 +126,8 @@ impl<'a> Stateful<'a> for State<'a> {
             if student
                 .accumulated_damage_cache
                 .get_or_compute(&student.damage_list())
-                .as_ref()
-                .is_some_and(|x| x.max < student.character.stats().hp)
+                .max()
+                < student.character.stats().hp
             {
                 result = false;
                 break;
@@ -170,7 +170,7 @@ pub struct StateData<'a> {
     pub remained_effects: BinaryHeap<Reverse<RemainedEffects>>,
     pub accumulated_damage: Vec<AccumulatedDamage>,
 
-    pub damage_map: &'a HashMap<SkillsBitMask, Damage>,
+    pub damage_map: &'a DamageMap,
     pub character: Character<'a>,
     pub effects: SkillsBitMask,
     pub accumulated_damage_cache: DamageCache,
@@ -250,7 +250,7 @@ impl<'a> StateData<'a> {
 }
 
 impl<'a> StateData<'a> {
-    pub fn new(character: Character<'a>, damage_map: &'a HashMap<SkillsBitMask, Damage>) -> Self {
+    pub fn new(character: Character<'a>, damage_map: &'a DamageMap) -> Self {
         StateData {
             character,
             coordinate: Default::default(),
@@ -272,7 +272,7 @@ impl<'a> StateData<'a> {
         remained_effects: &'b BinaryHeap<Reverse<RemainedEffects>>,
         accumulated_damage: &'b [AccumulatedDamage],
         accumulated_damage_cache: DamageCache,
-        damage_map: &'a HashMap<SkillsBitMask, Damage>,
+        damage_map: &'a DamageMap,
         extra: [u8; MAX_EXTRA_STATE_SIZE],
     ) -> Self
     where
@@ -322,6 +322,6 @@ impl<'a> StateData<'a> {
     }
 
     pub fn damage_with_effects(&self) -> Option<Damage> {
-        self.damage_map.get(&self.effects).copied()
+        self.damage_map.get(self.effects)
     }
 }

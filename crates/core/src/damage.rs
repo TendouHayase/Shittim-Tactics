@@ -1,12 +1,13 @@
 use std::ops::{Div, Mul};
 
 use stochastic::{
-    distributions::{IrwinHall, Uniform},
-    utils::build_prefix_sum,
+    dist::Hit,
+    distributions::Uniform,
 };
 
 pub mod cache;
 pub mod key;
+pub mod map;
 
 /// A damage distribution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -75,35 +76,15 @@ impl Damage {
             / self.crit_den as u64
     }
 
-    pub fn to_irwin_hall(&self) -> IrwinHall {
-        let normal_len = self.normal.max - self.normal.min + 1;
-        let crit_len = self.crit.max - self.crit.min + 1;
+    pub fn crit_rate(&self) -> f64 {
+        self.crit_num as f64 / self.crit_den as f64
+    }
 
-        let weight_normal = (self.crit_den - self.crit_num) as u128 * crit_len as u128;
-        let weight_crit = self.crit_num as u128 * normal_len as u128;
-
-        let lo = self.normal.min.min(self.crit.min);
-        let hi = self.normal.max.max(self.crit.max);
-        let len = (hi - lo + 1) as usize;
-
-        let mut counts = vec![0u128; len];
-        for v in self.normal.min..=self.normal.max {
-            counts[(v - lo) as usize] += weight_normal;
-        }
-        for v in self.crit.min..=self.crit.max {
-            counts[(v - lo) as usize] += weight_crit;
-        }
-
-        let total_combinations = normal_len as u128 * crit_len as u128;
-        let prefix_sum = build_prefix_sum(&counts);
-
-        IrwinHall {
-            prefix_sum,
-            uniforms: vec![],
-            n: 1,
-            min: lo,
-            max: hi,
-            total_combinations,
+    pub fn to_hit(&self) -> Hit {
+        Hit {
+            normal: self.normal,
+            crit: self.crit,
+            p: self.crit_rate(),
         }
     }
 

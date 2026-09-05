@@ -6,7 +6,7 @@ use core::{
     boss::Boss,
     character::{Character, CharacterOps},
     constants::TPS,
-    damage::{Damage, key::SkillsBitMask},
+    damage::{Damage, key::SkillsBitMask, map::DamageMap},
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget::Land, SkillMeta, SkillOps},
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
@@ -24,7 +24,7 @@ pub struct Simulation {
 
     limit_ticks: u16,
 
-    damage_map: HashMap<SkillsBitMask, Damage>,
+    damage_map: DamageMap,
     cost_charge_time: HashMap<SkillsBitMask, u16>,
 }
 
@@ -148,7 +148,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         let boss_remain_effects_ref = &state.boss().remained_effects;
         let mut new_boss_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
             BinaryHeap::with_capacity(boss_effects_len);
-        let mut boss_effects_mask = state.boss().effects.data();
+        let mut boss_effects_mask = state.boss().effects;
         let mut boss_acc_damage = state.boss().accumulated_damage.clone();
         let damage = state.boss().damage_with_effects();
         for item in boss_remain_effects_ref {
@@ -158,7 +158,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                 if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
                         ticks: item.0.ticks,
-                        damage: damage_map.get(&boss_effects_mask.into()).copied(),
+                        damage: damage_map.get(boss_effects_mask).copied(),
                     });
                 }
                 boss_effects_mask &= !bit;
@@ -166,7 +166,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                 if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
                         ticks: delta_ticks,
-                        damage: damage_map.get(&boss_effects_mask.into()).copied(),
+                        damage: damage_map.get(boss_effects_mask).copied(),
                     });
                 }
                 new_boss_remain_effects.push(Reverse(RemainedEffects {
@@ -190,7 +190,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                 let effects_len = student.remained_effects.len();
                 let mut new_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
                     BinaryHeap::with_capacity(effects_len);
-                let mut effects_mask = student.effects.clone().data();
+                let mut effects_mask = student.effects;
                 for item in &student.remained_effects {
                     let bit = 1u64 << item.0.offset;
 
@@ -198,7 +198,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                         if damage.is_some() {
                             acc_damage.push(AccumulatedDamage {
                                 ticks: item.0.ticks,
-                                damage: damage_map.get(&effects_mask.into()).copied(),
+                                damage: damage_map.get(effects_mask).copied(),
                             });
                         }
                         effects_mask &= !bit;
@@ -206,7 +206,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                         if damage.is_some() {
                             acc_damage.push(AccumulatedDamage {
                                 ticks: delta_ticks,
-                                damage: damage_map.get(&effects_mask.into()).copied(),
+                                damage: damage_map.get(effects_mask).copied(),
                             });
                         }
 
@@ -301,7 +301,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         result
     }
 
-    fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage> {
+    fn damage_map(&self) -> &DamageMap {
         &self.damage_map
     }
 

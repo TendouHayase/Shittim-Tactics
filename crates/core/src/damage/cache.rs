@@ -1,58 +1,44 @@
 use std::sync::{
     Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockResult, atomic::AtomicUsize,
 };
-use stochastic::distributions::IrwinHall;
+use stochastic::dist::HitBag;
 
 use crate::damage::Damage;
 
 #[derive(Debug, Default)]
 pub struct DamageCache {
-    cached: Arc<RwLock<Option<IrwinHall>>>,
+    cached: Arc<RwLock<HitBag>>,
     last_len: Arc<AtomicUsize>,
 }
 
 impl Clone for DamageCache {
     fn clone(&self) -> Self {
-        match &*self.cached.read().unwrap() {
-            Some(x) => Self {
-                cached: Arc::new(RwLock::new(Some(x.clone()))),
-                last_len: self.last_len.clone(),
-            },
-            None => Self {
-                cached: Arc::new(RwLock::new(None)),
-                last_len: AtomicUsize::new(0).into(),
-            },
+        Self {
+            cached: Arc::new(RwLock::new(self.cached.read().unwrap().clone())),
+            last_len: self.last_len.clone(),
         }
     }
 }
 
 impl PartialEq for DamageCache {
     fn eq(&self, other: &Self) -> bool {
-        self.cached.read().unwrap().as_ref().unwrap()
-            == other.cached.read().unwrap().as_ref().unwrap()
+        *self.cached.read().unwrap() == *other.cached.read().unwrap()
     }
 }
 
 impl Eq for DamageCache {}
 
 impl DamageCache {
-    pub fn get_or_compute(&self, history: &[Damage]) -> RwLockReadGuard<'_, Option<IrwinHall>> {
-        let last_len: usize;
-        {
-            let tmp = self.last_len.clone();
-            last_len = tmp.load(std::sync::atomic::Ordering::Relaxed);
-        }
+    pub fn get_or_compute(&self, history: &[Damage]) -> RwLockReadGuard<'_, HitBag> {
+        let last_len = self.last_len.load(std::sync::atomic::Ordering::Relaxed);
 
-        if self.cached.read().unwrap().is_none() || last_len != history.len() {
-            let mut acc: IrwinHall = Default::default();
-
+        if last_len != history.len() {
+            let mut acc = HitBag::default();
             for dmg in history {
-                acc = &acc + &dmg.to_irwin_hall();
+                acc.push(dmg.to_hit());
             }
-            let mut guard = self.cached.write().unwrap();
 
-            *guard = Some(acc);
-
+            *self.cached.write().unwrap() = acc;
             self.last_len
                 .store(history.len(), std::sync::atomic::Ordering::Relaxed);
         }
@@ -61,12 +47,9 @@ impl DamageCache {
     }
 
     pub fn append(&mut self, dmg: &Damage) {
-        let ih = dmg.to_irwin_hall();
-        let mut cached_mut = self.cached.write().unwrap();
-        match &mut *cached_mut {
-            Some(existing) => *existing += &ih,
-            None => *cached_mut = Some(ih),
-        }
+        self.cached.write().unwrap().push(dmg.to_hit());
+        self.last_len
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn share(&self) -> Self {
@@ -76,11 +59,11 @@ impl DamageCache {
         }
     }
 
-    pub fn read(&self) -> RwLockReadGuard<'_, Option<IrwinHall>> {
+    pub fn read(&self) -> RwLockReadGuard<'_, HitBag> {
         self.cached.read().unwrap()
     }
 
-    pub fn write(&self) -> RwLockWriteGuard<'_, Option<IrwinHall>> {
+    pub fn write(&self) -> RwLockWriteGuard<'_, HitBag> {
         self.cached.write().unwrap()
     }
 
@@ -94,11 +77,11 @@ impl DamageCache {
             .map_err(|err| err.into())
     }
 
-    pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, Option<IrwinHall>>> {
+    pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, HitBag>> {
         self.cached.try_read()
     }
 
-    pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, Option<IrwinHall>>> {
+    pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, HitBag>> {
         self.cached.try_write()
     }
 }

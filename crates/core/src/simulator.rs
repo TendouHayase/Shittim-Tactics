@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     actions::ActionContext,
     character::{Character, CharacterOps},
-    damage::{Damage, key::SkillsBitMask},
+    damage::{Damage, key::SkillsBitMask, map::DamageMap},
     skill::{Skill, SkillEffectTarget, SkillMeta, SkillOps},
     state::Stateful,
     utils::{Position, euclidean_distance, is_inside},
@@ -99,7 +99,7 @@ pub trait Simulator<'a, S: Stateful<'a>> {
     fn next_event_frames(&self, state: &S) -> u16;
 
     /// Damage keyed by which skills are active.
-    fn damage_map(&self) -> &HashMap<SkillsBitMask, Damage>;
+    fn damage_map(&self) -> &DamageMap;
 
     /// Whether `ticks` is past the time limit.
     fn is_time_over(&self, ticks: u16) -> bool;
