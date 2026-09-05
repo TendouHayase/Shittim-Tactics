@@ -185,7 +185,7 @@ fn append_damage(
             .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
         target.accumulated_damage.push(AccumulatedDamage {
             ticks,
-            damage: target.damage_map.get(&target.effects).copied(),
+            damage: target.damage_map.get(target.effects),
         });
     }
 }

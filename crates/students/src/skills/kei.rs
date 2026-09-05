@@ -296,13 +296,10 @@ impl SkillOps for BasicSkill {
             if target.character.is_boss() {
                 target.accumulated_damage.push(AccumulatedDamage {
                     ticks: 1,
-                    damage: caster
-                        .damage_map
-                        .get(
-                            &(damage_key.clone_with_tag(true, false, true)
-                                | (0x01u64 << self.skill_mask_offset)),
-                        )
-                        .copied(),
+                    damage: caster.damage_map.get(
+                        (damage_key.clone_with_tag(true, false, true)
+                            | (0x01u64 << self.skill_mask_offset)),
+                    ),
                 });
             }
         }

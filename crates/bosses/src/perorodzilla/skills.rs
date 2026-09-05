@@ -192,7 +192,7 @@ fn append_damage_over_time(
             .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
         target.accumulated_damage.push(AccumulatedDamage {
             ticks,
-            damage: target.damage_map.get(&target.effects).copied(),
+            damage: target.damage_map.get(target.effects),
         });
         ticks += interval;
     }
@@ -208,7 +208,7 @@ fn append_damage(caster: &StateData<'_>, target: &mut StateData<'_>, percent: u1
         .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
     target.accumulated_damage.push(AccumulatedDamage {
         ticks,
-        damage: target.damage_map.get(&target.effects).copied(),
+        damage: target.damage_map.get(target.effects),
     });
 }
 
