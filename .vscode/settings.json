@@ -1,7 +1,0 @@
-{
-  "rust-analyzer.check.overrideCommand": [
-    "cmd",
-    "/c",
-    "cargo xtask > NUL && cargo check --workspace --all-targets --message-format=json"
-  ]
-}
