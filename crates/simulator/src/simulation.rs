@@ -158,7 +158,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                 if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
                         ticks: item.0.ticks,
-                        damage: damage_map.get(boss_effects_mask).copied(),
+                        damage: damage_map.get(boss_effects_mask),
                     });
                 }
                 boss_effects_mask &= !bit;
@@ -166,7 +166,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                 if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
                         ticks: delta_ticks,
-                        damage: damage_map.get(boss_effects_mask).copied(),
+                        damage: damage_map.get(boss_effects_mask),
                     });
                 }
                 new_boss_remain_effects.push(Reverse(RemainedEffects {
@@ -198,7 +198,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                         if damage.is_some() {
                             acc_damage.push(AccumulatedDamage {
                                 ticks: item.0.ticks,
-                                damage: damage_map.get(effects_mask).copied(),
+                                damage: damage_map.get(effects_mask),
                             });
                         }
                         effects_mask &= !bit;
@@ -206,7 +206,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                         if damage.is_some() {
                             acc_damage.push(AccumulatedDamage {
                                 ticks: delta_ticks,
-                                damage: damage_map.get(effects_mask).copied(),
+                                damage: damage_map.get(effects_mask),
                             });
                         }
 
