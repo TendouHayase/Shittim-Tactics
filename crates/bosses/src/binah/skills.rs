@@ -180,12 +180,10 @@ fn append_damage(
     };
 
     for (target, percent) in targets.iter_mut().zip(percents) {
-        target
-            .accumulated_damage_cache
-            .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
+        target.accumulated_damage_cache.append(&damage);
         target.accumulated_damage.push(AccumulatedDamage {
             ticks,
-            damage: target.damage_map.get(target.effects),
+            damage: Some(damage),
         });
     }
 }

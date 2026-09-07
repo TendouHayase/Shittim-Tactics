@@ -1,9 +1,6 @@
 use std::ops::{Div, Mul};
 
-use stochastic::{
-    dist::Hit,
-    distributions::Uniform,
-};
+use stochastic::{dist::Hit, distributions::Uniform};
 
 pub mod cache;
 pub mod key;
@@ -21,7 +18,7 @@ pub struct Damage {
 
 impl Ord for Damage {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.normal.max.cmp(&other.normal.max)
+        self.crit.max.cmp(&other.crit.max)
     }
 }
 
