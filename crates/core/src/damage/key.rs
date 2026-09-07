@@ -56,6 +56,13 @@ impl DerefMut for SkillsBitMask {
     }
 }
 
+#[repr(u64)]
+pub enum SkillsBitMaskFlags {
+    BossBit = SkillsBitMask::BOSS_BIT,
+    SelfBit = SkillsBitMask::SELF_BIT,
+    EnemyBit = SkillsBitMask::ENEMY_BIT,
+}
+
 impl SkillsBitMask {
     pub const BOSS_BIT: u64 = 1u64;
     pub const SELF_BIT: u64 = 1u64 << 1;
@@ -83,6 +90,21 @@ impl SkillsBitMask {
     #[inline]
     pub const fn data(&self) -> u64 {
         self.0 & SkillsBitMask::DATA_MASK
+    }
+
+    #[inline]
+    pub const fn mask_enermy(self) -> Self {
+        SkillsBitMask(self.0 & !SkillsBitMask::ENEMY_BIT)
+    }
+
+    #[inline]
+    pub const fn mask_boss(self) -> Self {
+        SkillsBitMask(self.0 & !SkillsBitMask::BOSS_BIT)
+    }
+
+    #[inline]
+    pub const fn remove_flag(self, flag: SkillsBitMaskFlags) -> Self {
+        SkillsBitMask(self.0 & !(flag as u64))
     }
 
     #[inline]
