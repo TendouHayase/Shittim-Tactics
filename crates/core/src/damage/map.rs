@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use crate::damage::{Damage, key::SkillsBitMask};
+use crate::{
+    boss::Boss,
+    damage::{Damage, key::SkillsBitMask},
+    student::Student,
+};
 
 #[derive(Debug)]
 pub struct DamageMap {
@@ -8,6 +12,13 @@ pub struct DamageMap {
 }
 
 impl DamageMap {
+    pub fn new(boss: &Boss, students: &[&Student]) -> Self {
+        let set_bit = |idx: usize, k: SkillsBitMask| k & (1 << idx);
+        let map = HashMap::new();
+
+        Self { entries: map }
+    }
+
     pub fn get(&self, mask: SkillsBitMask) -> Option<Damage> {
         self.entries.get(&mask).copied()
     }
