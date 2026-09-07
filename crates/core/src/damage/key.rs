@@ -115,12 +115,69 @@ impl DerefMut for SkillsBitMask {
     }
 }
 
-impl IntoIterator for SkillsBitMask {
-    type Item = SkillsBitMaskItem;
-    type IntoIter = SkillsBitMaskIter;
+#[repr(u64)]
+pub enum SkillsBitMaskFlags {
+    BossBit = SkillsBitMask::BOSS_BIT,
+    SelfBit = SkillsBitMask::SELF_BIT,
+    EnemyBit = SkillsBitMask::ENEMY_BIT,
+}
+
+impl SkillsBitMask {
+    pub const BOSS_BIT: u64 = 1u64;
+    pub const SELF_BIT: u64 = 1u64 << 1;
+    pub const ENEMY_BIT: u64 = 1u64 << 2;
+    pub const DATA_MASK: u64 = !((1u64 << Self::DATA_BITS_COUNT) - 1);
+    pub const TAG_MASK: u64 = (1 << Self::DATA_BITS_COUNT) - 1;
+
+    const DATA_BITS_COUNT: u64 = 3;
+
     #[inline]
-    fn into_iter(self) -> SkillsBitMaskIter {
-        SkillsBitMaskIter(self.0)
+    pub const fn is_boss(&self) -> bool {
+        (self.0 & SkillsBitMask::BOSS_BIT) != 0
+    }
+
+    #[inline]
+    pub const fn is_self(&self) -> bool {
+        (self.0 & SkillsBitMask::SELF_BIT) != 0
+    }
+
+    #[inline]
+    pub const fn is_enemy(&self) -> bool {
+        (self.0 & SkillsBitMask::ENEMY_BIT) != 0
+    }
+
+    #[inline]
+    pub const fn data(&self) -> u64 {
+        self.0 & SkillsBitMask::DATA_MASK
+    }
+
+    #[inline]
+    pub const fn mask_enermy(self) -> Self {
+        SkillsBitMask(self.0 & !SkillsBitMask::ENEMY_BIT)
+    }
+
+    #[inline]
+    pub const fn mask_boss(self) -> Self {
+        SkillsBitMask(self.0 & !SkillsBitMask::BOSS_BIT)
+    }
+
+    #[inline]
+    pub const fn remove_flag(self, flag: SkillsBitMaskFlags) -> Self {
+        SkillsBitMask(self.0 & !(flag as u64))
+    }
+
+    #[inline]
+    pub fn clone_with_tag(&self, is_boss: bool, is_self: bool, is_enemy: bool) -> Self {
+        let mut mask = *self;
+
+        // 조건이 true시 전항의 값은 0xFFFFFFFF, false시 0x00000000
+        // 후항은 해당하는 비트 제외 모두 1
+        // 조건 true시 등식 우측값은 0xFFFFFFFF, false시 해당하는 비트 제외 모두 1
+        mask &= (0u64).wrapping_sub(is_boss.into()) | !SkillsBitMask::BOSS_BIT;
+        mask &= (0u64).wrapping_sub(is_self.into()) | !SkillsBitMask::SELF_BIT;
+        mask &= (0u64).wrapping_sub(is_enemy.into()) | !SkillsBitMask::ENEMY_BIT;
+
+        mask
     }
 }
 
