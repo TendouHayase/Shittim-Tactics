@@ -5,7 +5,7 @@ use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
 use core::{
     boss::Boss,
-    character::{Character, CharacterOps},
+    character::Character,
     constants::MAX_STUDENT_COUNT,
     damage::Damage,
     difficulty::Difficulty,
@@ -175,8 +175,8 @@ fn difficulty_of(skill: &Skill) -> Difficulty {
 }
 
 fn append_damage_over_time(
-    caster: &StateData<'_>,
-    target: &mut StateData<'_>,
+    caster: &StateData,
+    target: &mut StateData,
     percent: u16,
     interval: u16,
     duration: u16,
@@ -196,7 +196,7 @@ fn append_damage_over_time(
     }
 }
 
-fn append_damage(caster: &StateData<'_>, target: &mut StateData<'_>, percent: u16, ticks: u16) {
+fn append_damage(caster: &StateData, target: &mut StateData, percent: u16, ticks: u16) {
     let Some(damage) = caster.damage_with_effects() else {
         return;
     };
@@ -210,7 +210,7 @@ fn append_damage(caster: &StateData<'_>, target: &mut StateData<'_>, percent: u1
     });
 }
 
-fn summon_minion_wave(boss: &mut StateData<'_>, params: Params) {
+fn summon_minion_wave(boss: &mut StateData, params: Params) {
     let record_start = boss.accumulated_damage.len();
     let pero = boss.extra_as_mut::<PerorodzillaState>();
 
@@ -224,7 +224,7 @@ fn summon_minion_wave(boss: &mut StateData<'_>, params: Params) {
 /// All damage a minion takes passes to the boss, so growth in the boss damage log is read as
 /// the minions' share. An approximation: it assumes most damage during a wave goes through the
 /// minions, which are targeted first.
-fn damage_since_wave_start(boss: &StateData<'_>) -> u64 {
+fn damage_since_wave_start(boss: &StateData) -> u64 {
     let record_start = boss
         .extra_as::<PerorodzillaState>()
         .damage_record_start
@@ -239,7 +239,7 @@ fn damage_since_wave_start(boss: &StateData<'_>) -> u64 {
 
 /// Minions are targeted one at a time, so the wave's total damage divided by 50% of one
 /// minion's hp is taken as the number knocked down. Undecidable when `big_minion_hp` is 0.
-fn knockdown_count(boss: &StateData<'_>) -> u8 {
+fn knockdown_count(boss: &StateData) -> u8 {
     let pero = boss.extra_as::<PerorodzillaState>();
     let threshold = pero.big_minion_hp / 2;
 
@@ -255,8 +255,8 @@ fn knockdown_count(boss: &StateData<'_>) -> u8 {
 ///
 /// Big minions have no individual coordinates, so every one still standing counts as in range.
 fn apply_shiny_minion_blast(
-    boss: &mut StateData<'_>,
-    students: &mut [&mut StateData<'_>],
+    boss: &mut StateData,
+    students: &mut [&mut StateData],
     params: Params,
     region: Region,
     ticks: u16,
@@ -303,8 +303,8 @@ fn apply_shiny_minion_blast(
 
 /// `true` once the groggy gauge is full.
 fn absorb_minion_wave(
-    boss: &mut StateData<'_>,
-    students: &mut [&mut StateData<'_>],
+    boss: &mut StateData,
+    students: &mut [&mut StateData],
     params: Params,
 ) -> bool {
     let dealt = damage_since_wave_start(boss);
@@ -343,7 +343,7 @@ fn absorb_minion_wave(
 
 /// Must be called once at the start of a fight by whoever reads the json. Left unset, knockdown
 /// detection stays disabled.
-pub fn init_big_minion_hp(boss: &mut StateData<'_>, hp: u64) {
+pub fn init_big_minion_hp(boss: &mut StateData, hp: u64) {
     boss.extra_as_mut::<PerorodzillaState>().big_minion_hp = hp;
 }
 
@@ -442,10 +442,10 @@ create_boss_skill!(
             effects
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            caster: &'c mut StateData,
+            targets: &'b mut [&'c mut StateData],
         ) {
             let params = self.params;
 
@@ -511,10 +511,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            caster: &'c mut StateData,
+            targets: &'b mut [&'c mut StateData],
         ) {
             let percent = self.params.aqua_ball_percent;
 
@@ -544,10 +544,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            _targets: &'b mut [&'c mut StateData<'a>],
+            caster: &'c mut StateData,
+            _targets: &'b mut [&'c mut StateData],
         ) {
             summon_minion_wave(caster, self.params);
         }
@@ -555,7 +555,7 @@ create_boss_skill!(
 );
 
 impl SummonMinion {
-    pub fn other_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
+    pub fn other_apply(skill: &Skill, mut state: State) -> State {
         let params = Params::of(difficulty_of(skill));
         summon_minion_wave(state.boss_mut(), params);
         state
@@ -592,10 +592,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            caster: &'c mut StateData,
+            targets: &'b mut [&'c mut StateData],
         ) {
             let params = self.params;
             let is_groggy = absorb_minion_wave(caster, targets, params);
@@ -607,10 +607,10 @@ create_boss_skill!(
 );
 
 impl AbsorbMinion {
-    pub fn other_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
+    pub fn other_apply(skill: &Skill, mut state: State) -> State {
         let params = Params::of(difficulty_of(skill));
         let (boss, students) = state.split_mut();
-        let mut students: Vec<&mut StateData<'_>> = students.iter_mut().collect();
+        let mut students: Vec<&mut StateData> = students.iter_mut().collect();
 
         absorb_minion_wave(boss, &mut students, params);
 
@@ -638,10 +638,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            caster: &'c mut StateData,
+            targets: &'b mut [&'c mut StateData],
         ) {
             // 게이지를 소모하는 쪽이 여기이므로 시전 조건을 직접 확인한다.
             if caster.extra_as::<PerorodzillaState>().atg_percent < 100 {
@@ -689,10 +689,10 @@ create_boss_skill!(
         }]
     }
 
-    fn apply<'a: 'b, 'b, 'c: 'b>(
+    fn apply<'b, 'c: 'b>(
         &self,
-        _caster: &'c mut StateData<'a>,
-        _targets: &'b mut [&'c mut StateData<'a>],
+        _caster: &'c mut StateData,
+        _targets: &'b mut [&'c mut StateData],
     ) {
     }
     }

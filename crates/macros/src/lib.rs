@@ -390,7 +390,7 @@ fn expand_skill(args: &SkillArgs, input: &ItemStruct) -> syn::Result<TokenStream
                 &self.name
             }
 
-            fn owner(&self) -> Character<'_> {
+            fn owner(&self) -> Character {
                 // SAFETY: an owner is allocated behind a `Box` before any of its skills exist
                 // and is pinned afterwards, so the address recorded at construction stays valid
                 // for as long as the skill does.
@@ -423,7 +423,7 @@ fn expand_skill(args: &SkillArgs, input: &ItemStruct) -> syn::Result<TokenStream
 
             fn new(
                 name: &str,
-                owner: Character<'_>,
+                owner: Character,
                 skill_mask_offset: usize,
                 params: Self::Params,
             ) -> Self {

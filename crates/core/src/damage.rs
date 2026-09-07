@@ -2,6 +2,13 @@ use std::ops::{Div, Mul};
 
 use stochastic::{dist::Hit, distributions::Uniform};
 
+use crate::{
+    skill::{EffectKind, SkillType},
+    stat::StatKind,
+    state::StateData,
+    types::{AttackType, damage_scale, is_weak},
+};
+
 pub mod cache;
 pub mod key;
 pub mod map;
@@ -76,9 +83,9 @@ impl Damage {
     pub fn from_state_data<'a>(
         src: &StateData,
         tgt: &StateData,
-        skill_type: SkillType,
         scale_num: u64,
         scale_den: u64,
+        skill
     ) -> Damage {
         // Since stats are added via multiplication or addition depending on buffs and debuffs,
         // a `scale` variable is required, so each element is copied rather than copying the entire object.
@@ -115,117 +122,113 @@ impl Damage {
 
         let mut target_def_scale = 100;
 
-        for effect in src.effects() {
-            match &effect.kind {
-                EffectKind::Buff {
+        for effect in &src.effects {
+            effect. {
+                &EffectKind::Buff {
                     ty,
                     duration: _,
                     scale,
                     amount: increase,
                 } => match ty {
-                    Buff::Atk => {
+                    StatKind::Atk => {
                         atk += increase;
                         atk_scale += scale;
                     }
-                    Buff::Crit => {
-                        crit += *increase as u16;
+                    StatKind::Crit => {
+                        crit += increase as u16;
                         crit_scale += scale;
                     }
-                    Buff::CritDmg => {
+                    StatKind::CritDmg => {
                         crit_dmg += increase;
                         crit_dmg_scale += scale;
                     }
-                    Buff::DmgDealt => {
+                    StatKind::DmgDealt => {
                         dmg_dealt += increase;
                         dmg_dealt_scale += scale;
                     }
-                    Buff::ExSkillDmgDealt => {
+                    StatKind::ExSkillDmgDealt => {
                         ex_skill_dmg_dealt += increase;
                         ex_skill_dmg_dealt_scale += scale;
                     }
-                    Buff::Effectiveness(atk_type) => match atk_type {
-                        AttackType::Explosive => {
-                            explosive_effectiveness += increase;
-                            explosive_effectiveness_scale += scale;
-                        }
-                        AttackType::Piercing => {
-                            piercing_effectiveness += increase;
-                            piercing_effectiveness_scale += scale;
-                        }
-                        AttackType::Corrosive => {
-                            corrosive_effectiveness += increase;
-                            corrosive_effectiveness_scale += scale;
-                        }
-                        AttackType::Mystic => {
-                            mystic_effectiveness += increase;
-                            mystic_effectiveness_scale += scale;
-                        }
-                        AttackType::Sonic => {
-                            sonic_effectiveness += increase;
-                            sonic_effectiveness_scale += scale;
-                        }
-                        AttackType::Normal => (),
-                    },
-                    Buff::BasicProficiency => {
+
+                    StatKind::ExplosiveEffectiveness => {
+                        explosive_effectiveness += increase;
+                        explosive_effectiveness_scale += scale;
+                    }
+                    StatKind::PiercingEffectiveness => {
+                        piercing_effectiveness += increase;
+                        piercing_effectiveness_scale += scale;
+                    }
+                    StatKind::CorrosiveEffectiveness => {
+                        corrosive_effectiveness += increase;
+                        corrosive_effectiveness_scale += scale;
+                    }
+                    StatKind::MysticEffectiveness => {
+                        mystic_effectiveness += increase;
+                        mystic_effectiveness_scale += scale;
+                    }
+                    StatKind::SonicEffectiveness => {
+                        sonic_effectiveness += increase;
+                        sonic_effectiveness_scale += scale;
+                    }
+                    StatKind::BasicsProficiency => {
                         basic_proficiency += increase;
                         basic_proficiency_scale += scale;
                     }
                     _ => (),
                 },
-                EffectKind::Debuff {
+                &EffectKind::Debuff {
                     ty,
                     duration: _,
                     scale,
                     amount: decrease,
                 } => match ty {
-                    Debuff::Atk => {
+                    StatKind::Atk => {
                         atk -= decrease;
                         atk_scale -= scale;
                     }
-                    Debuff::Crit => {
-                        crit -= *decrease as u16;
+                    StatKind::Crit => {
+                        crit -= decrease as u16;
                         crit_scale -= scale;
                     }
-                    Debuff::CritDmg => {
+                    StatKind::CritDmg => {
                         crit_dmg -= decrease;
                         crit_dmg_scale -= scale;
                     }
-                    Debuff::DmgDealt => {
+                    StatKind::DmgDealt => {
                         dmg_dealt -= decrease;
                         dmg_dealt_scale -= scale;
                     }
-                    Debuff::ExSkillDmgDealt => {
+                    StatKind::ExSkillDmgDealt => {
                         ex_skill_dmg_dealt -= decrease;
                         ex_skill_dmg_dealt_scale -= scale;
                     }
-                    Debuff::Effectiveness(atk_type) => match atk_type {
-                        AttackType::Explosive => {
-                            explosive_effectiveness -= decrease;
-                            explosive_effectiveness_scale -= scale;
-                        }
-                        AttackType::Piercing => {
-                            piercing_effectiveness -= decrease;
-                            piercing_effectiveness_scale -= scale;
-                        }
-                        AttackType::Corrosive => {
-                            corrosive_effectiveness -= decrease;
-                            corrosive_effectiveness_scale -= scale;
-                        }
-                        AttackType::Mystic => {
-                            mystic_effectiveness -= decrease;
-                            mystic_effectiveness_scale -= scale;
-                        }
-                        AttackType::Sonic => {
-                            sonic_effectiveness -= decrease;
-                            sonic_effectiveness_scale -= scale;
-                        }
-                        AttackType::Normal => (),
-                    },
-                    Debuff::BasicProficiency => {
+
+                    StatKind::ExplosiveEffectiveness => {
+                        explosive_effectiveness -= decrease;
+                        explosive_effectiveness_scale -= scale;
+                    }
+                    StatKind::PiercingEffectiveness => {
+                        piercing_effectiveness -= decrease;
+                        piercing_effectiveness_scale -= scale;
+                    }
+                    StatKind::CorrosiveEffectiveness => {
+                        corrosive_effectiveness -= decrease;
+                        corrosive_effectiveness_scale -= scale;
+                    }
+                    StatKind::MysticEffectiveness => {
+                        mystic_effectiveness -= decrease;
+                        mystic_effectiveness_scale -= scale;
+                    }
+                    StatKind::SonicEffectiveness => {
+                        sonic_effectiveness -= decrease;
+                        sonic_effectiveness_scale -= scale;
+                    }
+                    StatKind::BasicsProficiency => {
                         basic_proficiency -= decrease;
                         basic_proficiency_scale -= scale;
                     }
-                    Debuff::Def => {
+                    StatKind::Def => {
                         target_def -= decrease;
                         target_def_scale -= scale;
                     }

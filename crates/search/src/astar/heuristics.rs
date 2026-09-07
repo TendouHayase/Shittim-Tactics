@@ -1,6 +1,5 @@
 use core::{
-    actions::ActionContext, agent::Agent, character::CharacterOps, simulator::Simulator,
-    skill::SkillMeta, state::Stateful,
+    actions::ActionContext, agent::Agent, simulator::Simulator, skill::SkillMeta, state::Stateful,
 };
 
 /// The default agent for A\*.
@@ -9,17 +8,17 @@ use core::{
 /// it stays admissible; `policy` adds no preference of its own and hands back every legal action.
 pub struct Heuristic;
 
-impl<'a, S: Stateful<'a>> Agent<'a, S> for Heuristic {
+impl<S: Stateful> Agent<S> for Heuristic {
     type Value = u64;
 
-    fn policy(&self, sim: &impl Simulator<'a, S>, state: &S) -> Vec<(ActionContext<'a>, f64)> {
+    fn policy<'s>(&self, sim: &'s impl Simulator<S>, state: &S) -> Vec<(ActionContext<'s>, f64)> {
         let actions = sim.legal_actions(state);
         let prior = 1.0 / actions.len() as f64;
 
         actions.into_iter().map(|action| (action, prior)).collect()
     }
 
-    fn value(&self, sim: &impl Simulator<'a, S>, state: &S) -> Self::Value {
+    fn value(&self, sim: &impl Simulator<S>, state: &S) -> Self::Value {
         let boss = state.boss();
 
         let dealt = boss

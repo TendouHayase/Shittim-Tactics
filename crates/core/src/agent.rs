@@ -1,8 +1,12 @@
 use crate::{actions::ActionContext, simulator::Simulator, state::Stateful};
 
-pub trait Agent<'a, S: Stateful<'a>> {
+pub trait Agent<S: Stateful> {
     type Value;
 
-    fn value(&self, sim: &impl Simulator<'a, S>, state: &S) -> Self::Value;
-    fn policy(&self, sim: &impl Simulator<'a, S>, state: &S) -> Vec<(ActionContext<'a>, f64)>;
+    fn value(&self, sim: &impl Simulator<S>, state: &S) -> Self::Value;
+    fn policy<'s>(
+        &self,
+        sim: &'s impl Simulator<S>,
+        state: &S,
+    ) -> Vec<(ActionContext<'s>, f64)>;
 }

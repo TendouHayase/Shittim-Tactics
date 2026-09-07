@@ -4,7 +4,7 @@
 use crate::create_boss_skill;
 use core::{
     boss::Boss,
-    character::{Character, CharacterOps},
+    character::Character,
     effect::EffectTiming,
     skill::{EffectKind, SkillEffect, SkillEffectTarget, SkillMeta, SkillOps, SkillType},
     stat::StatKind,
@@ -170,8 +170,8 @@ fn damage_effect(percent: u16) -> EffectKind {
 /// Order is the target selection, so distance-ordered patterns rely on `targets` already being
 /// sorted.
 fn append_damage(
-    caster: &StateData<'_>,
-    targets: &mut [&mut StateData<'_>],
+    caster: &StateData,
+    targets: &mut [&mut StateData],
     percents: impl IntoIterator<Item = u16>,
     ticks: u16,
 ) {
@@ -220,10 +220,10 @@ create_boss_skill!(
             ]
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            _caster: &'c mut StateData<'a>,
-            _targets: &'b mut [&'c mut StateData<'a>],
+            _caster: &'c mut StateData,
+            _targets: &'b mut [&'c mut StateData],
         ) {
             todo!()
         }
@@ -263,10 +263,10 @@ create_boss_skill!(
             ]
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            caster: &'c mut StateData,
+            targets: &'b mut [&'c mut StateData],
         ) {
             let params = self.params;
             let ticks = self.duration();
@@ -311,10 +311,10 @@ create_boss_skill!(
             ]
         }
 
-        fn apply<'a: 'b, 'b, 'c: 'b>(
+        fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData<'a>,
-            targets: &'b mut [&'c mut StateData<'a>],
+            caster: &'c mut StateData,
+            targets: &'b mut [&'c mut StateData],
         ) {
             let params = self.params;
 

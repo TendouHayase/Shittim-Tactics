@@ -1,6 +1,6 @@
 use crate::states::KeiState;
 use core::{
-    character::{Character, CharacterOps},
+    character::Character,
     damage::Damage,
     effect::EffectTiming,
     skill::{
@@ -235,11 +235,7 @@ impl SkillOps for ExSkill {
         }]
     }
 
-    fn apply<'a: 'b, 'b, 'c: 'b>(
-        &self,
-        caster: &'c mut StateData<'a>,
-        targets: &'b mut [&'c mut StateData<'a>],
-    ) {
+    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
         let caster_coord = caster.coordinate;
 
         for target in targets.iter_mut() {
@@ -283,11 +279,7 @@ impl SkillOps for BasicSkill {
         }]
     }
 
-    fn apply<'a: 'b, 'b, 'c: 'b>(
-        &self,
-        caster: &'c mut StateData<'a>,
-        targets: &'b mut [&'c mut StateData<'a>],
-    ) {
+    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
         assert_eq!(targets.len(), 1); // 대상이 1명이 아니면 오류
 
         let damage_key = caster.effects;
@@ -307,7 +299,7 @@ impl SkillOps for BasicSkill {
 }
 
 impl SubSkill {
-    pub fn effect_apply<'a>(skill: &Skill, mut state: State<'a>) -> State<'a> {
+    pub fn effect_apply(skill: &Skill, mut state: State) -> State {
         let len = state.boss().accumulated_damage.len();
         let kei = skill.owner();
         let prior_idx = state
@@ -347,11 +339,7 @@ impl SkillOps for SubSkill {
         }]
     }
 
-    fn apply<'a: 'b, 'b, 'c: 'b>(
-        &self,
-        caster: &'c mut StateData<'a>,
-        targets: &'b mut [&'c mut StateData<'a>],
-    ) {
+    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
         let cap = caster.character.stats().atk as u64 * params::ACC_DAMAGE_CAP_PERCENT as u64
             / params::PERCENT_DEN as u64;
 

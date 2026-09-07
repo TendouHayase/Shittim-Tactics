@@ -9,13 +9,13 @@ use std::{
     sync::Arc,
 };
 
-pub struct Astar<'a, Sim, S: Stateful<'a>, A: Agent<'a, S, Value = u64>> {
+pub struct Astar<'a, Sim, S: Stateful, A: Agent<S, Value = u64>> {
     sim: &'a Sim,
     agent: A,
     _marker: PhantomData<fn() -> S>,
 }
 
-impl<'a, Sim, S: Stateful<'a>, A: Agent<'a, S, Value = u64>> Astar<'a, Sim, S, A> {
+impl<'a, Sim, S: Stateful, A: Agent<S, Value = u64>> Astar<'a, Sim, S, A> {
     pub fn new(sim: &'a Sim, agent: A) -> Self {
         Astar {
             sim,
@@ -25,9 +25,9 @@ impl<'a, Sim, S: Stateful<'a>, A: Agent<'a, S, Value = u64>> Astar<'a, Sim, S, A
     }
 }
 
-impl<'a, Sim, S: Stateful<'a>, A: Agent<'a, S, Value = u64>> Algorithm<'a> for Astar<'a, Sim, S, A>
+impl<'a, Sim, S: Stateful, A: Agent<S, Value = u64>> Algorithm<'a> for Astar<'a, Sim, S, A>
 where
-    Sim: Simulator<'a, S>,
+    Sim: Simulator<S>,
 {
     fn search(&self, threshold: f64) -> Vec<(&'a Skill, u16)> {
         let initial = self.sim.initial_state();

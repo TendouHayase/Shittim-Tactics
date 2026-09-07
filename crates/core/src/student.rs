@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     base::BaseStats,
-    character::{Character, CharacterOps},
+    character::Character,
     constants::MAX_SKILL_LEVEL,
     locale::LocalizedName,
     skill::{FromParams, Skill},
@@ -343,16 +343,16 @@ impl PartialEq for Student {
     }
 }
 
-impl<'a> CharacterOps<'a> for &'a Student {
-    fn id(self) -> u32 {
+impl Student {
+    pub fn id(&self) -> u32 {
         self.stats.student_stats.id
     }
 
-    fn stats(self) -> &'a BaseStats {
+    pub fn stats(&self) -> &BaseStats {
         &self.stats.base_stats
     }
 
-    fn skill_list(self) -> &'a [Skill] {
+    pub fn skill_list(&self) -> &[Skill] {
         &self.skills
     }
 }

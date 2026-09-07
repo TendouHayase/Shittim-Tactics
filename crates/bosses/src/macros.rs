@@ -62,7 +62,7 @@ macro_rules! create_boss_skill {
                 &self.name
             }
 
-            fn owner(&self) -> Character<'_> {
+            fn owner(&self) -> Character {
                 unsafe { Character::Boss(self.parent.as_ref()) }
             }
 
@@ -163,7 +163,7 @@ macro_rules! create_boss_skill {
                 &self.name
             }
 
-            fn owner(&self) -> Character<'_> {
+            fn owner(&self) -> Character {
                 unsafe { Character::Boss(self.parent.as_ref()) }
             }
 

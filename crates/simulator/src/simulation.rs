@@ -4,7 +4,7 @@ use core::{
         ActionContext::{self},
     },
     boss::Boss,
-    character::{Character, CharacterOps},
+    character::Character,
     constants::TPS,
     damage::{Damage, key::SkillsBitMask, map::DamageMap},
     simulator::Simulator,
@@ -28,25 +28,25 @@ pub struct Simulation {
     cost_charge_time: HashMap<SkillsBitMask, u16>,
 }
 
-impl<'a> Simulator<'a, State<'a>> for Simulation {
-    fn initial_state(&'a self) -> State<'a> {
+impl Simulator<State> for Simulation {
+    fn initial_state(&self) -> State {
         let mut it = self.students.iter();
 
         if self.students.len() == 6 {
             State {
                 students: core::state::StudentState::TotalAssault(std::array::from_fn(|_| {
-                    StateData::new(Character::Student(it.next().unwrap()), &self.damage_map)
+                    StateData::new(Character::Student(it.next().unwrap()))
                 })),
-                boss: StateData::new(Character::Boss(&self.boss), &self.damage_map),
+                boss: StateData::new(Character::Boss(&self.boss)),
                 frames: 0,
                 cost: 0,
             }
         } else if self.students.len() == 10 {
             State {
                 students: core::state::StudentState::FinalRestrictionRelease(std::array::from_fn(
-                    |_| StateData::new(Character::Student(it.next().unwrap()), &self.damage_map),
+                    |_| StateData::new(Character::Student(it.next().unwrap())),
                 )),
-                boss: StateData::new(Character::Boss(&self.boss), &self.damage_map),
+                boss: StateData::new(Character::Boss(&self.boss)),
                 frames: 0,
                 cost: 0,
             }
@@ -55,7 +55,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         }
     }
 
-    fn legal_actions(&self, state: &State<'a>) -> Vec<ActionContext<'a>> {
+    fn legal_actions(&self, state: &State) -> Vec<ActionContext<'_>> {
         let cost = state.cost();
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
@@ -77,7 +77,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         result
     }
 
-    fn apply(&self, state: &State<'a>, action: &core::actions::ActionContext) -> State<'a> {
+    fn apply(&self, state: &State, action: &core::actions::ActionContext) -> State {
         let action = match action {
             ActionContext::Wait => return state.clone(),
             ActionContext::Use(action) => action,
@@ -92,7 +92,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         // 접근자를 따로 호출하면 같은 state를 두 번 가변 대여하게 되어 통과하지 못한다.
         let (boss, students) = state.split_mut();
 
-        let mut targets: Vec<&mut StateData<'a>> = Vec::with_capacity(target_ids.len());
+        let mut targets: Vec<&mut StateData> = Vec::with_capacity(target_ids.len());
 
         // 각 가변 참조가 caster 또는 targets 중 정확히 한 곳으로만 이동하도록
         // 대상 목록을 단 한 번만 순회한다. id로 여러 번 조회하면 같은 대상을 두 번
@@ -131,10 +131,10 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         state
     }
 
-    fn advance(&self, state: &State<'a>, delta_ticks: u16) -> Result<State<'a>, error::Error> {
+    fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, error::Error> {
         let mut skill_mask = 0u64;
 
-        let damage_map = state.boss().damage_map;
+        let damage_map = &self.damage_map;
 
         for student in state.students() {
             skill_mask |= student.effects.data();
@@ -180,10 +180,10 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
 
         let cooldowns_lambda = |t: &u16| t.saturating_sub(delta_ticks);
 
-        let new_students: Vec<StateData<'_>> = state
+        let new_students: Vec<StateData> = state
             .students()
             .iter()
-            .map(|student: &StateData<'a>| {
+            .map(|student: &StateData| {
                 let damage = student.damage_with_effects();
                 let mut acc_damage = student.accumulated_damage.clone();
 
@@ -256,7 +256,6 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
                     effects: effects_mask.into(),
                     remained_effects: new_remain_effects,
                     accumulated_damage: acc_damage,
-                    damage_map,
                     extra: student.extra,
                 }
             })
@@ -273,7 +272,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         Ok(new_state)
     }
 
-    fn next_event_frames(&self, state: &State<'a>) -> u16 {
+    fn next_event_frames(&self, state: &State) -> u16 {
         let mut result: u16 = u16::MAX;
 
         for student in state.students() {
@@ -345,7 +344,7 @@ impl<'a> Simulator<'a, State<'a>> for Simulation {
         }
     }
 
-    fn character_by_id(&self, id: u32) -> Option<Character<'_>> {
+    fn character_by_id(&self, id: u32) -> Option<Character> {
         if id == self.boss.id() {
             Some(Character::Boss(&self.boss))
         } else {

@@ -6,7 +6,6 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     base::BaseStats,
-    character::CharacterOps,
     difficulty::Difficulty,
     locale::LocalizedName,
     skill::Skill,
@@ -81,16 +80,16 @@ impl Hash for Boss {
     }
 }
 
-impl<'a> CharacterOps<'a> for &'a Boss {
-    fn id(self) -> u32 {
+impl Boss {
+    pub fn id(&self) -> u32 {
         self.stats.id
     }
 
-    fn stats(self) -> &'a BaseStats {
+    pub fn stats(&self) -> &BaseStats {
         &self.stats.base_stats
     }
 
-    fn skill_list(self) -> &'a [Skill] {
+    pub fn skill_list(&self) -> &[Skill] {
         &self.skills
     }
 }

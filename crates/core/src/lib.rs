@@ -24,6 +24,7 @@ pub mod student;
 pub mod table;
 pub mod terrains;
 pub mod types;
+pub mod uid;
 pub mod utils;
 
 pub use std::default;

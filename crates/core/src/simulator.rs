@@ -1,22 +1,20 @@
-use std::collections::HashMap;
-
 use crate::{
     actions::ActionContext,
-    character::{Character, CharacterOps},
-    damage::{Damage, key::SkillsBitMask, map::DamageMap},
+    character::Character,
+    damage::map::DamageMap,
     skill::{Skill, SkillEffectTarget, SkillMeta, SkillOps},
     state::Stateful,
     utils::{Position, euclidean_distance, is_inside},
 };
 
-pub trait Simulator<'a, S: Stateful<'a>> {
-    fn initial_state(&'a self) -> S;
+pub trait Simulator<S: Stateful> {
+    fn initial_state(&self) -> S;
 
     /// Actions an agent may take from `state`.
     ///
     /// Only legality belongs here — cooldowns, cost, and who a skill hits. Which of these is
     /// worth taking is the agent's call.
-    fn legal_actions(&self, state: &S) -> Vec<ActionContext<'a>>;
+    fn legal_actions(&self, state: &S) -> Vec<ActionContext<'_>>;
 
     /// Who `skill` hits when cast from `state`, ready to hand to `apply`.
     ///
@@ -108,5 +106,5 @@ pub trait Simulator<'a, S: Stateful<'a>> {
     fn lookup_skill(&self, index: usize) -> Result<&Skill, error::Error>;
 
     /// The character with this `id`, if there is one.
-    fn character_by_id(&self, id: u32) -> Option<Character<'_>>;
+    fn character_by_id(&self, id: u32) -> Option<Character>;
 }
