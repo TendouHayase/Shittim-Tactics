@@ -41,7 +41,7 @@ impl SkillsBitMask {
     }
 
     #[inline]
-    pub const fn mask_enermy(self) -> Self {
+    pub const fn mask_enemy(self) -> Self {
         SkillsBitMask(self.0 & !SkillsBitMask::ENEMY_BIT)
     }
 
@@ -127,10 +127,17 @@ impl IntoIterator for &SkillsBitMask {
     type IntoIter = SkillsBitMaskIter;
     #[inline]
     fn into_iter(self) -> SkillsBitMaskIter {
-        SkillsBitMaskIter(self.0)
+        SkillsBitMaskIter(self.data())
     }
 }
 
+/// /// A single set bit taken from a [`SkillsBitMask`], kept as the one-hot mask
+/// rather than as a bit position.
+///
+/// The iterator produces `x & -x`, which is already the mask the callers want
+/// for masking and merging; converting to a position would cost a
+/// `trailing_zeros` per item and a second shift to get back. `index` is there
+/// for the table-lookup path, which is the only one that needs the position.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct SkillsBitMaskItem(u64);
 
@@ -141,16 +148,16 @@ impl SkillsBitMaskItem {
         Self(1u64 << pos)
     }
 
-    /// 내부 마스크를 그대로 반환.
+    // 내부 마스크를 그대로 반환.
     #[inline]
     pub const fn mask(self) -> u64 {
         self.0
     }
 
-    /// 필요할 때만 위치를 계산.
+    // 필요할 때만 위치를 계산.
     #[inline]
     pub const fn index(self) -> u32 {
-        self.0.trailing_zeros()
+        self.0.trailing_zeros() - SkillsBitMask::DATA_BITS_COUNT as u32
     }
 }
 struct SkillsBitMaskIter(u64);
@@ -188,10 +195,3 @@ impl DoubleEndedIterator for SkillsBitMaskIter {
 }
 
 impl ExactSizeIterator for SkillsBitMaskIter {}
-
-#[repr(u64)]
-pub enum SkillsBitMaskFlags {
-    BossBit = SkillsBitMask::BOSS_BIT,
-    SelfBit = SkillsBitMask::SELF_BIT,
-    EnemyBit = SkillsBitMask::ENEMY_BIT,
-}
