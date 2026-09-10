@@ -1,4 +1,3 @@
-use crate::character::Character;
 use crate::effect::{CCEffect, EffectTiming};
 use crate::stat::StatKind;
 use crate::state::{State, StateData};

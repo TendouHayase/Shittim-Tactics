@@ -24,7 +24,7 @@ impl DamageMap {
     }
 
     pub fn max_damage(&self) -> Option<Damage> {
-        self.entries.values().max().copied() // 데미지 감소 적용 필요
+        self.entries.iter().max().copied() // 데미지 감소 적용 필요
     }
 }
 

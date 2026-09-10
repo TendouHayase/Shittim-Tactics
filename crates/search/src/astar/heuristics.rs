@@ -23,7 +23,7 @@ impl<S: Stateful> Agent<S> for Heuristic {
 
         let dealt = boss
             .accumulated_damage_cache
-            .get_or_compute(&boss.damage_list());
+            .get_or_compute(&boss.acc_damage());
 
         // 누적 데미지의 최댓값을 빼야 남은 체력이 최소가 되고, 그래야 남은 프레임을
         // 과대평가하지 않는다. 과대평가하면 A*의 최적성이 조용히 깨진다.

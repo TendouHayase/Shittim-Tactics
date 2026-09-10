@@ -1,6 +1,5 @@
 use crate::{
     actions::ActionContext,
-    character::Character,
     damage::map::DamageMap,
     skill::{Skill, SkillEffectTarget, SkillMeta, SkillOps},
     state::Stateful,
@@ -25,8 +24,8 @@ pub trait Simulator<S: Stateful> {
     fn resolve_targets(&self, state: &S, skill: &Skill) -> Vec<u32> {
         let caster_id = skill.owner().id();
         let caster_coord = state
-            .state_data_by_id(caster_id)
-            .map(|data| data.coordinate)
+            .state_data_by_uid(caster_id)
+            .map(|data| data.common.coordinate)
             .unwrap_or_default();
 
         let mut targets = Vec::new();
@@ -42,7 +41,7 @@ pub trait Simulator<S: Stateful> {
                         let mut students: Vec<(Position, u32)> = state
                             .students()
                             .iter()
-                            .map(|student| (student.coordinate, student.character.id()))
+                            .map(|student| (student.common.coordinate, student.common.uid))
                             .filter(|student| student.1 != caster_id)
                             .collect();
 

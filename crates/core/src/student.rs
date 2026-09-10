@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     base::BaseStats,
-    character::Character,
     constants::MAX_SKILL_LEVEL,
     locale::LocalizedName,
     skill::{FromParams, Skill},
@@ -312,7 +311,7 @@ fn build_skills(
             Ok(vec![
                 Skill::KeiExSkill(KeiExSkill::new(
                     raw.ex.name.get(),
-                    Character::Student(student),
+                    Character::Student(student,
                     offset,
                     raw.ex.pick(ex_lvl).ok_or_else(|| missing("ex", ex_lvl))?,
                 )),

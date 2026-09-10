@@ -1,9 +1,9 @@
-use std::{cmp::Reverse, collections::BinaryHeap, hash::Hash};
+use std::hash::{Hash, Hasher};
 
 use crate::{
-    character::Character,
     damage::{Damage, cache::DamageCache, key::SkillsBitMask},
-    states::MAX_EXTRA_STATE_SIZE,
+    extra::ExtraStateData,
+    uid::Uid,
     utils::Position,
 };
 
@@ -16,10 +16,8 @@ pub trait Stateful: Clone + Send + Sync + Eq + Hash {
     fn split_mut(&mut self) -> (&mut StateData, &mut [StateData]);
     fn cost(&self) -> i8;
     fn frames(&self) -> u16;
-    fn is_terminated(&self) -> bool;
-    fn is_goal(&self, threshold_percent: f64) -> bool;
-    fn state_data_by_id(&self, id: u32) -> Option<&StateData>;
-    fn state_data_by_id_mut(&mut self, id: u32) -> Option<&mut StateData>;
+    fn state_data_by_uid(&self, uid: Uid) -> Option<&StateData>;
+    fn state_data_by_uid_mut(&mut self, uid: Uid) -> Option<&mut StateData>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -96,50 +94,24 @@ impl Stateful for State {
         self.frames
     }
 
-    fn is_goal(&self, threshold_percent: f64) -> bool {
-        self.boss
-            .accumulated_damage_cache
-            .get_or_compute(&self.boss.damage_list())
-            .tail(self.boss.character.stats().hp)
-            >= threshold_percent
-    }
-
-    fn is_terminated(&self) -> bool {
-        let mut result = true;
-
-        for student in self.students() {
-            if student
-                .accumulated_damage_cache
-                .get_or_compute(&student.damage_list())
-                .max()
-                < student.character.stats().hp
-            {
-                result = false;
-                break;
-            }
-        }
-
-        result
-    }
-
-    fn state_data_by_id(&self, id: u32) -> Option<&StateData> {
-        if id == self.boss.character.id() {
+    fn state_data_by_uid(&self, uid: Uid) -> Option<&StateData> {
+        if uid == self.boss.common.uid {
             return Some(&self.boss);
         }
 
         self.students()
             .iter()
-            .find(|&student| id == student.character.id())
+            .find(|&student| uid == student.common.uid)
             .map(|v| v as _)
     }
 
-    fn state_data_by_id_mut(&mut self, id: u32) -> Option<&mut StateData> {
-        if id == self.boss.character.id() {
+    fn state_data_by_uid_mut(&mut self, uid: Uid) -> Option<&mut StateData> {
+        if uid == self.boss.common.uid {
             return Some(&mut self.boss);
         }
 
         for student in self.students_mut() {
-            if id == student.character.id() {
+            if uid == student.common.uid {
                 return Some(student);
             }
         }
@@ -149,19 +121,16 @@ impl Stateful for State {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone)]
-pub struct StateData {
-    pub cooldowns: Vec<u16>,
-    pub remained_effects: BinaryHeap<Reverse<RemainedEffects>>,
-    pub accumulated_damage: Vec<AccumulatedDamage>,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CommonStateData {
+    pub uid: Uid,
 
-    pub character: Character,
+    pub cooldowns: Vec<u16>,
+    pub remained_effects: Vec<RemainedEffects>,
+    pub accumulated_damage: Vec<AccumulatedDamage>,
     pub effects: SkillsBitMask,
-    pub accumulated_damage_cache: DamageCache,
 
     pub coordinate: Position,
-
-    pub extra: [u8; MAX_EXTRA_STATE_SIZE],
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -188,84 +157,52 @@ impl Ord for RemainedEffects {
     }
 }
 
-impl PartialEq for StateData {
-    fn eq(&self, other: &Self) -> bool {
-        self.character.id() == other.character.id()
-            && self.cooldowns == other.cooldowns
-            && self.effects == other.effects
-            && self.accumulated_damage == other.accumulated_damage
-            && self.coordinate == other.coordinate
-    }
-}
-
-impl Eq for StateData {}
-
-impl Hash for StateData {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        (
-            self.character.id(),
-            &self.cooldowns,
-            &self.effects,
-            &self.accumulated_damage,
-            self.coordinate,
-        )
-            .hash(state);
-    }
+#[derive(Debug, Clone)]
+pub struct StateData {
+    pub common: CommonStateData,
+    pub extra: Option<Box<dyn ExtraStateData>>,
+    pub accumulated_damage_cache: DamageCache,
 }
 
 impl StateData {
-    #[allow(unsafe_code)]
-    pub fn extra_as<T>(&self) -> &T {
-        const {
-            assert!(::std::mem::size_of::<T>() <= MAX_EXTRA_STATE_SIZE);
-            assert!(::std::mem::offset_of!(Self, extra) % ::std::mem::align_of::<T>() == 0);
-        };
-        unsafe { &*(self.extra.as_ptr() as *const T) }
-    }
-
-    #[allow(unsafe_code)]
-    pub fn extra_as_mut<T>(&mut self) -> &mut T {
-        const {
-            assert!(::std::mem::size_of::<T>() <= MAX_EXTRA_STATE_SIZE);
-            assert!(::std::mem::offset_of!(Self, extra) % ::std::mem::align_of::<T>() == 0);
-        };
-        unsafe { &mut *(self.extra.as_mut_ptr() as *mut T) }
-    }
-}
-
-impl StateData {
-    pub fn new(character: Character) -> Self {
+    pub fn new(uid: Uid) -> Self {
         StateData {
-            character,
-            coordinate: Default::default(),
-            cooldowns: vec![0; character.skill_list().len()],
-            effects: 0.into(),
-            remained_effects: BinaryHeap::new(),
-            accumulated_damage: Vec::new(),
+            common: CommonStateData {
+                uid,
+                coordinate: Default::default(),
+                cooldowns: Vec::new(),
+                effects: 0.into(),
+                remained_effects: Vec::new(),
+                accumulated_damage: Vec::new(),
+            },
+            extra: None,
             accumulated_damage_cache: Default::default(),
-            extra: [0u8; MAX_EXTRA_STATE_SIZE],
         }
     }
+}
 
+impl StateData {
     pub fn from_parts(
-        character: Character,
+        uid: Uid,
         coordinate: Position,
         cooldowns: &[u16],
-        effects: &SkillsBitMask,
-        remained_effects: &BinaryHeap<Reverse<RemainedEffects>>,
+        effects: SkillsBitMask,
+        remained_effects: Vec<RemainedEffects>,
         accumulated_damage: &[AccumulatedDamage],
         accumulated_damage_cache: DamageCache,
-        extra: [u8; MAX_EXTRA_STATE_SIZE],
+        extra: Box<dyn ExtraStateData>,
     ) -> Self {
         StateData {
-            character,
-            coordinate,
+            common: CommonStateData {
+                uid,
+                coordinate,
+                accumulated_damage: accumulated_damage.to_vec(),
+                cooldowns: cooldowns.to_vec(),
+                effects: effects,
+                remained_effects: remained_effects.clone(),
+            },
             accumulated_damage_cache,
-            cooldowns: cooldowns.to_vec(),
-            effects: *effects,
-            remained_effects: remained_effects.clone(),
-            accumulated_damage: accumulated_damage.to_vec(),
-            extra,
+            extra: Some(extra),
         }
     }
 
@@ -273,28 +210,51 @@ impl StateData {
         &self,
         cooldowns_condition: impl Fn(&u16) -> u16,
         effects: SkillsBitMask,
-        remained_effects: BinaryHeap<Reverse<RemainedEffects>>,
+        remained_effects: Vec<RemainedEffects>,
     ) -> Self {
         StateData {
-            character: self.character,
-            coordinate: self.coordinate,
+            common: CommonStateData {
+                uid: self.common.uid,
+                coordinate: self.common.coordinate,
+
+                cooldowns: self
+                    .common
+                    .cooldowns
+                    .iter()
+                    .map(cooldowns_condition)
+                    .collect(),
+                effects,
+                remained_effects,
+                accumulated_damage: self.common.accumulated_damage.clone(),
+            },
             accumulated_damage_cache: self.accumulated_damage_cache.clone(),
-            cooldowns: self.cooldowns.iter().map(cooldowns_condition).collect(),
-            effects,
-            remained_effects,
-            accumulated_damage: self.accumulated_damage.clone(),
-            extra: self.extra,
+            extra: self.extra.clone(),
         }
     }
 
-    pub fn damage_list(&self) -> Vec<Damage> {
-        let mut result = Vec::with_capacity(self.accumulated_damage.len());
-        for d in &self.accumulated_damage {
+    pub fn acc_damage(&self) -> Vec<Damage> {
+        let mut result = Vec::with_capacity(self.common.accumulated_damage.len());
+        for d in &self.common.accumulated_damage {
             if let Some(x) = d.damage {
                 result.push(x)
             }
         }
 
         result
+    }
+}
+
+impl PartialEq for StateData {
+    fn eq(&self, other: &Self) -> bool {
+        self.common == other.common && self.extra == other.extra
+    }
+}
+
+impl Eq for StateData {}
+
+impl Hash for StateData {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.common.hash(state);
+        self.extra.hash(state);
     }
 }
