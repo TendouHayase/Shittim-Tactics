@@ -3,6 +3,10 @@ use std::ops::{Div, Mul};
 use stochastic::{dist::Hit, distributions::Uniform};
 
 use crate::{
+<<<<<<< HEAD
+=======
+    character::CharacterOps,
+>>>>>>> 51b4fc446ff280a71606474a3d392187adbae328
     skill::{EffectKind, SkillType},
     stat::StatKind,
     state::StateData,
