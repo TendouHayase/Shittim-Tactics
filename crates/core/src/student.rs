@@ -289,53 +289,6 @@ fn build_stats(
     Ok(base_stats)
 }
 
-/// The one place [`StudentKind`] is tied to a Rust skill list.
-fn build_skills(
-    student: &Student,
-    kind: StudentKind,
-    skills: serde_json::Value,
-    skill_levels: [u8; 4],
-    offset: usize,
-) -> Result<Vec<Skill>, Error> {
-    let missing = |skill: &str, level: u8| {
-        Error::InvalidData(format!("no data for {skill} skill at level {level}"))
-    };
-
-    match kind {
-        StudentKind::Kei => {
-            use crate::skills::kei::params::RawSkills;
-
-            let raw: RawSkills = serde_json::from_value(skills)?;
-            let [ex_lvl, basic_lvl, _, sub_lvl] = skill_levels;
-
-            Ok(vec![
-                Skill::KeiExSkill(KeiExSkill::new(
-                    raw.ex.name.get(),
-                    Character::Student(student,
-                    offset,
-                    raw.ex.pick(ex_lvl).ok_or_else(|| missing("ex", ex_lvl))?,
-                )),
-                Skill::KeiBasicSkill(KeiBasicSkill::new(
-                    raw.basic.name.get(),
-                    Character::Student(student),
-                    offset + 1,
-                    raw.basic
-                        .pick(basic_lvl)
-                        .ok_or_else(|| missing("basic", basic_lvl))?,
-                )),
-                Skill::KeiSubSkill(KeiSubSkill::new(
-                    raw.sub.name.get(),
-                    Character::Student(student),
-                    offset + 2,
-                    raw.sub
-                        .pick(sub_lvl)
-                        .ok_or_else(|| missing("sub", sub_lvl))?,
-                )),
-            ])
-        }
-    }
-}
-
 impl PartialEq for Student {
     fn eq(&self, other: &Self) -> bool {
         self.stats == other.stats

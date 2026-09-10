@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use crate::{
-    damage::{Damage, cache::DamageCache, key::SkillsBitMask},
+    damage::{Damage, key::SkillsBitMask},
     extra::ExtraStateData,
     uid::Uid,
     utils::Position,
@@ -161,7 +161,6 @@ impl Ord for RemainedEffects {
 pub struct StateData {
     pub common: CommonStateData,
     pub extra: Option<Box<dyn ExtraStateData>>,
-    pub accumulated_damage_cache: DamageCache,
 }
 
 impl StateData {
@@ -176,7 +175,6 @@ impl StateData {
                 accumulated_damage: Vec::new(),
             },
             extra: None,
-            accumulated_damage_cache: Default::default(),
         }
     }
 }
@@ -189,7 +187,6 @@ impl StateData {
         effects: SkillsBitMask,
         remained_effects: Vec<RemainedEffects>,
         accumulated_damage: &[AccumulatedDamage],
-        accumulated_damage_cache: DamageCache,
         extra: Box<dyn ExtraStateData>,
     ) -> Self {
         StateData {
@@ -201,7 +198,6 @@ impl StateData {
                 effects: effects,
                 remained_effects: remained_effects.clone(),
             },
-            accumulated_damage_cache,
             extra: Some(extra),
         }
     }
@@ -227,7 +223,6 @@ impl StateData {
                 remained_effects,
                 accumulated_damage: self.common.accumulated_damage.clone(),
             },
-            accumulated_damage_cache: self.accumulated_damage_cache.clone(),
             extra: self.extra.clone(),
         }
     }

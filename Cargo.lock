@@ -667,7 +667,6 @@ name = "core"
 version = "0.1.0"
 dependencies = [
  "error",
- "macros",
  "ordered-float 5.3.0",
  "parsing-json",
  "paste",
@@ -1758,16 +1757,6 @@ name = "log"
 version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
-
-[[package]]
-name = "macros"
-version = "0.1.0"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 3.0.2",
-]
 
 [[package]]
 name = "malloc_buf"
@@ -2965,7 +2954,6 @@ name = "students"
 version = "0.1.0"
 dependencies = [
  "core",
- "macros",
  "serde",
 ]
 

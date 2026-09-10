@@ -8,9 +8,7 @@ use crate::{
     types::{AttackType, damage_scale, is_weak},
 };
 
-pub mod cache;
 pub mod key;
-pub mod map;
 
 /// A damage distribution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
