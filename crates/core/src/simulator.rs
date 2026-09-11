@@ -1,8 +1,9 @@
 use crate::{
     actions::ActionContext,
-    damage::map::DamageMap,
-    skill::{Skill, SkillEffectTarget, SkillMeta, SkillOps},
+    character::Character,
+    skill::{Skill, SkillEffectTarget, SkillMeta},
     state::Stateful,
+    uid::Uid,
     utils::{Position, euclidean_distance, is_inside},
 };
 
@@ -21,8 +22,8 @@ pub trait Simulator<S: Stateful> {
     /// `state`, so it is a rule rather than a search decision and lives here instead of in each
     /// algorithm. An agent that wants a different combination may build its own list, but must
     /// still run it through `normalize_targets`.
-    fn resolve_targets(&self, state: &S, skill: &Skill) -> Vec<u32> {
-        let caster_id = skill.owner().id();
+    fn resolve_targets(&self, state: &S, skill: &dyn Skill) -> Vec<Uid> {
+        let caster_id = skill.owner();
         let caster_coord = state
             .state_data_by_uid(caster_id)
             .map(|data| data.common.coordinate)
@@ -38,13 +39,14 @@ pub trait Simulator<S: Stateful> {
                     SkillEffectTarget::Oneself { .. } => {}
 
                     SkillEffectTarget::Student { count, .. } => {
-                        let mut students: Vec<(Position, u32)> = state
+                        let mut students: Vec<(Position, Uid)> = state
                             .students()
                             .iter()
                             .map(|student| (student.common.coordinate, student.common.uid))
                             .filter(|student| student.1 != caster_id)
                             .collect();
 
+                        // 유클리드 거리로 정렬
                         students.sort_by(|lhs, rhs| {
                             euclidean_distance(caster_coord, lhs.0)
                                 .total_cmp(&euclidean_distance(caster_coord, rhs.0))
@@ -54,16 +56,16 @@ pub trait Simulator<S: Stateful> {
                         targets.extend(students.iter().take(count.into()).map(|s| s.1));
                     }
 
-                    SkillEffectTarget::Boss { .. } => targets.push(state.boss().character.id()),
+                    SkillEffectTarget::Boss { .. } => targets.push(state.boss().common.uid),
 
                     SkillEffectTarget::Land { region, .. } => {
-                        if is_inside(state.boss().coordinate, region, caster_coord) {
-                            targets.push(state.boss().character.id());
+                        if is_inside(state.boss().common.coordinate, region, caster_coord) {
+                            targets.push(state.boss().common.uid);
                         }
 
                         for student in state.students() {
-                            if is_inside(student.coordinate, region, caster_coord) {
-                                targets.push(student.character.id());
+                            if is_inside(student.common.coordinate, region, caster_coord) {
+                                targets.push(student.common.uid);
                             }
                         }
                     }
@@ -71,15 +73,7 @@ pub trait Simulator<S: Stateful> {
             }
         }
 
-        self.normalize_targets(caster_id, &mut targets);
         targets
-    }
-
-    /// Enforces what `apply` requires of `action.targets`: no caster, no duplicates.
-    fn normalize_targets(&self, caster_id: u32, targets: &mut Vec<u32>) {
-        targets.retain(|id| *id != caster_id);
-        targets.sort_unstable();
-        targets.dedup();
     }
 
     /// Applies `action` to `state` and returns the resulting state.
@@ -95,15 +89,12 @@ pub trait Simulator<S: Stateful> {
     /// Ticks from `state` until the next point where anyone can act.
     fn next_event_frames(&self, state: &S) -> u16;
 
-    /// Damage keyed by which skills are active.
-    fn damage_map(&self) -> &DamageMap;
-
     /// Whether `ticks` is past the time limit.
     fn is_time_over(&self, ticks: u16) -> bool;
 
     /// The skill at a given `SkillsBitMask` index.
-    fn lookup_skill(&self, index: usize) -> Result<&Skill, error::Error>;
+    fn lookup_skill(&self, index: usize) -> Result<&dyn Skill, error::Error>;
 
     /// The character with this `id`, if there is one.
-    fn character_by_id(&self, id: u32) -> Option<Character>;
+    fn character_by_id(&self, id: Uid) -> Option<&dyn Character>;
 }
