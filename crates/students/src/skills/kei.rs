@@ -12,7 +12,6 @@ use core::{
     student::Student,
     utils::is_inside,
 };
-use macros::skill;
 use std::cmp::Reverse;
 
 /// Skill numbers not yet in json.
