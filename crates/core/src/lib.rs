@@ -10,6 +10,7 @@ pub mod agent;
 pub mod algorithm;
 pub mod base;
 pub mod boss;
+pub mod character;
 pub mod constants;
 pub mod damage;
 pub mod difficulty;
