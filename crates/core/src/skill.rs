@@ -62,7 +62,7 @@ pub enum SkillEffectTarget {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SkillEffect {
-    pub id: (Uid, u8),
+    pub id: (Uid, usize),
     pub timing: EffectTiming,
     pub targets: Vec<SkillEffectTarget>,
 }
