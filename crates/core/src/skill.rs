@@ -1,76 +1,54 @@
-use crate::effect::{CCEffect, EffectTiming};
-use crate::stat::StatKind;
-use crate::state::{State, StateData};
+use crate::effect::{CCEffect, EffectKind, EffectTiming};
+use crate::state::StateData;
 use crate::uid::Uid;
 use crate::utils::Position;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-/// Marks the kind of an applied skill or status effect.
-///
-/// `Other` compares by function pointer address for `Eq` and `Hash`. Two distinct sources can
-/// merge into one address if they compile to the same machine code, which is accepted here:
-/// functions that behave identically are identical for this purpose.
-#[warn(private_interfaces)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct EffectKindOther(*const u8);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EffectKind {
-    Damage {
-        coef_num: u16,
-        coef_den: u16,
-    },
-    Heal {
-        coef_num: u16,
-        coef_den: u16,
-    },
-    Buff {
-        ty: StatKind,
-        duration: u16,
-        scale: u16,
-        amount: u32,
-    },
-    Debuff {
-        ty: StatKind,
-        duration: u16,
-        scale: u16,
-        amount: u32,
-    },
-    Move,
-    CC {
-        ty: CCEffect,
-        duration: u16,
-    },
-    Other(EffectKindOther),
+#[derive(Debug)]
+pub struct SkillHeader {
+    pub owner: Uid,
+    pub owner_offset: usize,
+    pub name: String,
+    pub skill_offset: usize,
+    pub skill_type: SkillType,
+    pub cost: u8,
+    pub duration: u16,
+    pub frames: u16,
 }
 
-impl EffectKind {
-    #[inline]
-    pub fn new_other(func: fn(&Skill, State) -> State) -> Self {
-        EffectKind::Other(EffectKindOther(func as *const u8))
+pub trait Skill: SkillMeta + Debug + Send + Sync {
+    fn skill_effects(&self) -> Vec<SkillEffect>;
+    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]);
+}
+
+pub trait SkillMeta {
+    fn header(&self) -> &SkillHeader;
+
+    fn name(&self) -> &str {
+        &self.header().name
     }
-    #[inline]
-    pub fn is_other(&self) -> bool {
-        if let EffectKind::Other(_) = self {
-            true
-        } else {
-            false
-        }
+    fn owner(&self) -> Uid {
+        self.header().owner
     }
-    #[inline]
-    pub fn as_other(&self) -> Option<fn(&Skill, State) -> State> {
-        match self {
-            EffectKind::Other(ptr) => unsafe {
-                if ptr.0.is_null() {
-                    None
-                } else {
-                    std::mem::transmute(ptr)
-                }
-            },
-            _ => None,
-        }
+    fn id(&self) -> (Uid, usize) {
+        (self.header().owner, self.header().owner_offset)
+    }
+    fn cost(&self) -> u8 {
+        self.header().cost
+    }
+    fn duration(&self) -> u16 {
+        self.header().duration
+    }
+    fn frames(&self) -> u16 {
+        self.header().frames
+    }
+    fn skill_offset(&self) -> usize {
+        self.header().skill_offset
+    }
+    fn skill_type(&self) -> SkillType {
+        self.header().skill_type
     }
 }
 
@@ -81,23 +59,10 @@ pub enum SkillEffectTarget {
     Land { kind: EffectKind, region: Region },
     Oneself { kind: EffectKind },
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "shape", rename_all = "lowercase")]
-pub enum Region {
-    Polygon {
-        /// Always four entries; `count` says how many are real and the rest are ignored.
-        vertex: [Position; 4],
-        count: u8,
-    },
-    Arc {
-        radius: u16,
-        start_angle_degree: u16,
-        end_angle_degree: u16,
-    },
-}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SkillEffect {
-    pub id: (u32, u8),
+    pub id: (Uid, u8),
     pub timing: EffectTiming,
     pub targets: Vec<SkillEffectTarget>,
 }
@@ -131,28 +96,17 @@ pub trait SkillParams {
 /// For skills that carry no numbers.
 impl SkillParams for () {}
 
-/// Builds a skill from a name and its parameters.
-///
-/// `Params` is associated so that assembly code need not name the type. The owner is a
-/// `Character` so students and bosses share one trait, at the cost of a runtime panic when the
-/// variant does not match.
-pub trait FromParams: Sized {
-    type Params: SkillParams;
-
-    fn new(name: &str, owner: Uid, skill_mask_offset: usize, params: Self::Params) -> Self;
-}
-
-pub trait SkillMeta {
-    fn name(&self) -> &str;
-    fn owner(&self) -> Uid;
-    fn cost(&self) -> u8;
-    fn duration(&self) -> u16;
-    fn frames(&self) -> u16;
-    fn skill_mask_offset(&self) -> usize;
-    fn skill_type(&self) -> SkillType;
-}
-
-pub trait SkillOps: SkillMeta {
-    fn skill_effects(&self) -> Vec<SkillEffect>;
-    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "shape", rename_all = "lowercase")]
+pub enum Region {
+    Polygon {
+        /// Always four entries; `count` says how many are real and the rest are ignored.
+        vertex: [Position; 4],
+        count: u8,
+    },
+    Arc {
+        radius: u16,
+        start_angle_degree: u16,
+        end_angle_degree: u16,
+    },
 }

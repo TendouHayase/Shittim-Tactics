@@ -1,10 +1,10 @@
-use crate::skill::Skill;
+use crate::{skill::Skill, uid::Uid};
 
 #[derive(Debug, Clone)]
 pub struct Action<'a> {
-    pub caster: u32,
-    pub targets: Vec<u32>,
-    pub skill: &'a Skill,
+    pub caster: Uid,
+    pub targets: Vec<Uid>,
+    pub skill: &'a dyn Skill,
 }
 
 #[derive(Debug)]
