@@ -2,12 +2,6 @@ use std::ops::{Div, Mul};
 
 use stochastic::{dist::Hit, distributions::Uniform};
 
-use crate::{
-    skill::SkillType,
-    state::StateData,
-    types::{AttackType, damage_scale, is_weak},
-};
-
 pub mod key;
 
 /// A damage distribution.
