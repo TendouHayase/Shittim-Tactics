@@ -177,9 +177,7 @@ impl StateData {
             extra: None,
         }
     }
-}
 
-impl StateData {
     pub fn from_parts(
         uid: Uid,
         coordinate: Position,
@@ -187,7 +185,7 @@ impl StateData {
         effects: SkillsBitMask,
         remained_effects: Vec<RemainedEffects>,
         accumulated_damage: &[AccumulatedDamage],
-        extra: Box<dyn ExtraStateData>,
+        extra: Option<Box<dyn ExtraStateData>>,
     ) -> Self {
         StateData {
             common: CommonStateData {
@@ -198,33 +196,32 @@ impl StateData {
                 effects: effects,
                 remained_effects: remained_effects.clone(),
             },
-            extra: Some(extra),
+            extra,
         }
     }
 
-    pub fn clone_matching(
-        &self,
-        cooldowns_condition: impl Fn(&u16) -> u16,
-        effects: SkillsBitMask,
-        remained_effects: Vec<RemainedEffects>,
-    ) -> Self {
-        StateData {
-            common: CommonStateData {
-                uid: self.common.uid,
-                coordinate: self.common.coordinate,
+    pub const fn uid(&self) -> Uid {
+        self.common.uid
+    }
 
-                cooldowns: self
-                    .common
-                    .cooldowns
-                    .iter()
-                    .map(cooldowns_condition)
-                    .collect(),
-                effects,
-                remained_effects,
-                accumulated_damage: self.common.accumulated_damage.clone(),
-            },
-            extra: self.extra.clone(),
-        }
+    pub const fn coordinate(&self) -> Position {
+        self.common.coordinate
+    }
+
+    pub fn cooldowns(&self) -> &[u16] {
+        &self.common.cooldowns
+    }
+
+    pub const fn effects(&self) -> SkillsBitMask {
+        self.common.effects
+    }
+
+    pub fn remained_effects(&self) -> &[RemainedEffects] {
+        &self.common.remained_effects
+    }
+
+    pub fn accumulated_damage(&self) -> &[AccumulatedDamage] {
+        &self.common.accumulated_damage
     }
 
     pub fn acc_damage(&self) -> Vec<Damage> {
