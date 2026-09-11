@@ -9,4 +9,5 @@ core = {path = "../core"}
 parsing-json={path="../parsing-json"}
 error = {path="../error"}
 serde = {version="1.0", features=["derive"]}
+serde_json = "1.0"
 typed-builder = "0.23.2"
