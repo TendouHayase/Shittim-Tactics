@@ -160,7 +160,7 @@ impl SkillsBitMaskItem {
         self.0.trailing_zeros() - SkillsBitMask::DATA_BITS_COUNT as u32
     }
 }
-struct SkillsBitMaskIter(u64);
+pub struct SkillsBitMaskIter(u64);
 
 impl Iterator for SkillsBitMaskIter {
     type Item = SkillsBitMaskItem;
