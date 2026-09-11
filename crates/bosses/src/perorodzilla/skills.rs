@@ -4,30 +4,18 @@
 use crate::create_boss_skill;
 use crate::states::PerorodzillaState;
 use core::{
-    boss::Boss,
-    character::Character,
     constants::MAX_STUDENT_COUNT,
-    damage::Damage,
-    difficulty::Difficulty,
-    effect::EffectTiming,
-    skill::{
-        EffectKind, Region, Skill, SkillEffect, SkillEffectTarget, SkillMeta, SkillOps, SkillType,
-    },
+    effect::{EffectKind, EffectTiming},
+    skill::{Skill, SkillEffect, SkillEffectTarget, SkillMeta, SkillType},
     stat::StatKind,
-    state::{AccumulatedDamage, State, StateData, Stateful},
-    utils::is_inside,
+    state::{State, StateData},
 };
-
-use std::ptr::NonNull;
 
 use params::Params;
 
 /// Pattern numbers not yet in json. Anything still unmeasured is `None` or `0`, and the effects
 /// that use it drop out silently.
-///
-/// Kept inside a module: a top-level `struct` here would be mistaken for a skill by xtask and
-/// pulled into the `Skill` enum.
-mod params {
+pub mod params {
     use core::constants::MAX_STUDENT_COUNT;
     use core::difficulty::Difficulty;
     use core::skill::Region;
@@ -167,51 +155,8 @@ fn damage_effect(percent: u16) -> EffectKind {
     }
 }
 
-fn difficulty_of(skill: &Skill) -> Difficulty {
-    match skill.owner() {
-        Character::Boss(boss) => boss.stats.difficulty,
-        Character::Student(_) => unreachable!("Perorodzilla skills always belong to a boss"),
-    }
-}
-
-fn append_damage_over_time(
-    caster: &StateData,
-    target: &mut StateData,
-    percent: u16,
-    interval: u16,
-    duration: u16,
-) {
-    let Some(damage) = caster.damage_with_effects() else {
-        return;
-    };
-
-    let mut ticks = interval;
-    while ticks <= duration {
-        target.accumulated_damage_cache.append(&damage);
-        target.accumulated_damage.push(AccumulatedDamage {
-            ticks,
-            damage: Some(damage),
-        });
-        ticks += interval;
-    }
-}
-
-fn append_damage(caster: &StateData, target: &mut StateData, percent: u16, ticks: u16) {
-    let Some(damage) = caster.damage_with_effects() else {
-        return;
-    };
-
-    target
-        .accumulated_damage_cache
-        .append(&(damage * percent as u64 / params::PERCENT_DEN as u64));
-    target.accumulated_damage.push(AccumulatedDamage {
-        ticks,
-        damage: target.damage_map.get(target.effects),
-    });
-}
-
 fn summon_minion_wave(boss: &mut StateData, params: Params) {
-    let record_start = boss.accumulated_damage.len();
+    let record_start = boss.common.accumulated_damage.len();
     let pero = boss.extra_as_mut::<PerorodzillaState>();
 
     pero.big_minions = params.big_minion_count;
@@ -228,9 +173,9 @@ fn damage_since_wave_start(boss: &StateData) -> u64 {
     let record_start = boss
         .extra_as::<PerorodzillaState>()
         .damage_record_start
-        .min(boss.accumulated_damage.len());
+        .min(boss.common.accumulated_damage.len());
 
-    boss.accumulated_damage[record_start..]
+    boss.common.accumulated_damage[record_start..]
         .iter()
         .filter_map(|acc| acc.damage)
         .map(|damage| damage.expected_value())
@@ -250,76 +195,28 @@ fn knockdown_count(boss: &StateData) -> u8 {
     ((pero.minion_damage / threshold) as u8).min(pero.big_minions)
 }
 
-/// Everything inside the blast takes damage and the boss takes the sum. Returns the big
-/// minions' share, which feeds the knockdown count.
+/// The big minions' share of a shiny minion blast, which feeds the knockdown count.
 ///
 /// Big minions have no individual coordinates, so every one still standing counts as in range.
-fn apply_shiny_minion_blast(
-    boss: &mut StateData,
-    students: &mut [&mut StateData],
-    params: Params,
-    region: Region,
-    ticks: u16,
-) -> u64 {
-    let shiny_count = params.shiny_minion_count as u64;
-    let unit = params.shiny_blast_damage;
-    let blast = Damage::new(unit, unit, unit, unit, 0, 1, 0);
-
-    let origin = boss.coordinate;
-    let mut student_share = 0u64;
-
-    for student in students.iter_mut() {
-        if !is_inside(student.coordinate, region, origin) {
-            continue;
-        }
-
-        for _ in 0..shiny_count {
-            student.accumulated_damage_cache.append(&blast);
-            student.accumulated_damage.push(AccumulatedDamage {
-                ticks,
-                damage: Some(blast),
-            });
-        }
-
-        student_share += unit * shiny_count;
-    }
-
+fn shiny_blast_minion_share(boss: &StateData, params: Params) -> u64 {
     let pero = boss.extra_as::<PerorodzillaState>();
     let standing = pero.big_minions.saturating_sub(pero.knocked_down) as u64;
-    let minion_share = unit * shiny_count * standing;
 
-    let total = minion_share + student_share;
-    if total > 0 {
-        let absorbed = Damage::new(total, total, total, total, 0, 1, 0);
-        boss.accumulated_damage_cache.append(&absorbed);
-        boss.accumulated_damage.push(AccumulatedDamage {
-            ticks,
-            damage: Some(absorbed),
-        });
-    }
-
-    minion_share
+    params.shiny_blast_damage * params.shiny_minion_count as u64 * standing
 }
 
 /// `true` once the groggy gauge is full.
-fn absorb_minion_wave(
-    boss: &mut StateData,
-    students: &mut [&mut StateData],
-    params: Params,
-) -> bool {
+fn absorb_minion_wave(boss: &mut StateData, params: Params) -> bool {
     let dealt = damage_since_wave_start(boss);
     boss.extra_as_mut::<PerorodzillaState>().minion_damage = dealt;
 
     let mut knocked = knockdown_count(boss);
 
     // 폭발이 다른 미니온을 더 넘어뜨린다. 개별 좌표가 없어 연쇄는 한 번만 계산한다.
-    if knocked > 0
-        && params.shiny_minion_count > 0
-        && let Some(region) = params.shiny_blast_region
-    {
+    if knocked > 0 && params.shiny_minion_count > 0 && params.shiny_blast_region.is_some() {
         boss.extra_as_mut::<PerorodzillaState>().knocked_down = knocked;
 
-        let minion_share = apply_shiny_minion_blast(boss, students, params, region, 1);
+        let minion_share = shiny_blast_minion_share(boss, params);
         boss.extra_as_mut::<PerorodzillaState>().minion_damage += minion_share;
 
         knocked = knockdown_count(boss);
@@ -348,7 +245,7 @@ pub fn init_big_minion_hp(boss: &mut StateData, hp: u64) {
 }
 
 create_boss_skill!(
-    WhiteHotHeatVision,
+    PerorodzillaWhiteHotHeatVision,
     0,
     params::DOT_DURATION,
     params::WHITE_HOT_HEAT_VISION_FRAMES,
@@ -366,7 +263,7 @@ create_boss_skill!(
 
             let mut effects = vec![
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
                         kind: EffectKind::Debuff {
@@ -379,7 +276,7 @@ create_boss_skill!(
                     }],
                 },
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: dot_timing,
                     targets: vec![SkillEffectTarget::Student {
                         kind: damage_effect(params.heat_vision_percent),
@@ -388,8 +285,7 @@ create_boss_skill!(
                 },
             ];
 
-            // `apply`의 `chain_percents[(i - 1).min(last)]`와 같은 배분. 첫 연쇄 대상만
-            // [0]을 쓰고 나머지는 [1]을 반복.
+            // 첫 연쇄 대상만 [0]을 쓰고 나머지는 [1]을 반복.
             if params.chain_count > 0 {
                 let [first, rest] = params.chain_percents;
                 let mut chain = vec![SkillEffectTarget::Student {
@@ -405,7 +301,7 @@ create_boss_skill!(
                 }
 
                 effects.push(SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: dot_timing,
                     targets: chain,
                 });
@@ -433,7 +329,7 @@ create_boss_skill!(
                 }
 
                 effects.push(SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Instant,
                     targets,
                 });
@@ -444,35 +340,15 @@ create_boss_skill!(
 
         fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData,
-            targets: &'b mut [&'c mut StateData],
+            _caster: &'c mut StateData,
+            _targets: &'b mut [&'c mut StateData],
         ) {
-            let params = self.params;
-
-            for (i, target) in targets.iter_mut().enumerate() {
-                let percent = match i {
-                    0 => params.heat_vision_percent,
-                    _ if (i as u8) <= params.chain_count => {
-                        let last = params.chain_percents.len() - 1;
-                        params.chain_percents[(i - 1).min(last)]
-                    }
-                    _ => continue,
-                };
-
-                append_damage_over_time(
-                    caster,
-                    target,
-                    percent,
-                    params.dot_interval,
-                    params.dot_duration,
-                );
-            }
         }
     }
 );
 
 create_boss_skill!(
-    AquaBall,
+    PerorodzillaAquaBall,
     0,
     0,
     params::AQUA_BALL_FRAMES,
@@ -505,7 +381,7 @@ create_boss_skill!(
             }
 
             vec![SkillEffect {
-                id: self.id,
+                id: self.id(),
                 timing: EffectTiming::Instant,
                 targets,
             }]
@@ -513,20 +389,15 @@ create_boss_skill!(
 
         fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData,
-            targets: &'b mut [&'c mut StateData],
+            _caster: &'c mut StateData,
+            _targets: &'b mut [&'c mut StateData],
         ) {
-            let percent = self.params.aqua_ball_percent;
-
-            for target in targets.iter_mut() {
-                append_damage(caster, target, percent, self.duration());
-            }
         }
     }
 );
 
 create_boss_skill!(
-    SummonMinion,
+    PerorodzillaSummonMinion,
     0,
     0,
     params::SUMMON_MINION_FRAMES,
@@ -536,7 +407,7 @@ create_boss_skill!(
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
             vec![SkillEffect {
-                id: self.id,
+                id: self.id(),
                 timing: EffectTiming::Instant,
                 targets: vec![SkillEffectTarget::Oneself {
                     kind: EffectKind::new_other(Self::other_apply),
@@ -554,16 +425,14 @@ create_boss_skill!(
     }
 );
 
-impl SummonMinion {
-    pub fn other_apply(skill: &Skill, mut state: State) -> State {
-        let params = Params::of(difficulty_of(skill));
-        summon_minion_wave(state.boss_mut(), params);
-        state
+impl PerorodzillaSummonMinion {
+    pub fn other_apply(_skill: &dyn Skill, _state: State) -> State {
+        todo!()
     }
 }
 
 create_boss_skill!(
-    AbsorbMinion,
+    PerorodzillaAbsorbMinion,
     0,
     0,
     params::ABSORB_MINION_FRAMES,
@@ -586,7 +455,7 @@ create_boss_skill!(
             }
 
             vec![SkillEffect {
-                id: self.id,
+                id: self.id(),
                 timing: EffectTiming::Instant,
                 targets,
             }]
@@ -595,10 +464,10 @@ create_boss_skill!(
         fn apply<'b, 'c: 'b>(
             &self,
             caster: &'c mut StateData,
-            targets: &'b mut [&'c mut StateData],
+            _targets: &'b mut [&'c mut StateData],
         ) {
             let params = self.params;
-            let is_groggy = absorb_minion_wave(caster, targets, params);
+            let is_groggy = absorb_minion_wave(caster, params);
 
             // 넉백 거리 데이터가 없어 좌표 변경은 보류한다.
             let _ = is_groggy && params.knockback_on_groggy;
@@ -606,20 +475,14 @@ create_boss_skill!(
     }
 );
 
-impl AbsorbMinion {
-    pub fn other_apply(skill: &Skill, mut state: State) -> State {
-        let params = Params::of(difficulty_of(skill));
-        let (boss, students) = state.split_mut();
-        let mut students: Vec<&mut StateData> = students.iter_mut().collect();
-
-        absorb_minion_wave(boss, &mut students, params);
-
-        state
+impl PerorodzillaAbsorbMinion {
+    pub fn other_apply(_skill: &dyn Skill, _state: State) -> State {
+        todo!()
     }
 }
 
 create_boss_skill!(
-    HyperSpiralGlareBeam,
+    PerorodzillaHyperSpiralGlareBeam,
     0,
     0,
     params::HYPER_SPIRAL_GLARE_BEAM_FRAMES,
@@ -629,7 +492,7 @@ create_boss_skill!(
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
             vec![SkillEffect {
-                id: self.id,
+                id: self.id(),
                 timing: EffectTiming::Instant,
                 targets: vec![SkillEffectTarget::Student {
                     kind: damage_effect(self.params.hyper_spiral_percent),
@@ -641,16 +504,11 @@ create_boss_skill!(
         fn apply<'b, 'c: 'b>(
             &self,
             caster: &'c mut StateData,
-            targets: &'b mut [&'c mut StateData],
+            _targets: &'b mut [&'c mut StateData],
         ) {
             // 게이지를 소모하는 쪽이 여기이므로 시전 조건을 직접 확인한다.
             if caster.extra_as::<PerorodzillaState>().atg_percent < 100 {
                 return;
-            }
-
-            let percent = self.params.hyper_spiral_percent;
-            for target in targets.iter_mut() {
-                append_damage(caster, target, percent, self.duration());
             }
 
             caster.extra_as_mut::<PerorodzillaState>().atg_percent = 0;
@@ -659,7 +517,7 @@ create_boss_skill!(
 );
 
 create_boss_skill!(
-    BurningPerorodzilla,
+    PerorodzillaBurningPerorodzilla,
     0,
     0,
     0,
@@ -676,7 +534,7 @@ create_boss_skill!(
         }
 
         vec![SkillEffect {
-            id: self.id,
+            id: self.id(),
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Oneself {
                 kind: EffectKind::Buff {
