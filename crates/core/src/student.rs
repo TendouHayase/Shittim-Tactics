@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomPinned};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 use error::Error;
 use typed_builder::TypedBuilder;
@@ -7,16 +7,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     base::BaseStats,
+    character::Character,
     constants::MAX_SKILL_LEVEL,
     locale::LocalizedName,
-    skill::{FromParams, Skill},
-    skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill},
+    skill::Skill,
     stat::{StatKind, StatValueKind},
     table::{
         gear::{GearKind, GearTable},
         level::calcul_stat,
     },
     terrains::{Terrain, TerrainCombatPower, TerrainCombatPowerState},
+    uid::Uid,
     utils::Ratio,
 };
 
@@ -179,39 +180,25 @@ pub struct Student {
 
     /// Ex, Basic and Sub. The enhanced skill is always a stat increase, so it is folded into
     /// [`StudentStats::base_stats`] instead of being a skill.
-    pub skills: Vec<Skill>,
-
-    _pin: PhantomPinned,
+    pub skills: Vec<Box<dyn Skill>>,
 }
 
 impl Student {
-    /// Returns a `Box` for the same reason [`crate::boss::Boss::from_file`] does: the skills hold
-    /// a `NonNull` back to their owner, so the address has to be fixed before they are built.
-    pub fn from_file(
-        kind: StudentKind,
-        path: &str,
+    pub fn new(
         spec: StudentSpec,
+        file: &StudentFile,
         gears: &GearTable,
-        skill_mask_offset: usize,
-    ) -> Result<Box<Self>, Error> {
-        let file = StudentFile::from_file(path)?;
-        let skill_levels = spec.skill_levels;
+        skills: Vec<Box<dyn Skill>>,
+    ) -> Result<Self, Error> {
+        let base_stats = build_stats(file, &spec, gears)?;
 
-        let base_stats = build_stats(&file, &spec, gears)?;
-
-        let mut student = Box::new(Student {
+        Ok(Student {
             stats: StudentStats {
                 student_stats: spec,
                 base_stats,
             },
-            skills: Vec::new(),
-            _pin: PhantomPinned,
-        });
-
-        student.skills =
-            build_skills(&student, kind, file.skills, skill_levels, skill_mask_offset)?;
-
-        Ok(student)
+            skills,
+        })
     }
 }
 
@@ -295,16 +282,16 @@ impl PartialEq for Student {
     }
 }
 
-impl Student {
-    pub fn id(&self) -> u32 {
-        self.stats.student_stats.id
+impl Character for Student {
+    fn id(&self) -> Uid {
+        Uid::new(self.stats.student_stats.id as u64)
     }
 
-    pub fn stats(&self) -> &BaseStats {
+    fn stats(&self) -> &BaseStats {
         &self.stats.base_stats
     }
 
-    pub fn skill_list(&self) -> &[Skill] {
+    fn skills(&self) -> &[Box<dyn Skill>] {
         &self.skills
     }
 }
@@ -317,15 +304,9 @@ impl Hash for Student {
 
 impl Eq for Student {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum StudentKind {
-    Kei,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::skill::SkillMeta;
     use crate::terrains::{Terrain, TerrainCombatPowerState};
     use crate::types::AttackType;
 
@@ -351,9 +332,10 @@ mod tests {
             .build()
     }
 
-    fn load(spec: StudentSpec) -> Box<Student> {
+    fn load(spec: StudentSpec) -> Student {
         let gears = GearTable::from_file(GEARS).expect("failed to load gears");
-        Student::from_file(StudentKind::Kei, KEI, spec, &gears, 3).expect("failed to load kei")
+        let file = StudentFile::from_file(KEI).expect("failed to load kei");
+        Student::new(spec, &file, &gears, Vec::new()).expect("failed to build kei")
     }
 
     /// With no gear, talent or weapon the endpoints must come back exactly as transcribed, or the
@@ -505,30 +487,6 @@ mod tests {
 
         // An amount on hp alone; the enhanced skill level moves nothing else.
         assert_eq!(maxed.stats().atk, star1.stats().atk);
-    }
-
-    #[test]
-    fn skills_are_built_at_the_given_offset() {
-        let kei = load(spec(90, 5));
-
-        assert_eq!(kei.skill_list().len(), 3);
-        assert_eq!(kei.skill_list()[0].skill_mask_offset(), 3);
-        assert_eq!(kei.skill_list()[2].skill_mask_offset(), 5);
-
-        assert_eq!(kei.skill_list()[0].cost(), 2);
-        assert_eq!(kei.skill_list()[0].duration(), 750);
-        assert_eq!(kei.skill_list()[1].cost(), 0);
-        assert_eq!(kei.skill_list()[1].frames(), 141);
-    }
-
-    /// The skills point back at the student they were built for. A move would break this.
-    #[test]
-    fn skills_point_at_their_owner() {
-        let kei = load(spec(90, 5));
-
-        for skill in kei.skill_list() {
-            assert_eq!(skill.owner().id(), kei.id());
-        }
     }
 
     #[test]

@@ -1,1 +1,1 @@
-mod skills;
+pub mod skills;
