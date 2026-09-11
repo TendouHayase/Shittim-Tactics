@@ -3,20 +3,14 @@
 
 use crate::create_boss_skill;
 use core::{
-    boss::Boss,
-    character::Character,
-    effect::EffectTiming,
-    skill::{EffectKind, SkillEffect, SkillEffectTarget, SkillMeta, SkillOps, SkillType},
+    effect::{EffectKind, EffectTiming},
+    skill::{SkillEffect, SkillEffectTarget, SkillMeta, SkillType},
     stat::StatKind,
-    state::{AccumulatedDamage, StateData},
+    state::StateData,
 };
-use std::ptr::NonNull;
 
 /// The `Raw*` types that deserialize the json `skills` object, and the `*Params` that result
 /// from picking one difficulty out of them.
-///
-/// Kept inside a module: a top-level `struct` here would be mistaken for a skill by xtask and
-/// pulled into the `Skill` enum.
 pub mod params {
     use core::difficulty::{ByDifficulty, Difficulty};
     use core::locale::LocalizedName;
@@ -164,32 +158,8 @@ fn damage_effect(percent: u16) -> EffectKind {
     }
 }
 
-/// Zips `percents` onto targets from the front. Surplus values are dropped and surplus targets
-/// are left alone.
-///
-/// Order is the target selection, so distance-ordered patterns rely on `targets` already being
-/// sorted.
-fn append_damage(
-    caster: &StateData,
-    targets: &mut [&mut StateData],
-    percents: impl IntoIterator<Item = u16>,
-    ticks: u16,
-) {
-    let Some(damage) = caster.damage_with_effects() else {
-        return;
-    };
-
-    for (target, percent) in targets.iter_mut().zip(percents) {
-        target.accumulated_damage_cache.append(&damage);
-        target.accumulated_damage.push(AccumulatedDamage {
-            ticks,
-            damage: Some(damage),
-        });
-    }
-}
-
 create_boss_skill!(
-    AtsilutsLight,
+    BinahAtsilutsLight,
     params: params::AtsilutsLightParams,
     SkillType::Ex,
     0,
@@ -199,7 +169,7 @@ create_boss_skill!(
 
             vec![
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Land {
                         kind: damage_effect(params.instant_percent),
@@ -207,7 +177,7 @@ create_boss_skill!(
                     }],
                 },
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Persistent {
                         interval_frames: params.dot_interval,
                         duration_frames: params.dot_duration,
@@ -231,7 +201,7 @@ create_boss_skill!(
 );
 
 create_boss_skill!(
-    FiresofSeverity,
+    BinahFiresofSeverity,
     params: params::FiresOfSeverityParams,
     SkillType::Ex,
     1,
@@ -241,7 +211,7 @@ create_boss_skill!(
 
             vec![
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
                         kind: damage_effect(params.all_percent),
@@ -249,7 +219,7 @@ create_boss_skill!(
                     }],
                 },
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: params
                         .nearest_percents
@@ -265,20 +235,15 @@ create_boss_skill!(
 
         fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData,
-            targets: &'b mut [&'c mut StateData],
+            _caster: &'c mut StateData,
+            _targets: &'b mut [&'c mut StateData],
         ) {
-            let params = self.params;
-            let ticks = self.duration();
-
-            append_damage(caster, targets, std::iter::repeat(params.all_percent), ticks);
-            append_damage(caster, targets, params.nearest_percents, ticks);
         }
     }
 );
 
 create_boss_skill!(
-    PurifyingStorm,
+    BinahPurifyingStorm,
     params: params::PurifyingStormParams,
     SkillType::Ex,
     2,
@@ -288,7 +253,7 @@ create_boss_skill!(
 
             vec![
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
                         kind: EffectKind::Debuff {
@@ -301,7 +266,7 @@ create_boss_skill!(
                     }],
                 },
                 SkillEffect {
-                    id: self.id,
+                    id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
                         kind: damage_effect(params.percent),
@@ -313,17 +278,9 @@ create_boss_skill!(
 
         fn apply<'b, 'c: 'b>(
             &self,
-            caster: &'c mut StateData,
-            targets: &'b mut [&'c mut StateData],
+            _caster: &'c mut StateData,
+            _targets: &'b mut [&'c mut StateData],
         ) {
-            let params = self.params;
-
-            append_damage(
-                caster,
-                targets,
-                std::iter::repeat_n(params.percent, params.count as usize),
-                self.duration(),
-            );
         }
     }
 );
