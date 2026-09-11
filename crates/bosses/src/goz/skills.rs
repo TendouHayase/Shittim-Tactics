@@ -1,14 +1,11 @@
 use crate::create_boss_skill;
 use core::{
-    boss::Boss,
-    character::Character,
-    skill::{Skill, SkillEffect, SkillMeta, SkillOps, SkillType},
+    skill::{Skill, SkillEffect, SkillType},
     state::{State, StateData},
     utils::time_to_ticks,
 };
-use std::ptr::NonNull;
 
-create_boss_skill!(NowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
+create_boss_skill!(GozNowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         todo!()
     }
@@ -22,14 +19,14 @@ create_boss_skill!(NowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
     }
 });
 
-impl NowYouSeeUs {
-    pub fn other_apply(_skill: &Skill, _state: State) -> State {
+impl GozNowYouSeeUs {
+    pub fn other_apply(_skill: &dyn Skill, _state: State) -> State {
         todo!()
     }
 }
 
 create_boss_skill!(
-    ThreeLightMonte,
+    GozThreeLightMonte,
     3,
     time_to_ticks(7, 1),
     time_to_ticks(16, 10),
@@ -51,7 +48,7 @@ create_boss_skill!(
 );
 
 create_boss_skill!(
-    MagicalCoinHat,
+    GozMagicalCoinHat,
     0,
     time_to_ticks(7, 1),
     time_to_ticks(5, 1),
