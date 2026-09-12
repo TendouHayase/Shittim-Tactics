@@ -27,7 +27,7 @@ pub struct Simulation {
     cost_charge_time: HashMap<SkillsBitMask, u16>,
 }
 
-impl Simulator<State> for Simulation {
+impl Simulator for Simulation {
     fn initial_state(&self) -> State {
         let mut it = self.students.iter();
 
@@ -79,13 +79,35 @@ impl Simulator<State> for Simulation {
 
     fn apply(&self, state: State, action: &core::actions::ActionContext) -> State {
         let action = match action {
-            ActionContext::Wait => return state.clone(),
+            ActionContext::Wait => return state,
             ActionContext::Use(action) => action,
         };
 
         let mut state = state.clone();
 
-        action.skill.apply(action.caster, &action.targets, state)
+        // 캐스터와 타깃을 각각 search_uid_mut으로 집으면 같은 State를 두 번 가변 대여하게 된다.
+        // 한 번의 분할에서 갈라내고, 타깃은 거리 순서를 보존하도록 action.targets 순서로 담는다.
+        let (boss, students) = state.split_mut();
+        let mut caster = None;
+        let mut slots: Vec<Option<&mut StateData>> =
+            (0..action.targets.len()).map(|_| None).collect();
+
+        for data in std::iter::once(boss).chain(students.iter_mut()) {
+            let uid = data.uid();
+
+            if uid == action.caster {
+                caster = Some(data);
+            } else if let Some(i) = action.targets.iter().position(|&target| target == uid) {
+                slots[i] = Some(data);
+            }
+        }
+
+        let mut targets: Vec<&mut StateData> = slots.into_iter().flatten().collect();
+        action
+            .skill
+            .apply(caster.expect("unexpected uid"), &mut targets);
+
+        state
     }
 
     fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, error::Error> {
@@ -99,11 +121,11 @@ impl Simulator<State> for Simulation {
 
         let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()]; // TODO
 
-        let boss_effects_len = state.boss().remained_effects.len();
-        let boss_remain_effects_ref = &state.boss().remained_effects;
+        let boss_effects_len = state.boss().remained_effects().len();
+        let boss_remain_effects_ref = &state.boss().remained_effects();
         let mut new_boss_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
             BinaryHeap::with_capacity(boss_effects_len);
-        let mut boss_effects_mask = state.boss().effects;
+        let mut boss_effects_mask = state.boss().effects();
         let mut boss_acc_damage = state.boss().accumulated_damage.clone();
         let damage = state.boss().damage_with_effects();
         for item in boss_remain_effects_ref {
