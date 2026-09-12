@@ -287,7 +287,7 @@ impl StateData {
         })
     }
 
-    pub fn extra_as_mut<T: ExtraStateData>(&mut self) -> &T {
+    pub fn extra_as_mut<T: ExtraStateData>(&mut self) -> &mut T {
         let uid = self.uid();
         self.try_extra_as_mut().unwrap_or_else(|err| {
             panic!(
