@@ -6,10 +6,10 @@ use core::{
     boss::Boss,
     character::Character,
     constants::TPS,
-    damage::{Damage, key::SkillsBitMask, map::DamageMap},
+    damage::{Damage, key::SkillsBitMask},
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget::Land, SkillMeta, SkillOps},
-    state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
+    state::{AccumulatedDamage, CommonStateData, RemainedEffects, State, StateData, Stateful},
     student::Student,
     utils::is_inside,
 };
@@ -24,7 +24,6 @@ pub struct Simulation {
 
     limit_ticks: u16,
 
-    damage_map: DamageMap,
     cost_charge_time: HashMap<SkillsBitMask, u16>,
 }
 
@@ -59,8 +58,8 @@ impl Simulator<State> for Simulation {
         let cost = state.cost();
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
-            for (j, cooltime) in stat.cooldowns.iter().enumerate() {
-                let skill = &stat.character.skill_list()[j];
+            for (j, cooltime) in stat.cooldowns().iter().enumerate() {
+                let skill = self.students[i].lookup_skill(j);
                 if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
                     let caster = stat.character.id();
                     let targets = self.resolve_targets(state, skill);
@@ -84,47 +83,6 @@ impl Simulator<State> for Simulation {
         };
 
         let mut state = state.clone();
-
-        let caster_id = action.caster;
-        let target_ids = &action.targets;
-
-        // 보스와 학생들을 한 번의 가변 대여로 동시에 분리한다.
-        // 접근자를 따로 호출하면 같은 state를 두 번 가변 대여하게 되어 통과하지 못한다.
-        let (boss, students) = state.split_mut();
-
-        let mut targets: Vec<&mut StateData> = Vec::with_capacity(target_ids.len());
-
-        // 각 가변 참조가 caster 또는 targets 중 정확히 한 곳으로만 이동하도록
-        // 대상 목록을 단 한 번만 순회한다. id로 여러 번 조회하면 같은 대상을 두 번
-        // 꺼낼 수 있다는 걸 컴파일러가 배제하지 못해 대여 검사를 통과할 수 없다.
-        let caster = if caster_id == boss.character.id() {
-            for student in students {
-                if target_ids.contains(&student.character.id()) {
-                    targets.push(student);
-                }
-            }
-
-            boss
-        } else {
-            if target_ids.contains(&boss.character.id()) {
-                targets.push(boss);
-            }
-
-            let mut caster = None;
-
-            for student in students {
-                let id = student.character.id();
-
-                // 캐스터는 타깃 목록에 포함되지 않는다(`Simulator::apply` 문서 참고).
-                if id == caster_id {
-                    caster = Some(student);
-                } else if target_ids.contains(&id) {
-                    targets.push(student);
-                }
-            }
-
-            caster.expect("caster id does not match any character in the state")
-        };
 
         action.skill.apply(caster, &mut targets);
 
@@ -188,8 +146,7 @@ impl Simulator<State> for Simulation {
                 let mut acc_damage = student.accumulated_damage.clone();
 
                 let effects_len = student.remained_effects.len();
-                let mut new_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
-                    BinaryHeap::with_capacity(effects_len);
+                let mut new_remain_effects = Vec::with_capacity(effects_len);
                 let mut effects_mask = student.effects;
                 for item in &student.remained_effects {
                     let bit = 1u64 << item.0.offset;
@@ -227,16 +184,16 @@ impl Simulator<State> for Simulation {
                                                 data.coordinate,
                                             )
                                         {
-                                            new_remain_effects.push(Reverse(RemainedEffects {
+                                            new_remain_effects.push(RemainedEffects {
                                                 ticks: item.0.ticks - delta_ticks,
                                                 offset: item.0.offset,
-                                            }));
+                                            });
                                         }
                                     } else {
-                                        new_remain_effects.push(Reverse(RemainedEffects {
+                                        new_remain_effects.push(RemainedEffects {
                                             ticks: item.0.ticks - delta_ticks,
                                             offset: item.0.offset,
-                                        }));
+                                        });
                                     }
                                 }
                             }
@@ -244,20 +201,19 @@ impl Simulator<State> for Simulation {
                     }
                 }
 
-                StateData {
-                    character: student.character,
-                    coordinate: student.coordinate,
-                    accumulated_damage_cache: student.accumulated_damage_cache.clone(),
-                    cooldowns: student
+                StateData::from_parts(
+                    student.common.uid,
+                    student.coordinate,
+                    student
                         .cooldowns
                         .iter()
                         .map(|i| i.saturating_sub(delta_ticks))
                         .collect(),
-                    effects: effects_mask.into(),
-                    remained_effects: new_remain_effects,
-                    accumulated_damage: acc_damage,
-                    extra: student.extra,
-                }
+                    effects_mask.into(),
+                    new_remain_effects,
+                    acc_damage,
+                    student.extra,
+                )
             })
             .collect();
 
@@ -300,15 +256,11 @@ impl Simulator<State> for Simulation {
         result
     }
 
-    fn damage_map(&self) -> &DamageMap {
-        &self.damage_map
-    }
-
     fn is_time_over(&self, ticks: u16) -> bool {
         self.limit_ticks <= ticks
     }
 
-    fn lookup_skill(&self, index: usize) -> Result<&Skill, error::Error> {
+    fn lookup_skill(&self, index: usize) -> Result<&dyn Skill, error::Error> {
         let total_skill_count = 3 + self.students.len() * 3 + self.boss.skill_list().len();
         let student_skill_offset = 3;
         let boss_skill_offset = 3 + 3 * self.students.len();
@@ -333,6 +285,7 @@ impl Simulator<State> for Simulation {
                     "index {} can't find skill",
                     index
                 )))
+                .map(|&x| &*x)
         } else {
             self.boss
                 .skills
@@ -341,6 +294,7 @@ impl Simulator<State> for Simulation {
                     "index {} can't find skill",
                     index
                 )))
+                .map(|&x| &*x)
         }
     }
 
