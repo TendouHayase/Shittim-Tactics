@@ -14,7 +14,7 @@ use core::{
 pub mod params {
     use core::difficulty::{ByDifficulty, Difficulty};
     use core::locale::LocalizedName;
-    use core::skill::Region;
+    use core::skill::{Region, SkillParams};
     use serde::Deserialize;
 
     /// Coefficients are all percentages, so the denominator is fixed.
@@ -147,6 +147,48 @@ pub mod params {
                 def_down_duration: self.def_down_duration[difficulty],
                 count: self.count[difficulty],
             }
+        }
+    }
+
+    impl SkillParams for AtsilutsLightParams {
+        fn cost(&self) -> u8 {
+            self.cost
+        }
+
+        fn duration(&self) -> u16 {
+            self.duration
+        }
+
+        fn frames(&self) -> u16 {
+            self.frames
+        }
+    }
+
+    impl SkillParams for FiresOfSeverityParams {
+        fn cost(&self) -> u8 {
+            self.cost
+        }
+
+        fn duration(&self) -> u16 {
+            self.duration
+        }
+
+        fn frames(&self) -> u16 {
+            self.frames
+        }
+    }
+
+    impl SkillParams for PurifyingStormParams {
+        fn cost(&self) -> u8 {
+            self.cost
+        }
+
+        fn duration(&self) -> u16 {
+            self.duration
+        }
+
+        fn frames(&self) -> u16 {
+            self.frames
         }
     }
 }
