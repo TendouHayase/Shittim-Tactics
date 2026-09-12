@@ -2,7 +2,6 @@ pub mod binah;
 pub mod goz;
 pub mod macros;
 pub mod perorodzilla;
-pub mod states;
 
 use crate::macros::SkillNumbers;
 use binah::skills::{
@@ -195,8 +194,15 @@ mod tests {
     const BINAH: &str = "../../data/bosses/binah.json";
 
     fn binah(difficulty: Difficulty) -> Boss {
-        load(BossKind::Binah, BINAH, ArmorType::Heavy, difficulty, Terrain::Outdoor, 0)
-            .expect("failed to load binah")
+        load(
+            BossKind::Binah,
+            BINAH,
+            ArmorType::Heavy,
+            difficulty,
+            Terrain::Outdoor,
+            0,
+        )
+        .expect("failed to load binah")
     }
 
     #[test]

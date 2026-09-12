@@ -1,6 +1,7 @@
-use core::extra::ExtraStateData;
+use core::extra::{ExtraState, ExtraStateData};
+use std::{any::TypeId, hash::Hash};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct PerorodzillaState {
     /// Expected damage the minions have taken since the wave was summoned.
     pub minion_damage: u64,
@@ -23,4 +24,4 @@ pub struct PerorodzillaState {
     pub atg_percent: u16,
 }
 
-impl ExtraStateData for PerorodzillaState {}
+impl ExtraState for PerorodzillaState {}
