@@ -26,7 +26,7 @@ pub trait Simulator<S: Stateful> {
         let caster_id = skill.owner();
         let caster_coord = state
             .state_data_by_uid(caster_id)
-            .map(|data| data.common.coordinate)
+            .map(|data| data.coordinate())
             .unwrap_or_default();
 
         let mut targets = Vec::new();
@@ -42,7 +42,7 @@ pub trait Simulator<S: Stateful> {
                         let mut students: Vec<(Position, Uid)> = state
                             .students()
                             .iter()
-                            .map(|student| (student.common.coordinate, student.common.uid))
+                            .map(|student| (student.coordinate(), student.uid()))
                             .filter(|student| student.1 != caster_id)
                             .collect();
 
@@ -56,16 +56,16 @@ pub trait Simulator<S: Stateful> {
                         targets.extend(students.iter().take(count.into()).map(|s| s.1));
                     }
 
-                    SkillEffectTarget::Boss { .. } => targets.push(state.boss().common.uid),
+                    SkillEffectTarget::Boss { .. } => targets.push(state.boss().uid()),
 
                     SkillEffectTarget::Land { region, .. } => {
-                        if is_inside(state.boss().common.coordinate, region, caster_coord) {
-                            targets.push(state.boss().common.uid);
+                        if is_inside(state.boss().coordinate(), region, caster_coord) {
+                            targets.push(state.boss().uid());
                         }
 
                         for student in state.students() {
-                            if is_inside(student.common.coordinate, region, caster_coord) {
-                                targets.push(student.common.uid);
+                            if is_inside(student.coordinate(), region, caster_coord) {
+                                targets.push(student.uid());
                             }
                         }
                     }
