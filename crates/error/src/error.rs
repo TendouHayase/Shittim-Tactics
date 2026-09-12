@@ -26,6 +26,7 @@ pub enum Error {
     InvalidArgument(String),
     InvalidCasting(String),
     LockPoisoned(String),
+    WrongType(String),
     Empty,
 }
 
