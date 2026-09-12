@@ -2,7 +2,7 @@
 //! only [`params::Params::of`] and the frame constants need replacing.
 
 use crate::create_boss_skill;
-use crate::states::PerorodzillaState;
+use crate::perorodzilla::state::PerorodzillaState;
 use core::{
     constants::MAX_STUDENT_COUNT,
     effect::{EffectKind, EffectTiming},
@@ -11,7 +11,7 @@ use core::{
     state::{State, StateData},
 };
 
-use error::Error::{self, WrongType};
+use error::Error::{self};
 use params::Params;
 
 /// Pattern numbers not yet in json. Anything still unmeasured is `None` or `0`, and the effects
@@ -156,31 +156,43 @@ fn damage_effect(percent: u16) -> EffectKind {
     }
 }
 
-fn summon_minion_wave(boss: &mut StateData, params: Params) {
-    let record_start = boss.common.accumulated_damage.len();
-    let pero = boss.extra_as_mut::<PerorodzillaState>();
+fn summon_minion_wave(boss: &mut StateData, params: Params) -> Result<(), Error> {
+    let record_start = boss.accumulated_damage().len();
+    let mut extra = boss.extra_mut();
+    let pero = extra
+        .as_deref_mut()
+        .ok_or(Error::Empty)?
+        .downcast_as_mut::<PerorodzillaState>()?;
 
     pero.big_minions = params.big_minion_count;
     pero.shiny_minions = params.shiny_minion_count;
     pero.knocked_down = 0;
     pero.minion_damage = 0;
     pero.damage_record_start = record_start;
+
+    Ok(())
 }
 
 /// All damage a minion takes passes to the boss, so growth in the boss damage log is read as
 /// the minions' share. An approximation: it assumes most damage during a wave goes through the
 /// minions, which are targeted first.
-fn damage_since_wave_start(boss: &StateData) -> u64 {
-    let record_start = boss
-        .extra_as::<PerorodzillaState>()
-        .damage_record_start
-        .min(boss.common.accumulated_damage.len());
+fn damage_since_wave_start(boss: &StateData) -> Result<u64, Error> {
+    let extra = boss.extra();
+    let peroro_state = extra
+        .as_ref()
+        .ok_or(Error::Empty)?
+        .downcast_as::<PerorodzillaState>()?;
 
-    boss.common.accumulated_damage[record_start..]
+    let record_start = peroro_state
+        .damage_record_start
+        .min(boss.accumulated_damage().len());
+    let result = boss.accumulated_damage()[record_start..]
         .iter()
         .filter_map(|acc| acc.damage)
         .map(|damage| damage.expected_value())
-        .sum()
+        .sum();
+
+    Ok(result)
 }
 
 /// Minions are targeted one at a time, so the wave's total damage divided by 50% of one
@@ -207,8 +219,8 @@ fn shiny_blast_minion_share(boss: &StateData, params: Params) -> u64 {
 }
 
 /// `true` once the groggy gauge is full.
-fn absorb_minion_wave(boss: &mut StateData, params: Params) -> bool {
-    let dealt = damage_since_wave_start(boss);
+fn absorb_minion_wave(boss: &mut StateData, params: Params) -> Result<bool, Error> {
+    let dealt = damage_since_wave_start(boss)?;
     boss.extra_as_mut::<PerorodzillaState>().minion_damage = dealt;
 
     let mut knocked = knockdown_count(boss);
@@ -233,9 +245,9 @@ fn absorb_minion_wave(boss: &mut StateData, params: Params) -> bool {
     if pero.groggy_numerator >= params.groggy_denominator {
         pero.groggy_numerator = 0;
         pero.small_minions = params.small_minion_count;
-        true
+        Ok(true)
     } else {
-        false
+        Ok(false)
     }
 }
 
@@ -456,7 +468,7 @@ create_boss_skill!(
             _targets: &'b mut [&'c mut StateData],
         ) {
             let params = self.params;
-            let is_groggy = absorb_minion_wave(caster, params);
+            let is_groggy = absorb_minion_wave(caster, params).is_ok();
 
             // 넉백 거리 데이터가 없어 좌표 변경은 보류한다.
             let _ = is_groggy && params.knockback_on_groggy;
