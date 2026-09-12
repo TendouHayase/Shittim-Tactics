@@ -1,5 +1,7 @@
 use std::hash::{Hash, Hasher};
 
+use error::Error;
+
 use crate::{
     damage::{Damage, key::SkillsBitMask},
     extra::ExtraStateData,
@@ -159,8 +161,8 @@ impl Ord for RemainedEffects {
 
 #[derive(Debug, Clone)]
 pub struct StateData {
-    pub common: CommonStateData,
-    pub extra: Option<Box<dyn ExtraStateData>>,
+    common: CommonStateData,
+    extra: Option<Box<dyn ExtraStateData>>,
 }
 
 impl StateData {
@@ -260,19 +262,40 @@ impl StateData {
     }
 
     pub fn extra(&self) -> Option<&dyn ExtraStateData> {
-        if let Some(extra) = &self.extra {
-            Some(extra.as_ref())
-        } else {
-            None
-        }
+        self.extra.as_deref()
     }
 
     pub fn extra_mut(&mut self) -> Option<&mut dyn ExtraStateData> {
-        if let Some(extra) = &mut self.extra {
-            Some(extra.as_mut())
-        } else {
-            None
-        }
+        self.extra.as_deref_mut()
+    }
+
+    pub fn try_extra_as<T: ExtraStateData>(&self) -> Result<&T, Error> {
+        self.extra().ok_or(Error::Empty)?.downcast_as::<T>()
+    }
+
+    pub fn try_extra_as_mut<T: ExtraStateData>(&mut self) -> Result<&mut T, Error> {
+        self.extra_mut().ok_or(Error::Empty)?.downcast_as_mut::<T>()
+    }
+
+    pub fn extra_as<T: ExtraStateData>(&self) -> &T {
+        self.try_extra_as().unwrap_or_else(|err| {
+            panic!(
+                "{:?} has no {} in extra: {err:?}",
+                self.uid(),
+                std::any::type_name::<T>()
+            )
+        })
+    }
+
+    pub fn extra_as_mut<T: ExtraStateData>(&mut self) -> &T {
+        let uid = self.uid();
+        self.try_extra_as_mut().unwrap_or_else(|err| {
+            panic!(
+                "{:?} has no {} in extra: {err:?}",
+                uid,
+                std::any::type_name::<T>()
+            )
+        })
     }
 }
 
