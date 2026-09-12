@@ -33,19 +33,19 @@ impl Simulator<State> for Simulation {
 
         if self.students.len() == 6 {
             State {
-                students: core::state::StudentState::TotalAssault(std::array::from_fn(|_| {
-                    StateData::new(Character::Student(it.next().unwrap()))
+                students: core::state::StudentState::TotalAssault(std::array::from_fn(|i| {
+                    StateData::new(self.students[i].uid())
                 })),
-                boss: StateData::new(Character::Boss(&self.boss)),
+                boss: StateData::new(self.boss.uid()),
                 frames: 0,
                 cost: 0,
             }
         } else if self.students.len() == 10 {
             State {
                 students: core::state::StudentState::FinalRestrictionRelease(std::array::from_fn(
-                    |_| StateData::new(Character::Student(it.next().unwrap())),
+                    |i| StateData::new(self.students[i].uid()),
                 )),
-                boss: StateData::new(Character::Boss(&self.boss)),
+                boss: StateData::new(self.boss.uid()),
                 frames: 0,
                 cost: 0,
             }
@@ -59,16 +59,17 @@ impl Simulator<State> for Simulation {
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
             for (j, cooltime) in stat.cooldowns().iter().enumerate() {
-                let skill = self.students[i].lookup_skill(j);
-                if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
-                    let caster = stat.character.id();
-                    let targets = self.resolve_targets(state, skill);
+                if let Some(skill) = self.students[i].lookup_skill(j) {
+                    if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
+                        let caster = stat.uid();
+                        let targets = self.resolve_targets(state, skill);
 
-                    result.push(ActionContext::Use(Action {
-                        caster,
-                        targets,
-                        skill,
-                    }));
+                        result.push(ActionContext::Use(Action {
+                            caster,
+                            targets,
+                            skill,
+                        }));
+                    }
                 }
             }
         }
@@ -76,7 +77,7 @@ impl Simulator<State> for Simulation {
         result
     }
 
-    fn apply(&self, state: &State, action: &core::actions::ActionContext) -> State {
+    fn apply(&self, state: State, action: &core::actions::ActionContext) -> State {
         let action = match action {
             ActionContext::Wait => return state.clone(),
             ActionContext::Use(action) => action,
@@ -84,15 +85,11 @@ impl Simulator<State> for Simulation {
 
         let mut state = state.clone();
 
-        action.skill.apply(caster, &mut targets);
-
-        state
+        action.skill.apply(action.caster, &action.targets, state)
     }
 
     fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, error::Error> {
         let mut skill_mask = 0u64;
-
-        let damage_map = &self.damage_map;
 
         for student in state.students() {
             skill_mask |= student.effects.data();
@@ -202,7 +199,7 @@ impl Simulator<State> for Simulation {
                 }
 
                 StateData::from_parts(
-                    student.common.uid,
+                    student.uid(),
                     student.coordinate,
                     student
                         .cooldowns
@@ -212,7 +209,7 @@ impl Simulator<State> for Simulation {
                     effects_mask.into(),
                     new_remain_effects,
                     acc_damage,
-                    student.extra,
+                    student.extra().as_ref().map(|s| s.clone_box()),
                 )
             })
             .collect();
@@ -299,11 +296,11 @@ impl Simulator<State> for Simulation {
     }
 
     fn character_by_id(&self, id: u32) -> Option<Character> {
-        if id == self.boss.id() {
+        if id == self.boss.uid() {
             Some(Character::Boss(&self.boss))
         } else {
             for student in &self.students {
-                if id == student.id() {
+                if id == student.uid() {
                     return Some(Character::Student(student));
                 }
             }
