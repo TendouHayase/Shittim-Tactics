@@ -8,7 +8,7 @@ use core::{
     effect::{EffectKind, EffectTiming},
     skill::{Skill, SkillEffect, SkillEffectTarget, SkillMeta, SkillType},
     stat::StatKind,
-    state::{State, StateData},
+    state::StateData,
 };
 
 use error::Error::{self};
@@ -348,10 +348,10 @@ create_boss_skill!(
             effects
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            _caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            _caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
         }
     }
@@ -394,10 +394,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            _caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            _caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
         }
     }
@@ -419,10 +419,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
             summon_minion_wave(caster, self.params);
         }
@@ -430,7 +430,11 @@ create_boss_skill!(
 );
 
 impl PerorodzillaSummonMinion {
-    pub fn other_apply(_skill: &dyn Skill, _state: State) -> State {
+    pub fn other_apply(
+        _skill: &dyn Skill,
+        _caster: &mut StateData,
+        _targets: &mut [&mut StateData],
+    ) {
         todo!()
     }
 }
@@ -462,10 +466,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
             let params = self.params;
             let is_groggy = absorb_minion_wave(caster, params).is_ok();
@@ -477,7 +481,11 @@ create_boss_skill!(
 );
 
 impl PerorodzillaAbsorbMinion {
-    pub fn other_apply(_skill: &dyn Skill, _state: State) -> State {
+    pub fn other_apply(
+        _skill: &dyn Skill,
+        _caster: &mut StateData,
+        _targets: &mut [&mut StateData],
+    ) {
         todo!()
     }
 }
@@ -499,10 +507,10 @@ create_boss_skill!(
             }]
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
             // 게이지를 소모하는 쪽이 여기이므로 시전 조건을 직접 확인한다.
             if caster.extra_as::<PerorodzillaState>().atg_percent < 100 {
@@ -542,10 +550,10 @@ create_boss_skill!(
         }]
     }
 
-    fn apply<'b, 'c: 'b>(
+    fn apply(
         &self,
-        _caster: &'c mut StateData,
-        _targets: &'b mut [&'c mut StateData],
+        _caster: &mut StateData,
+        _targets: &mut [&mut StateData],
     ) {
     }
     }

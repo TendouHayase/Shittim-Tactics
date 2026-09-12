@@ -232,10 +232,10 @@ create_boss_skill!(
             ]
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            _caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            _caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
             todo!()
         }
@@ -275,10 +275,10 @@ create_boss_skill!(
             ]
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            _caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            _caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
         }
     }
@@ -318,10 +318,10 @@ create_boss_skill!(
             ]
         }
 
-        fn apply<'b, 'c: 'b>(
+        fn apply(
             &self,
-            _caster: &'c mut StateData,
-            _targets: &'b mut [&'c mut StateData],
+            _caster: &mut StateData,
+            _targets: &mut [&mut StateData],
         ) {
         }
     }

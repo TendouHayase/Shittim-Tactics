@@ -5,7 +5,7 @@ use core::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
     stat::StatKind,
-    state::{RemainedEffects, State, StateData, Stateful},
+    state::{RemainedEffects, StateData},
     uid::Uid,
     utils::is_inside,
 };
@@ -238,7 +238,7 @@ impl Skill for KeiExSkill {
         }]
     }
 
-    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
+    fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]) {
         let caster_coord = caster.coordinate();
         let bit = 0x01u64 << self.skill_offset();
 
@@ -315,7 +315,7 @@ impl Skill for KeiBasicSkill {
         }]
     }
 
-    fn apply(&self, caster: Uid, targets: &[Uid], state: State) -> State {
+    fn apply(&self, _caster: &mut StateData, _targets: &mut [&mut StateData]) {
         todo!()
     }
 }
@@ -351,29 +351,30 @@ impl KeiSubSkill {
         }
     }
 
-    pub fn effect_apply(skill: &dyn Skill, mut state: State) -> State {
-        let len = state.boss().accumulated_damage().len();
-        let kei = skill.owner();
-        let prior_idx = state
-            .state_data_by_uid(kei)
-            .expect("cannot found kei")
-            .extra_as::<KeiState>()
-            .recording_start_len;
+    /// The effect is declared against [`SkillEffectTarget::Boss`], so the boss is the only
+    /// target and the caster is Kei herself.
+    pub fn effect_apply(
+        _skill: &dyn Skill,
+        caster: &mut StateData,
+        targets: &mut [&mut StateData],
+    ) {
+        let Some(boss) = targets.first() else {
+            return;
+        };
+
+        let len = boss.accumulated_damage().len();
+        let prior_idx = caster.extra_as::<KeiState>().recording_start_len;
 
         let mut acc = 0;
         for i in prior_idx..len {
-            if let Some(d) = state.boss().accumulated_damage()[i].damage {
+            if let Some(d) = boss.accumulated_damage()[i].damage {
                 acc += d.expected_value();
             }
         }
-        let ex = state
-            .state_data_by_uid_mut(kei)
-            .expect("cannot found kei")
-            .extra_as_mut::<KeiState>();
+
+        let ex = caster.extra_as_mut::<KeiState>();
         ex.acc_damage += acc;
         ex.recording_start_len = len;
-
-        state
     }
 }
 
@@ -391,8 +392,7 @@ impl Skill for KeiSubSkill {
         }]
     }
 
-    fn apply(&self, caster: Uid, targets: &[Uid], state: S) -> State {
+    fn apply(&self, caster: &mut StateData, _targets: &mut [&mut StateData]) {
         caster.extra_as_mut::<KeiState>().acc_damage = 0;
-        todo!()
     }
 }

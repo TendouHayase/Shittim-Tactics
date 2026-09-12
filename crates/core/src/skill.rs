@@ -1,5 +1,5 @@
 use crate::effect::{CCEffect, EffectKind, EffectTiming};
-use crate::state::{State, StateData, Stateful};
+use crate::state::StateData;
 use crate::uid::Uid;
 use crate::utils::Position;
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ pub struct SkillHeader {
 
 pub trait Skill: SkillMeta + Debug + Send + Sync {
     fn skill_effects(&self) -> Vec<SkillEffect>;
-    fn apply(&self, caster: Uid, targets: &[Uid], state: State) -> State;
+    fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]);
 }
 
 pub trait SkillMeta {

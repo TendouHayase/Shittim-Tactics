@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{skill::Skill, stat::StatKind, state::State};
+use crate::{skill::Skill, stat::StatKind, state::StateData};
+
+/// An `EffectKind::Other` body, called with the same `(caster, targets)` routing as
+/// [`Skill::apply`].
+pub type OtherEffectFn = fn(&dyn Skill, &mut StateData, &mut [&mut StateData]);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -64,7 +68,7 @@ pub enum EffectKind {
 
 impl EffectKind {
     #[inline]
-    pub fn new_other(func: fn(&dyn Skill, State) -> State) -> Self {
+    pub fn new_other(func: OtherEffectFn) -> Self {
         EffectKind::Other(EffectKindOther(func as *const u8))
     }
     #[inline]
@@ -76,13 +80,13 @@ impl EffectKind {
         }
     }
     #[inline]
-    pub fn as_other(&self) -> Option<fn(&dyn Skill, State) -> State> {
+    pub fn as_other(&self) -> Option<OtherEffectFn> {
         match self {
             EffectKind::Other(ptr) => unsafe {
                 if ptr.0.is_null() {
                     None
                 } else {
-                    std::mem::transmute(ptr)
+                    Some(std::mem::transmute::<*const u8, OtherEffectFn>(ptr.0))
                 }
             },
             _ => None,
