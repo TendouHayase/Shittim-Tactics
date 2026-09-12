@@ -204,24 +204,48 @@ impl StateData {
         self.common.uid
     }
 
+    pub const fn uid_mut(&mut self) -> &mut Uid {
+        &mut self.common.uid
+    }
+
     pub const fn coordinate(&self) -> Position {
         self.common.coordinate
+    }
+
+    pub const fn coordinate_mut(&mut self) -> &mut Position {
+        &mut self.common.coordinate
     }
 
     pub fn cooldowns(&self) -> &[u16] {
         &self.common.cooldowns
     }
 
+    pub fn cooldowns_mut(&mut self) -> &mut [u16] {
+        &mut self.common.cooldowns
+    }
+
     pub const fn effects(&self) -> SkillsBitMask {
         self.common.effects
+    }
+
+    pub const fn effect_mut(&mut self) -> &mut SkillsBitMask {
+        &mut self.common.effects
     }
 
     pub fn remained_effects(&self) -> &[RemainedEffects] {
         &self.common.remained_effects
     }
 
+    pub fn remained_effects_mut(&mut self) -> &mut [RemainedEffects] {
+        &mut self.common.remained_effects
+    }
+
     pub fn accumulated_damage(&self) -> &[AccumulatedDamage] {
         &self.common.accumulated_damage
+    }
+
+    pub fn accumulated_damage_mut(&mut self) -> &mut [AccumulatedDamage] {
+        &mut self.common.accumulated_damage
     }
 
     pub fn acc_damage(&self) -> Vec<Damage> {
@@ -233,6 +257,22 @@ impl StateData {
         }
 
         result
+    }
+
+    pub fn extra(&self) -> Option<&dyn ExtraStateData> {
+        if let Some(extra) = &self.extra {
+            Some(extra.as_ref())
+        } else {
+            None
+        }
+    }
+
+    pub fn extra_mut(&mut self) -> Option<&mut dyn ExtraStateData> {
+        if let Some(extra) = &mut self.extra {
+            Some(extra.as_mut())
+        } else {
+            None
+        }
     }
 }
 
