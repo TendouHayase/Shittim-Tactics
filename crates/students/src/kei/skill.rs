@@ -2,10 +2,9 @@ use crate::states::KeiState;
 use core::{
     character::Character,
     damage::Damage,
-    effect::EffectTiming,
+    effect::{EffectKind, EffectTiming},
     skill::{
-        EffectKind, FromParams, Skill, SkillEffect, SkillEffectTarget, SkillMeta, SkillOps,
-        SkillParams, SkillType,
+        Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
     stat::StatKind,
     state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
@@ -176,26 +175,18 @@ pub mod params {
 
 /// 증폭 장치를 설치하여 원형범위 내에 있는 아군의 공격력 26.8 → 51% 증가,
 /// 신비 특효 44.1 → 83.8% 가산 (25초간)
-#[skill(owner = Student, ty = Ex, index = 0, params = params::ExParams)]
 #[derive(Debug)]
-pub struct ExSkill;
+pub struct KeiExSkill {
+    header: SkillHeader,
+}
 
-/// 증폭 장치 작동 종료 시 적 1인에게 공격력 148 → 281% 대미지
-/// 추가로 해당 증폭 장치 저장량의 40 → 100%만큼 대미지
-/// (이 대미지는 치명 공격이 발생하지 않으며, 케이의 능력치에 영향받지 않습니다.)
-#[skill(owner = Student, ty = Basic, index = 1, params = params::BasicParams)]
-#[derive(Debug)]
-pub struct BasicSkill;
+impl SkillMeta for KeiExSkill {
+    fn header(&self) -> &SkillHeader {
+        &self.header
+    }
+}
 
-/// 증폭 장치 작동 시작 시 증폭 장치 범위 내의 아군에게 치명 수치 13.1 → 22.3% 증가 (25초간)
-/// 증폭 장치 작동 종료 시, 자신을 제외한 아군이 해당 증폭 장치 범위 내에서
-/// 적에게 가한 대미지의 10%를 저장 (케이 기본 공격력의 5000%까지)
-/// (저장량은 덮어씌워집니다)
-#[skill(owner = Student, ty = Sub, index = 2, params = params::SubParams)]
-#[derive(Debug)]
-pub struct SubSkill;
-
-impl SkillOps for ExSkill {
+impl Skill for KeiExSkill {
     fn skill_effects(&self) -> Vec<core::skill::SkillEffect> {
         let effective_buff = EffectKind::Buff {
             ty: StatKind::MysticEffectiveness,
@@ -212,7 +203,7 @@ impl SkillOps for ExSkill {
         };
 
         vec![SkillEffect {
-            id: self.id,
+            id: self.id(),
             timing: EffectTiming::Persistent {
                 interval_frames: 0,
                 duration_frames: self.duration(),
@@ -264,10 +255,24 @@ impl SkillOps for ExSkill {
     }
 }
 
-impl SkillOps for BasicSkill {
+/// 증폭 장치 작동 종료 시 적 1인에게 공격력 148 → 281% 대미지
+/// 추가로 해당 증폭 장치 저장량의 40 → 100%만큼 대미지
+/// (이 대미지는 치명 공격이 발생하지 않으며, 케이의 능력치에 영향받지 않습니다.)
+#[derive(Debug)]
+pub struct KeiBasicSkill {
+    header: SkillHeader,
+}
+
+impl SkillMeta for KeiBasicSkill {
+    fn header(&self) -> &SkillHeader {
+        &self.header
+    }
+}
+
+impl Skill for KeiBasicSkill {
     fn skill_effects(&self) -> Vec<core::skill::SkillEffect> {
         vec![SkillEffect {
-            id: self.id,
+            id: self.id(),
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Boss {
                 kind: EffectKind::Damage {
@@ -281,7 +286,7 @@ impl SkillOps for BasicSkill {
     fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
         assert_eq!(targets.len(), 1); // 대상이 1명이 아니면 오류
 
-        let damage_key = caster.effects;
+        let damage_key = caster.effects();
 
         for target in targets.iter_mut() {
             if target.character.is_boss() {
@@ -297,9 +302,9 @@ impl SkillOps for BasicSkill {
     }
 }
 
-impl SubSkill {
+impl KeiSubSkill {
     pub fn effect_apply(skill: &Skill, mut state: State) -> State {
-        let len = state.boss().accumulated_damage.len();
+        let len = state.boss().accumulated_damage().len();
         let kei = skill.owner();
         let prior_idx = state
             .state_data_by_id(kei.id())
@@ -309,12 +314,12 @@ impl SubSkill {
 
         let mut acc = 0;
         for i in prior_idx..len {
-            if let Some(d) = state.boss().accumulated_damage[i].damage {
+            if let Some(d) = state.boss().accumulated_damage()[i].damage {
                 acc += d.expected_value();
             }
         }
         let ex = state
-            .state_data_by_id_mut(kei.id())
+            .state_data_by_uid_mut(kei.id())
             .expect("cannot found kei")
             .extra_as_mut::<KeiState>();
         ex.acc_damage += acc;
@@ -324,10 +329,10 @@ impl SubSkill {
     }
 }
 
-impl SkillOps for SubSkill {
+impl Skill for KeiSubSkill {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         vec![SkillEffect {
-            id: self.id,
+            id: self.id(),
             timing: EffectTiming::Persistent {
                 interval_frames: 0,
                 duration_frames: self.duration(),
@@ -358,3 +363,10 @@ impl SkillOps for SubSkill {
         caster.extra_as_mut::<KeiState>().acc_damage = 0;
     }
 }
+
+/// 증폭 장치 작동 시작 시 증폭 장치 범위 내의 아군에게 치명 수치 13.1 → 22.3% 증가 (25초간)
+/// 증폭 장치 작동 종료 시, 자신을 제외한 아군이 해당 증폭 장치 범위 내에서
+/// 적에게 가한 대미지의 10%를 저장 (케이 기본 공격력의 5000%까지)
+/// (저장량은 덮어씌워집니다)
+#[derive(Debug)]
+pub struct KeiSubSkill;

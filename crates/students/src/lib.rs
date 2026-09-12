@@ -1,5 +1,4 @@
-pub mod skills;
-pub mod states;
+pub mod kei;
 
 use core::{
     skill::Skill,
@@ -8,8 +7,8 @@ use core::{
     uid::Uid,
 };
 use error::Error;
+use kei::skill::{KeiBasicSkill, KeiExSkill, KeiSubSkill, params::RawSkills};
 use serde::Deserialize;
-use skills::kei::{KeiBasicSkill, KeiExSkill, KeiSubSkill, params::RawSkills};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StudentKind {
