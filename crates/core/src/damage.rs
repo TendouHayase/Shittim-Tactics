@@ -1,6 +1,6 @@
 use std::ops::{Div, Mul};
 
-use stochastic::{dist::Hit, distributions::Uniform};
+use stochastic::dist::{Hit, Uniform};
 
 pub mod key;
 
@@ -315,7 +315,10 @@ impl Mul<u64> for Damage {
                 min: self.normal.min * rhs,
                 max: self.normal.max * rhs,
             },
-            crit: self.crit,
+            crit: Uniform {
+                min: self.crit.min * rhs,
+                max: self.crit.max * rhs,
+            },
             crit_num: self.crit_num,
             crit_den: self.crit_den,
             flags: self.flags,
@@ -331,7 +334,10 @@ impl Div<u64> for Damage {
                 min: self.normal.min / rhs,
                 max: self.normal.max / rhs,
             },
-            crit: self.crit,
+            crit: Uniform {
+                min: self.crit.min / rhs,
+                max: self.crit.max / rhs,
+            },
             crit_num: self.crit_num,
             crit_den: self.crit_den,
             flags: self.flags,

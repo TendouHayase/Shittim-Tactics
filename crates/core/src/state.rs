@@ -44,25 +44,25 @@ impl State {
         }
     }
 
-    pub fn students(&self) -> &[StateData] {
+    pub const fn students(&self) -> &[StateData] {
         match &self.students {
             StudentState::TotalAssault(arr) => arr,
             StudentState::FinalRestrictionRelease(arr) => arr,
         }
     }
 
-    pub fn students_mut(&mut self) -> &mut [StateData] {
+    pub const fn students_mut(&mut self) -> &mut [StateData] {
         match &mut self.students {
             StudentState::TotalAssault(arr) => arr,
             StudentState::FinalRestrictionRelease(arr) => arr,
         }
     }
 
-    pub fn boss(&self) -> &StateData {
+    pub const fn boss(&self) -> &StateData {
         &self.boss
     }
 
-    pub fn boss_mut(&mut self) -> &mut StateData {
+    pub const fn boss_mut(&mut self) -> &mut StateData {
         &mut self.boss
     }
 
@@ -75,11 +75,11 @@ impl State {
         (&mut self.boss, students)
     }
 
-    pub fn cost(&self) -> i8 {
+    pub const fn cost(&self) -> i8 {
         self.cost
     }
 
-    pub fn frames(&self) -> u16 {
+    pub const fn frames(&self) -> u16 {
         self.frames
     }
 

@@ -1,4 +1,4 @@
-use crate::distributions::Uniform;
+use crate::dist::Uniform;
 
 /// Hard ceiling on the support width, in cells. A cell is one `f64`, and a
 /// convolution step holds the source and the destination buffer at the same

@@ -114,24 +114,24 @@ impl Simulator for Simulation {
         let mut skill_mask = 0u64;
 
         for student in state.students() {
-            skill_mask |= student.effects.data();
+            skill_mask |= student.effects().data();
         }
 
-        skill_mask |= state.boss().effects.data();
+        skill_mask |= state.boss().effects().data();
 
         let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()]; // TODO
 
         let boss_effects_len = state.boss().remained_effects().len();
-        let boss_remain_effects_ref = &state.boss().remained_effects();
+        let boss_remain_effects_ref = state.boss().remained_effects();
         let mut new_boss_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
             BinaryHeap::with_capacity(boss_effects_len);
         let mut boss_effects_mask = state.boss().effects();
-        let mut boss_acc_damage = state.boss().accumulated_damage.clone();
-        let damage = state.boss().damage_with_effects();
+        let mut boss_acc_damage = state.boss().accumulated_damage();
+        let damage = state.boss().accumulated_damage();
         for item in boss_remain_effects_ref {
-            let bit = 1u64 << item.0.offset;
+            let bit = 1u64 << item.offset;
 
-            if item.0.ticks <= delta_ticks {
+            if item.ticks <= delta_ticks {
                 if damage.is_some() {
                     boss_acc_damage.push(AccumulatedDamage {
                         ticks: item.0.ticks,

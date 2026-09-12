@@ -3,10 +3,5 @@ name = "stochastic"
 license.workspace = true
 version.workspace = true
 edition.workspace = true
-[dependencies]
-distrs = "0.2.3"
-error = {path = "../error"}
-num-traits = "0.2.19"
 
-[dev-dependencies]
-approx = "0.5"
+[dependencies]
