@@ -4,6 +4,7 @@ pub mod macros;
 pub mod perorodzilla;
 pub mod states;
 
+use crate::macros::SkillNumbers;
 use binah::skills::{
     BinahAtsilutsLight, BinahFiresofSeverity, BinahPurifyingStorm, params::RawSkills,
 };
@@ -16,11 +17,11 @@ use core::{
     uid::Uid,
 };
 use error::Error;
-use goz::skills::{GozMagicalCoinHat, GozNowYouSeeUs, GozThreeLightMonte};
+use goz::skills::{GozMagicalCoinHat, GozNowYouSeeUs, GozThreeLightMonte, params as goz_params};
 use perorodzilla::skills::{
     PerorodzillaAbsorbMinion, PerorodzillaAquaBall, PerorodzillaBurningPerorodzilla,
     PerorodzillaHyperSpiralGlareBeam, PerorodzillaSummonMinion, PerorodzillaWhiteHotHeatVision,
-    params::Params,
+    params as pero_params,
 };
 use serde::Deserialize;
 
@@ -58,44 +59,129 @@ fn build_skills(
         BossKind::Binah => {
             let raw = RawSkills::deserialize(&file.skills)?;
 
+            let atsiluts_light = raw.atsiluts_light.pick(difficulty);
+            let fires_of_severity = raw.fires_of_severity.pick(difficulty);
+            let purifying_storm = raw.purifying_storm.pick(difficulty);
+
             vec![
                 Box::new(BinahAtsilutsLight::new(
                     owner,
                     offset,
                     raw.atsiluts_light.name.get().to_string(),
-                    raw.atsiluts_light.pick(difficulty),
+                    SkillNumbers::of(&atsiluts_light),
+                    atsiluts_light,
                 )),
                 Box::new(BinahFiresofSeverity::new(
                     owner,
                     offset + 1,
                     raw.fires_of_severity.name.get().to_string(),
-                    raw.fires_of_severity.pick(difficulty),
+                    SkillNumbers::of(&fires_of_severity),
+                    fires_of_severity,
                 )),
                 Box::new(BinahPurifyingStorm::new(
                     owner,
                     offset + 2,
                     raw.purifying_storm.name.get().to_string(),
-                    raw.purifying_storm.pick(difficulty),
+                    SkillNumbers::of(&purifying_storm),
+                    purifying_storm,
                 )),
             ]
         }
 
         BossKind::Goz => vec![
-            Box::new(GozMagicalCoinHat::new(owner, offset, name())),
-            Box::new(GozNowYouSeeUs::new(owner, offset + 1, name())),
-            Box::new(GozThreeLightMonte::new(owner, offset + 2, name())),
+            Box::new(GozMagicalCoinHat::new(
+                owner,
+                offset,
+                name(),
+                SkillNumbers {
+                    duration: goz_params::MAGICAL_COIN_HAT_DURATION,
+                    frames: goz_params::MAGICAL_COIN_HAT_FRAMES,
+                    ..SkillNumbers::default()
+                },
+                (),
+            )),
+            Box::new(GozNowYouSeeUs::new(
+                owner,
+                offset + 1,
+                name(),
+                SkillNumbers::default(),
+                (),
+            )),
+            Box::new(GozThreeLightMonte::new(
+                owner,
+                offset + 2,
+                name(),
+                SkillNumbers {
+                    cost: goz_params::THREE_LIGHT_MONTE_COST,
+                    duration: goz_params::THREE_LIGHT_MONTE_DURATION,
+                    frames: goz_params::THREE_LIGHT_MONTE_FRAMES,
+                },
+                (),
+            )),
         ],
 
         BossKind::Perorodzilla => {
-            let params = Params::of(difficulty);
+            let params = pero_params::Params::of(difficulty);
 
             vec![
-                Box::new(PerorodzillaWhiteHotHeatVision::new(owner, offset, name(), params)),
-                Box::new(PerorodzillaAquaBall::new(owner, offset + 1, name(), params)),
-                Box::new(PerorodzillaSummonMinion::new(owner, offset + 2, name(), params)),
-                Box::new(PerorodzillaAbsorbMinion::new(owner, offset + 3, name(), params)),
-                Box::new(PerorodzillaHyperSpiralGlareBeam::new(owner, offset + 4, name(), params)),
-                Box::new(PerorodzillaBurningPerorodzilla::new(owner, offset + 5, name(), params)),
+                Box::new(PerorodzillaWhiteHotHeatVision::new(
+                    owner,
+                    offset,
+                    name(),
+                    SkillNumbers {
+                        duration: pero_params::DOT_DURATION,
+                        frames: pero_params::WHITE_HOT_HEAT_VISION_FRAMES,
+                        ..SkillNumbers::default()
+                    },
+                    params,
+                )),
+                Box::new(PerorodzillaAquaBall::new(
+                    owner,
+                    offset + 1,
+                    name(),
+                    SkillNumbers {
+                        frames: pero_params::AQUA_BALL_FRAMES,
+                        ..SkillNumbers::default()
+                    },
+                    params,
+                )),
+                Box::new(PerorodzillaSummonMinion::new(
+                    owner,
+                    offset + 2,
+                    name(),
+                    SkillNumbers {
+                        frames: pero_params::SUMMON_MINION_FRAMES,
+                        ..SkillNumbers::default()
+                    },
+                    params,
+                )),
+                Box::new(PerorodzillaAbsorbMinion::new(
+                    owner,
+                    offset + 3,
+                    name(),
+                    SkillNumbers {
+                        frames: pero_params::ABSORB_MINION_FRAMES,
+                        ..SkillNumbers::default()
+                    },
+                    params,
+                )),
+                Box::new(PerorodzillaHyperSpiralGlareBeam::new(
+                    owner,
+                    offset + 4,
+                    name(),
+                    SkillNumbers {
+                        frames: pero_params::HYPER_SPIRAL_GLARE_BEAM_FRAMES,
+                        ..SkillNumbers::default()
+                    },
+                    params,
+                )),
+                Box::new(PerorodzillaBurningPerorodzilla::new(
+                    owner,
+                    offset + 5,
+                    name(),
+                    SkillNumbers::default(),
+                    params,
+                )),
             ]
         }
     })
