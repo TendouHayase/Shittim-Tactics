@@ -9,19 +9,6 @@ use crate::{
     utils::Position,
 };
 
-pub trait Stateful: Clone + Send + Sync + Eq + Hash {
-    fn new(students: &[StateData], boss: StateData, elased_frames: u16, cost: i8) -> Self;
-    fn students(&self) -> &[StateData];
-    fn students_mut(&mut self) -> &mut [StateData];
-    fn boss(&self) -> &StateData;
-    fn boss_mut(&mut self) -> &mut StateData;
-    fn split_mut(&mut self) -> (&mut StateData, &mut [StateData]);
-    fn cost(&self) -> i8;
-    fn frames(&self) -> u16;
-    fn state_data_by_uid(&self, uid: Uid) -> Option<&StateData>;
-    fn state_data_by_uid_mut(&mut self, uid: Uid) -> Option<&mut StateData>;
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
     pub students: StudentState,
@@ -36,8 +23,8 @@ pub enum StudentState {
     FinalRestrictionRelease([StateData; 10]),
 }
 
-impl Stateful for State {
-    fn new(students: &[StateData], boss: StateData, frames: u16, cost: i8) -> Self {
+impl State {
+    pub fn new(students: &[StateData], boss: StateData, frames: u16, cost: i8) -> Self {
         match students.len() {
             6 => Self {
                 students: StudentState::TotalAssault(std::array::from_fn(|i| students[i].clone())),
@@ -57,29 +44,29 @@ impl Stateful for State {
         }
     }
 
-    fn students(&self) -> &[StateData] {
+    pub fn students(&self) -> &[StateData] {
         match &self.students {
             StudentState::TotalAssault(arr) => arr,
             StudentState::FinalRestrictionRelease(arr) => arr,
         }
     }
 
-    fn students_mut(&mut self) -> &mut [StateData] {
+    pub fn students_mut(&mut self) -> &mut [StateData] {
         match &mut self.students {
             StudentState::TotalAssault(arr) => arr,
             StudentState::FinalRestrictionRelease(arr) => arr,
         }
     }
 
-    fn boss(&self) -> &StateData {
+    pub fn boss(&self) -> &StateData {
         &self.boss
     }
 
-    fn boss_mut(&mut self) -> &mut StateData {
+    pub fn boss_mut(&mut self) -> &mut StateData {
         &mut self.boss
     }
 
-    fn split_mut(&mut self) -> (&mut StateData, &mut [StateData]) {
+    pub fn split_mut(&mut self) -> (&mut StateData, &mut [StateData]) {
         let students = match &mut self.students {
             StudentState::TotalAssault(arr) => arr.as_mut_slice(),
             StudentState::FinalRestrictionRelease(arr) => arr.as_mut_slice(),
@@ -88,15 +75,15 @@ impl Stateful for State {
         (&mut self.boss, students)
     }
 
-    fn cost(&self) -> i8 {
+    pub fn cost(&self) -> i8 {
         self.cost
     }
 
-    fn frames(&self) -> u16 {
+    pub fn frames(&self) -> u16 {
         self.frames
     }
 
-    fn state_data_by_uid(&self, uid: Uid) -> Option<&StateData> {
+    pub fn search_uid(&self, uid: Uid) -> Option<&StateData> {
         if uid == self.boss.common.uid {
             return Some(&self.boss);
         }
@@ -107,7 +94,7 @@ impl Stateful for State {
             .map(|v| v as _)
     }
 
-    fn state_data_by_uid_mut(&mut self, uid: Uid) -> Option<&mut StateData> {
+    pub fn search_uid_mut(&mut self, uid: Uid) -> Option<&mut StateData> {
         if uid == self.boss.common.uid {
             return Some(&mut self.boss);
         }

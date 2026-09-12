@@ -1,5 +1,5 @@
 use core::{
-    actions::ActionContext, agent::Agent, simulator::Simulator, skill::SkillMeta, state::Stateful,
+    actions::ActionContext, agent::Agent, simulator::Simulator, skill::SkillMeta, state::State,
 };
 
 /// The default agent for A\*.
@@ -8,26 +8,24 @@ use core::{
 /// it stays admissible; `policy` adds no preference of its own and hands back every legal action.
 pub struct Heuristic;
 
-impl<S: Stateful> Agent<S> for Heuristic {
+impl Agent for Heuristic {
     type Value = u64;
 
-    fn policy<'s>(&self, sim: &'s impl Simulator<S>, state: &S) -> Vec<(ActionContext<'s>, f64)> {
+    fn policy<'s>(&self, sim: &'s impl Simulator, state: &State) -> Vec<(ActionContext<'s>, f64)> {
         let actions = sim.legal_actions(state);
         let prior = 1.0 / actions.len() as f64;
 
         actions.into_iter().map(|action| (action, prior)).collect()
     }
 
-    fn value(&self, sim: &impl Simulator<S>, state: &S) -> Self::Value {
+    fn value(&self, sim: &impl Simulator, state: &State) -> Self::Value {
         let boss = state.boss();
 
-        let dealt = boss
-            .accumulated_damage_cache
-            .get_or_compute(&boss.acc_damage());
+        let dealt = boss.accumulated_damage();
 
         // 누적 데미지의 최댓값을 빼야 남은 체력이 최소가 되고, 그래야 남은 프레임을
         // 과대평가하지 않는다. 과대평가하면 A*의 최적성이 조용히 깨진다.
-        let remain_hp = boss.character.stats().hp.saturating_sub(dealt.max());
+        let remain_hp = dealt.saturating_sub(dealt.max());
         if remain_hp == 0 {
             return 0;
         }

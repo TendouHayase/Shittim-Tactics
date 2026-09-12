@@ -1,41 +1,41 @@
 use core::{
     actions::ActionContext::{self, Use, Wait},
     skill::Skill,
-    state::Stateful,
+    state::State,
 };
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct Node<'a, S: Stateful> {
-    pub state: S,
+pub struct Node<'a> {
+    pub state: State,
     pub g: u64,
     pub f: u64,
-    record: Option<Arc<Node<'a, S>>>,
+    record: Option<Arc<Node<'a>>>,
     action: Option<ActionContext<'a>>,
 }
 
-impl<'a, S: Stateful + Eq> PartialEq for Node<'a, S> {
+impl<'a> PartialEq for Node<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.state == other.state
     }
 }
 
-impl<'a, S: Stateful + Eq> Eq for Node<'a, S> {}
+impl<'a> Eq for Node<'a> {}
 
-impl<'a, S: Stateful + Eq> Ord for Node<'a, S> {
+impl<'a> Ord for Node<'a> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.f.cmp(&other.f)
     }
 }
 
-impl<'a, S: Stateful + Eq> PartialOrd for Node<'a, S> {
+impl<'a> PartialOrd for Node<'a> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.f.cmp(&other.f))
     }
 }
 
-impl<'a, S: Stateful> Node<'a, S> {
-    pub fn new(state: S, g: u64, h: u64) -> Self {
+impl<'a> Node<'a> {
+    pub fn new(state: State, g: u64, h: u64) -> Self {
         Node {
             state,
             g,
@@ -46,10 +46,10 @@ impl<'a, S: Stateful> Node<'a, S> {
     }
 
     pub fn from_parent_node(
-        state: S,
+        state: State,
         g: u64,
         h: u64,
-        parent_node: Arc<Node<'a, S>>,
+        parent_node: Arc<Node<'a>>,
         action: ActionContext<'a>,
     ) -> Self {
         Node {
@@ -61,7 +61,7 @@ impl<'a, S: Stateful> Node<'a, S> {
         }
     }
 
-    pub fn get_parent(&self) -> Option<Arc<Node<'a, S>>> {
+    pub fn get_parent(&self) -> Option<Arc<Node<'a>>> {
         self.record.clone()
     }
 

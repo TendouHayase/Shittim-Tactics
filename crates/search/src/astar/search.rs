@@ -1,7 +1,5 @@
 use crate::astar::node::Node;
-use core::{
-    agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skill, state::Stateful,
-};
+use core::{agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skill, state::State};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
@@ -9,25 +7,20 @@ use std::{
     sync::Arc,
 };
 
-pub struct Astar<'a, Sim, S: Stateful, A: Agent<S, Value = u64>> {
+pub struct Astar<'a, Sim, A: Agent<Value = u64>> {
     sim: &'a Sim,
     agent: A,
-    _marker: PhantomData<fn() -> S>,
 }
 
-impl<'a, Sim, S: Stateful, A: Agent<S, Value = u64>> Astar<'a, Sim, S, A> {
+impl<'a, Sim, A: Agent<Value = u64>> Astar<'a, Sim, A> {
     pub fn new(sim: &'a Sim, agent: A) -> Self {
-        Astar {
-            sim,
-            agent,
-            _marker: PhantomData,
-        }
+        Astar { sim, agent }
     }
 }
 
-impl<'a, Sim, S: Stateful, A: Agent<S, Value = u64>> Algorithm<'a> for Astar<'a, Sim, S, A>
+impl<'a, Sim, A: Agent<Value = u64>> Algorithm<'a> for Astar<'a, Sim, A>
 where
-    Sim: Simulator<S>,
+    Sim: Simulator,
 {
     fn search(&self, threshold: f64) -> Vec<(&'a dyn Skill, u16)> {
         let initial = self.sim.initial_state();
@@ -36,8 +29,8 @@ where
         let mut result_node = None;
 
         // open 리스트, close 리스트 생성
-        let mut open: BinaryHeap<Reverse<Arc<Node<'a, S>>>> = BinaryHeap::new();
-        let mut closed: HashMap<S, u64> = HashMap::new();
+        let mut open: BinaryHeap<Reverse<Arc<Node<'a>>>> = BinaryHeap::new();
+        let mut closed: HashMap<State, u64> = HashMap::new();
 
         // 초기 state의 h 값
         let init_h = self.agent.value(self.sim, &initial);
@@ -81,7 +74,7 @@ where
             // `Simulator::legal_actions`가 책임지므로 여기서 다시 검사하지 않는다.
             for (action, _) in self.agent.policy(self.sim, &advanced) {
                 // 스킬 적용
-                let next_state = self.sim.apply(&advanced, &action);
+                let next_state = self.sim.apply(advanced, &action);
 
                 // g, h값 계산
                 let g = next_state.frames().into();

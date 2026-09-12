@@ -2,19 +2,19 @@ use crate::{
     actions::ActionContext,
     character::Character,
     skill::{Skill, SkillEffectTarget, SkillMeta},
-    state::Stateful,
+    state::State,
     uid::Uid,
     utils::{Position, euclidean_distance, is_inside},
 };
 
-pub trait Simulator<S: Stateful> {
-    fn initial_state(&self) -> S;
+pub trait Simulator {
+    fn initial_state(&self) -> State;
 
     /// Actions an agent may take from `state`.
     ///
     /// Only legality belongs here — cooldowns, cost, and who a skill hits. Which of these is
     /// worth taking is the agent's call.
-    fn legal_actions(&self, state: &S) -> Vec<ActionContext<'_>>;
+    fn legal_actions(&self, state: &State) -> Vec<ActionContext<'_>>;
 
     /// Who `skill` hits when cast from `state`, ready to hand to `apply`.
     ///
@@ -22,10 +22,10 @@ pub trait Simulator<S: Stateful> {
     /// `state`, so it is a rule rather than a search decision and lives here instead of in each
     /// algorithm. An agent that wants a different combination may build its own list, but must
     /// still run it through `normalize_targets`.
-    fn resolve_targets(&self, state: &S, skill: &dyn Skill) -> Vec<Uid> {
+    fn resolve_targets(&self, state: &State, skill: &dyn Skill) -> Vec<Uid> {
         let caster_id = skill.owner();
         let caster_coord = state
-            .state_data_by_uid(caster_id)
+            .search_uid(caster_id)
             .map(|data| data.coordinate())
             .unwrap_or_default();
 
@@ -81,13 +81,13 @@ pub trait Simulator<S: Stateful> {
     /// `action.targets` must not contain the caster; effects on the caster go through the
     /// `caster` argument of `Skill::apply`. Two mutable references to the same target cannot
     /// coexist, so a caster listed among the targets would simply be skipped.
-    fn apply(&self, state: &S, action: &ActionContext) -> S;
+    fn apply(&self, state: State, action: &ActionContext) -> State;
 
     /// Advances `state` by `delta_ticks`.
-    fn advance(&self, state: &S, delta_ticks: u16) -> Result<S, error::Error>;
+    fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, error::Error>;
 
     /// Ticks from `state` until the next point where anyone can act.
-    fn next_event_frames(&self, state: &S) -> u16;
+    fn next_event_frames(&self, state: &State) -> u16;
 
     /// Whether `ticks` is past the time limit.
     fn is_time_over(&self, ticks: u16) -> bool;
