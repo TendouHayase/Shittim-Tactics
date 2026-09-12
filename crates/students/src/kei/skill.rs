@@ -1,22 +1,16 @@
-use crate::states::KeiState;
+use super::state::KeiState;
 use core::{
-    character::Character,
-    damage::Damage,
     effect::{EffectKind, EffectTiming},
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
     stat::StatKind,
-    state::{AccumulatedDamage, RemainedEffects, State, StateData, Stateful},
-    student::Student,
+    state::{RemainedEffects, State, StateData, Stateful},
+    uid::Uid,
     utils::is_inside,
 };
-use std::cmp::Reverse;
 
 /// Skill numbers not yet in json.
-///
-/// Kept inside a module: a top-level `struct` here would be mistaken for a skill by xtask and
-/// pulled into the `Skill` enum.
 pub mod params {
     use core::{
         locale::LocalizedName,
@@ -178,6 +172,25 @@ pub mod params {
 #[derive(Debug)]
 pub struct KeiExSkill {
     header: SkillHeader,
+    params: params::ExParams,
+}
+
+impl KeiExSkill {
+    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::ExParams) -> Self {
+        Self {
+            header: SkillHeader {
+                owner,
+                owner_offset: 0,
+                name: name.to_string(),
+                skill_offset,
+                skill_type: SkillType::Ex,
+                cost: params.cost(),
+                duration: params.duration(),
+                frames: params.frames(),
+            },
+            params,
+        }
+    }
 }
 
 impl SkillMeta for KeiExSkill {
@@ -226,31 +239,31 @@ impl Skill for KeiExSkill {
     }
 
     fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
-        let caster_coord = caster.coordinate;
+        let caster_coord = caster.coordinate();
+        let bit = 0x01u64 << self.skill_offset();
 
         for target in targets.iter_mut() {
-            if is_inside(target.coordinate, self.params.region, caster_coord) {
-                let already_applied =
-                    (target.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
-                if !already_applied {
-                    target.remained_effects.push(Reverse(RemainedEffects {
-                        ticks: self.duration(),
-                        offset: self.skill_mask_offset as u8,
-                    }));
+            if is_inside(target.coordinate(), self.params.region, caster_coord)
+                && (target.effects().0 & bit) == 0
+            {
+                target.remained_effects_mut().push(RemainedEffects {
+                    ticks: self.duration(),
+                    offset: self.skill_offset() as u8,
+                });
 
-                    target.effects =
-                        (target.effects.0 | (0x01u64 << self.skill_mask_offset)).into();
-                }
+                let effects = target.effects().0 | bit;
+                *target.effect_mut() = effects.into();
             }
         }
-        let already_applied = (caster.effects.0 & (0x01u64 << self.skill_mask_offset())) != 0;
-        if !already_applied {
-            caster.remained_effects.push(Reverse(RemainedEffects {
-                ticks: self.duration(),
-                offset: self.skill_mask_offset as u8,
-            }));
 
-            caster.effects = (caster.effects.0 | (0x01u64 << self.skill_mask_offset)).into();
+        if (caster.effects().0 & bit) == 0 {
+            caster.remained_effects_mut().push(RemainedEffects {
+                ticks: self.duration(),
+                offset: self.skill_offset() as u8,
+            });
+
+            let effects = caster.effects().0 | bit;
+            *caster.effect_mut() = effects.into();
         }
     }
 }
@@ -261,6 +274,25 @@ impl Skill for KeiExSkill {
 #[derive(Debug)]
 pub struct KeiBasicSkill {
     header: SkillHeader,
+    params: params::BasicParams,
+}
+
+impl KeiBasicSkill {
+    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::BasicParams) -> Self {
+        Self {
+            header: SkillHeader {
+                owner,
+                owner_offset: 1,
+                name: name.to_string(),
+                skill_offset,
+                skill_type: SkillType::Basic,
+                cost: params.cost(),
+                duration: params.duration(),
+                frames: params.frames(),
+            },
+            params,
+        }
+    }
 }
 
 impl SkillMeta for KeiBasicSkill {
@@ -283,31 +315,47 @@ impl Skill for KeiBasicSkill {
         }]
     }
 
-    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
+    fn apply<'b, 'c: 'b>(&self, _caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
         assert_eq!(targets.len(), 1); // 대상이 1명이 아니면 오류
+    }
+}
 
-        let damage_key = caster.effects();
+/// 증폭 장치 작동 시작 시 증폭 장치 범위 내의 아군에게 치명 수치 13.1 → 22.3% 증가 (25초간)
+/// 증폭 장치 작동 종료 시, 자신을 제외한 아군이 해당 증폭 장치 범위 내에서
+/// 적에게 가한 대미지의 10%를 저장 (케이 기본 공격력의 5000%까지)
+/// (저장량은 덮어씌워집니다)
+#[derive(Debug)]
+pub struct KeiSubSkill {
+    header: SkillHeader,
+}
 
-        for target in targets.iter_mut() {
-            if target.character.is_boss() {
-                target.accumulated_damage.push(AccumulatedDamage {
-                    ticks: 1,
-                    damage: caster.damage_map.get(
-                        (damage_key.clone_with_tag(true, false, true)
-                            | (0x01u64 << self.skill_mask_offset)),
-                    ),
-                });
-            }
-        }
+impl SkillMeta for KeiSubSkill {
+    fn header(&self) -> &SkillHeader {
+        &self.header
     }
 }
 
 impl KeiSubSkill {
-    pub fn effect_apply(skill: &Skill, mut state: State) -> State {
+    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::SubParams) -> Self {
+        Self {
+            header: SkillHeader {
+                owner,
+                owner_offset: 2,
+                name: name.to_string(),
+                skill_offset,
+                skill_type: SkillType::Sub,
+                cost: params.cost(),
+                duration: params.duration(),
+                frames: params.frames(),
+            },
+        }
+    }
+
+    pub fn effect_apply(skill: &dyn Skill, mut state: State) -> State {
         let len = state.boss().accumulated_damage().len();
         let kei = skill.owner();
         let prior_idx = state
-            .state_data_by_id(kei.id())
+            .state_data_by_uid(kei)
             .expect("cannot found kei")
             .extra_as::<KeiState>()
             .recording_start_len;
@@ -319,7 +367,7 @@ impl KeiSubSkill {
             }
         }
         let ex = state
-            .state_data_by_uid_mut(kei.id())
+            .state_data_by_uid_mut(kei)
             .expect("cannot found kei")
             .extra_as_mut::<KeiState>();
         ex.acc_damage += acc;
@@ -343,30 +391,7 @@ impl Skill for KeiSubSkill {
         }]
     }
 
-    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
-        let cap = caster.character.stats().atk as u64 * params::ACC_DAMAGE_CAP_PERCENT as u64
-            / params::PERCENT_DEN as u64;
-
-        let acc_damage = {
-            let extras = caster.extra_as::<KeiState>();
-            extras.acc_damage.min(cap)
-        };
-
-        let damage = Damage::new(acc_damage, acc_damage, acc_damage, acc_damage, 0, 1, 0);
-
-        for target in targets.iter_mut() {
-            target.accumulated_damage.push(AccumulatedDamage {
-                ticks: 1,
-                damage: Some(damage),
-            });
-        }
+    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, _targets: &'b mut [&'c mut StateData]) {
         caster.extra_as_mut::<KeiState>().acc_damage = 0;
     }
 }
-
-/// 증폭 장치 작동 시작 시 증폭 장치 범위 내의 아군에게 치명 수치 13.1 → 22.3% 증가 (25초간)
-/// 증폭 장치 작동 종료 시, 자신을 제외한 아군이 해당 증폭 장치 범위 내에서
-/// 적에게 가한 대미지의 10%를 저장 (케이 기본 공격력의 5000%까지)
-/// (저장량은 덮어씌워집니다)
-#[derive(Debug)]
-pub struct KeiSubSkill;
