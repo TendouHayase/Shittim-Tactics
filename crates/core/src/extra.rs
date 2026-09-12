@@ -7,6 +7,8 @@ pub trait ExtraStateData: Debug + Any + Send + Sync {
     fn eq_dyn(&self, other: &dyn ExtraStateData) -> bool;
     fn hash_dyn(&self, state: &mut dyn Hasher);
     fn type_name(&self) -> &'static str;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 impl Clone for Box<dyn ExtraStateData> {
