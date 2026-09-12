@@ -2,7 +2,8 @@ use super::state::KeiState;
 use core::{
     effect::{EffectKind, EffectTiming},
     skill::{
-        Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
+        Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillKind, SkillMeta, SkillParams,
+        SkillType,
     },
     stat::StatKind,
     state::{RemainedEffects, StateData},
@@ -184,6 +185,7 @@ impl KeiExSkill {
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Ex,
+                skill_kind: SkillKind::Buff,
                 cost: params.cost(),
                 duration: params.duration(),
                 frames: params.frames(),
@@ -286,6 +288,7 @@ impl KeiBasicSkill {
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Basic,
+                skill_kind: SkillKind::Damage,
                 cost: params.cost(),
                 duration: params.duration(),
                 frames: params.frames(),
@@ -344,6 +347,7 @@ impl KeiSubSkill {
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Sub,
+                skill_kind: SkillKind::Other,
                 cost: params.cost(),
                 duration: params.duration(),
                 frames: params.frames(),

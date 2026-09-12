@@ -1,6 +1,6 @@
 use crate::create_boss_skill;
 use core::{
-    skill::{Skill, SkillEffect, SkillType},
+    skill::{Skill, SkillEffect, SkillKind, SkillType},
     state::StateData,
 };
 
@@ -16,7 +16,7 @@ pub mod params {
     pub const MAGICAL_COIN_HAT_FRAMES: u16 = time_to_ticks(5, 1);
 }
 
-create_boss_skill!(GozNowYouSeeUs, params: (), SkillType::Ex, 0, {
+create_boss_skill!(GozNowYouSeeUs, params: (), SkillType::Ex, SkillKind::Other, 0, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         todo!()
     }
@@ -44,6 +44,7 @@ create_boss_skill!(
     GozThreeLightMonte,
     params: (),
     SkillType::Ex,
+    SkillKind::Damage,
     1,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
@@ -64,6 +65,7 @@ create_boss_skill!(
     GozMagicalCoinHat,
     params: (),
     SkillType::Ex,
+    SkillKind::Damage,
     2,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {

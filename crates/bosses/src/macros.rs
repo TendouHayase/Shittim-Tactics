@@ -24,7 +24,9 @@ impl SkillNumbers {
 /// Declares a boss skill struct together with its `SkillMeta` and `Skill` implementations.
 ///
 /// ```ignore
-/// create_boss_skill!(Name, params: <Params>, SkillType::Ex, 0, { /* Skill methods */ });
+/// create_boss_skill!(
+///     Name, params: <Params>, SkillType::Ex, SkillKind::Damage, 0, { /* Skill methods */ }
+/// );
 /// ```
 ///
 /// The trailing block holds the `Skill` methods (`skill_effects`, `apply`). It has to be passed
@@ -35,13 +37,15 @@ impl SkillNumbers {
 /// rest as `$params`, both from whoever loads the boss; a skill with no numbers of its own takes
 /// `()`.
 ///
-/// `SkillType` must be in scope at the call site, since the variant is passed in as a path.
+/// `SkillType` and `SkillKind` must be in scope at the call site, since the variants are passed
+/// in as paths.
 #[macro_export]
 macro_rules! create_boss_skill {
     (
         $name:ident,
         params: $params:ty,
         $skill_type:path,
+        $skill_kind:path,
         $skill_id:literal,
         { $($rest:tt)* }
     ) => {
@@ -60,12 +64,13 @@ macro_rules! create_boss_skill {
                 params: $params,
             ) -> Self {
                 Self {
-                    header: ::core::skill::SkillHeader {
+                    header: core::skill::SkillHeader {
                         owner,
                         owner_offset: $skill_id,
                         name,
                         skill_offset,
                         skill_type: $skill_type,
+                        skill_kind: $skill_kind,
                         cost: numbers.cost,
                         duration: numbers.duration,
                         frames: numbers.frames,

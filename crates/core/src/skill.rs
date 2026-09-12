@@ -13,6 +13,7 @@ pub struct SkillHeader {
     pub name: String,
     pub skill_offset: usize,
     pub skill_type: SkillType,
+    pub skill_kind: SkillKind,
     pub cost: u8,
     pub duration: u16,
     pub frames: u16,
@@ -50,6 +51,9 @@ pub trait SkillMeta {
     fn skill_type(&self) -> SkillType {
         self.header().skill_type
     }
+    fn skill_kind(&self) -> SkillKind {
+        self.header().skill_kind
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -58,6 +62,17 @@ pub enum SkillEffectTarget {
     Student { kind: EffectKind, count: u8 },
     Land { kind: EffectKind, region: Region },
     Oneself { kind: EffectKind },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SkillKind {
+    Damage,
+    Heal,
+    Buff,
+    Debuff,
+    Move,
+    CC,
+    Other,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

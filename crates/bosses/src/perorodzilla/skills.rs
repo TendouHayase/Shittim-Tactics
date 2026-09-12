@@ -6,7 +6,7 @@ use crate::perorodzilla::state::PerorodzillaState;
 use core::{
     constants::MAX_STUDENT_COUNT,
     effect::{EffectKind, EffectTiming},
-    skill::{Skill, SkillEffect, SkillEffectTarget, SkillMeta, SkillType},
+    skill::{Skill, SkillEffect, SkillEffectTarget, SkillKind, SkillMeta, SkillType},
     stat::StatKind,
     state::StateData,
 };
@@ -157,7 +157,6 @@ fn damage_effect(percent: u16) -> EffectKind {
 }
 
 fn summon_minion_wave(boss: &mut StateData, params: Params) -> Result<(), Error> {
-    let record_start = boss.accumulated_damage().len();
     let mut extra = boss.extra_mut();
     let pero = extra
         .as_deref_mut()
@@ -168,7 +167,6 @@ fn summon_minion_wave(boss: &mut StateData, params: Params) -> Result<(), Error>
     pero.shiny_minions = params.shiny_minion_count;
     pero.knocked_down = 0;
     pero.minion_damage = 0;
-    pero.damage_record_start = record_start;
 
     Ok(())
 }
@@ -183,14 +181,7 @@ fn damage_since_wave_start(boss: &StateData) -> Result<u64, Error> {
         .ok_or(Error::Empty)?
         .downcast_as::<PerorodzillaState>()?;
 
-    let record_start = peroro_state
-        .damage_record_start
-        .min(boss.accumulated_damage().len());
-    let result = boss.accumulated_damage()[record_start..]
-        .iter()
-        .filter_map(|acc| acc.damage)
-        .map(|damage| damage.expected_value())
-        .sum();
+    let result = boss.accumulated_damage().max();
 
     Ok(result)
 }
@@ -261,6 +252,7 @@ create_boss_skill!(
     PerorodzillaWhiteHotHeatVision,
     params: params::Params,
     SkillType::Ex,
+    SkillKind::Damage,
     0,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
@@ -361,6 +353,7 @@ create_boss_skill!(
     PerorodzillaAquaBall,
     params: params::Params,
     SkillType::Ex,
+    SkillKind::Damage,
     1,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
@@ -407,6 +400,7 @@ create_boss_skill!(
     PerorodzillaSummonMinion,
     params: params::Params,
     SkillType::Ex,
+    SkillKind::Other,
     2,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
@@ -443,6 +437,7 @@ create_boss_skill!(
     PerorodzillaAbsorbMinion,
     params: params::Params,
     SkillType::Ex,
+    SkillKind::Other,
     3,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
@@ -494,6 +489,7 @@ create_boss_skill!(
     PerorodzillaHyperSpiralGlareBeam,
     params: params::Params,
     SkillType::Ex,
+    SkillKind::Damage,
     4,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
@@ -526,6 +522,7 @@ create_boss_skill!(
     PerorodzillaBurningPerorodzilla,
     params: params::Params,
     SkillType::Passive,
+    SkillKind::Buff,
     5,
     {
     fn skill_effects(&self) -> Vec<SkillEffect> {
