@@ -283,7 +283,7 @@ impl PartialEq for Student {
 }
 
 impl Character for Student {
-    fn id(&self) -> Uid {
+    fn uid(&self) -> Uid {
         Uid::new(self.stats.student_stats.id as u64)
     }
 

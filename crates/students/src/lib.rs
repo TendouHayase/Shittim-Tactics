@@ -81,7 +81,7 @@ fn build_skills(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::{character::Character, skill::SkillMeta, table::gear::GearKind};
+    use core::{character::Character, table::gear::GearKind};
 
     const KEI: &str = "../../data/students/kei.json";
     const GEARS: &str = "../../data/tables/gears.json";
@@ -127,7 +127,7 @@ mod tests {
         let kei = load_kei();
 
         for skill in kei.skills() {
-            assert_eq!(skill.owner(), kei.id());
+            assert_eq!(skill.owner(), kei.uid());
         }
     }
 }

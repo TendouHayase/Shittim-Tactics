@@ -5,14 +5,8 @@ use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 use crate::{
-    base::BaseStats,
-    character::Character,
-    difficulty::Difficulty,
-    locale::LocalizedName,
-    skill::Skill,
-    terrains::Terrain,
-    types::ArmorType,
-    uid::Uid,
+    base::BaseStats, character::Character, difficulty::Difficulty, locale::LocalizedName,
+    skill::Skill, terrains::Terrain, types::ArmorType, uid::Uid,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -78,7 +72,7 @@ impl Hash for Boss {
 }
 
 impl Character for Boss {
-    fn id(&self) -> Uid {
+    fn uid(&self) -> Uid {
         Uid::new(self.stats.id as u64)
     }
 
