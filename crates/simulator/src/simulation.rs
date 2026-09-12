@@ -7,6 +7,7 @@ use core::{
     character::Character,
     constants::TPS,
     damage::{Damage, key::SkillsBitMask},
+    effect::EffectKind,
     simulator::Simulator,
     skill::{Skill, SkillEffectTarget::Land, SkillMeta, SkillOps},
     state::{AccumulatedDamage, CommonStateData, RemainedEffects, State, StateData, Stateful},
@@ -110,7 +111,7 @@ impl Simulator for Simulation {
         state
     }
 
-    fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, error::Error> {
+    fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, Error> {
         let mut skill_mask = 0u64;
 
         for student in state.students() {
@@ -123,33 +124,26 @@ impl Simulator for Simulation {
 
         let boss_effects_len = state.boss().remained_effects().len();
         let boss_remain_effects_ref = state.boss().remained_effects();
-        let mut new_boss_remain_effects: BinaryHeap<Reverse<RemainedEffects>> =
-            BinaryHeap::with_capacity(boss_effects_len);
+        let mut new_boss_remain_effects: Vec<RemainedEffects> =
+            Vec::with_capacity(boss_effects_len);
         let mut boss_effects_mask = state.boss().effects();
         let mut boss_acc_damage = state.boss().accumulated_damage();
-        let damage = state.boss().accumulated_damage();
-        for item in boss_remain_effects_ref {
-            let bit = 1u64 << item.offset;
+        for (idx, item) in boss_remain_effects_ref.iter().enumerate() {
+            let skill = self.lookup_skill(item.offset.into())?;
 
             if item.ticks <= delta_ticks {
-                if damage.is_some() {
-                    boss_acc_damage.push(AccumulatedDamage {
-                        ticks: item.0.ticks,
-                        damage: damage_map.get(boss_effects_mask),
-                    });
+                if skill.skill_kind() == EffectKind::Damage {
+                    boss_acc_damage.push(damage);
                 }
                 boss_effects_mask &= !bit;
             } else {
-                if damage.is_some() {
-                    boss_acc_damage.push(AccumulatedDamage {
-                        ticks: delta_ticks,
-                        damage: damage_map.get(boss_effects_mask),
-                    });
+                if skill.skill_kind() == EffectKind::Damage {
+                    boss_acc_damage.push(damage);
                 }
-                new_boss_remain_effects.push(Reverse(RemainedEffects {
+                new_boss_remain_effects.push(RemainedEffects {
                     ticks: item.0.ticks - delta_ticks,
                     offset: item.0.offset,
-                }));
+                });
             }
         }
 
@@ -161,29 +155,22 @@ impl Simulator for Simulation {
             .students()
             .iter()
             .map(|student: &StateData| {
-                let damage = student.damage_with_effects();
-                let mut acc_damage = student.accumulated_damage.clone();
+                let mut acc_damage = student.accumulated_damage();
 
                 let effects_len = student.remained_effects.len();
                 let mut new_remain_effects = Vec::with_capacity(effects_len);
                 let mut effects_mask = student.effects;
-                for item in &student.remained_effects {
-                    let bit = 1u64 << item.0.offset;
+                for item in student.remained_effects {
+                    let skill = self.lookup_skill(item.offset.into())?;
 
                     if item.0.ticks <= delta_ticks {
-                        if damage.is_some() {
-                            acc_damage.push(AccumulatedDamage {
-                                ticks: item.0.ticks,
-                                damage: damage_map.get(effects_mask),
-                            });
+                        if skill.skill_kind() == EffectKind::Damage {
+                            acc_damage.push(damage);
                         }
                         effects_mask &= !bit;
                     } else {
-                        if damage.is_some() {
-                            acc_damage.push(AccumulatedDamage {
-                                ticks: delta_ticks,
-                                damage: damage_map.get(effects_mask),
-                            });
+                        if skill.skill_kind() == EffectKind::Damage {
+                            acc_damage.push(damage);
                         }
 
                         let skill_type = self.lookup_skill(item.0.offset.into());
@@ -222,15 +209,15 @@ impl Simulator for Simulation {
 
                 StateData::from_parts(
                     student.uid(),
-                    student.coordinate,
+                    student.coordinate(),
                     student
-                        .cooldowns
+                        .cooldowns()
                         .iter()
                         .map(|i| i.saturating_sub(delta_ticks))
                         .collect(),
                     effects_mask.into(),
                     new_remain_effects,
-                    acc_damage,
+                    acc_damage.clone(),
                     student.extra().as_ref().map(|s| s.clone_box()),
                 )
             })

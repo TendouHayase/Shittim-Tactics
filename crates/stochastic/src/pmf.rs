@@ -1,29 +1,20 @@
+use ordered_float::OrderedFloat;
+
 use crate::dist::Uniform;
 
-/// Hard ceiling on the support width, in cells. A cell is one `f64`, and a
-/// convolution step holds the source and the destination buffer at the same
-/// time, so this caps the peak at roughly 20 GB.
 pub const MAX_CELLS: usize = 1_250_000_000;
 
-/// Exact integer-resolution distribution of accumulated damage: one `f64` of
-/// probability mass per damage unit across the whole support.
-///
-/// This is the reference implementation — no grid, no normal approximation, no
-/// truncation, no conditioning. It exists to be measured and to serve as the
-/// oracle the fast implementation is validated against. Memory grows linearly
-/// in the hit count and the support of a single hit is ~2e7 units, so this
-/// runs out of RAM somewhere around 60 hits.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pmf {
     offset: u64,
-    mass: Vec<f64>,
+    mass: Vec<OrderedFloat<f64>>,
 }
 
 impl Default for Pmf {
     fn default() -> Self {
         Self {
             offset: 0,
-            mass: vec![1.0],
+            mass: vec![OrderedFloat(1.0)],
         }
     }
 }
@@ -53,7 +44,7 @@ impl Pmf {
         let lo = normal.min.min(crit.min);
         let hi = normal.max.max(crit.max);
 
-        // 한 점에 몰린 타(고정 데미지 기믹)는 합성곱이 아니라 평행이동이다.
+        // 한 점에 몰린 타(고정 데미지 기믹)는 합성곱이 아니라 평행이동이다.``
         if lo == hi {
             self.offset += lo;
             return;
@@ -69,7 +60,7 @@ impl Pmf {
 
         // 제자리 누적합. mass[i]는 이 시점부터 Σ_{x<=i} mass[x]를 뜻한다.
         for i in 1..old_len {
-            self.mass[i] += self.mass[i - 1];
+            self.mass[i].0 += self.mass[i - 1].0;
         }
 
         let q = 1.0 - p;
@@ -78,7 +69,7 @@ impl Pmf {
         let nw = (nb - na + 1) as f64;
         let cw = (cb - ca + 1) as f64;
 
-        let mut out = vec![0.0f64; new_len];
+        let mut out = vec![OrderedFloat(0.0); new_len];
         for (y, dst) in out.iter_mut().enumerate() {
             let mut acc = 0.0;
             if q != 0.0 {
@@ -87,7 +78,7 @@ impl Pmf {
             if p != 0.0 {
                 acc += p * self.window(y, ca, cb, old_len) / cw;
             }
-            *dst = acc;
+            *dst = OrderedFloat(acc);
         }
 
         self.mass = out;
@@ -110,8 +101,8 @@ impl Pmf {
         if lo > hi {
             return 0.0;
         }
-        let lower = if lo == 0 { 0.0 } else { self.mass[lo - 1] };
-        self.mass[hi] - lower
+        let lower = if lo == 0 { 0.0 } else { self.mass[lo - 1].0 };
+        self.mass[hi].0 - lower
     }
 
     /// P(S >= t)
@@ -123,7 +114,11 @@ impl Pmf {
             return 0.0;
         }
         // 뒤에서부터 더한다. 꼬리 끝이 가장 작아서 앞에서 더하면 흡수된다.
-        self.mass[(t - self.offset) as usize..].iter().rev().sum()
+        self.mass[(t - self.offset) as usize..]
+            .iter()
+            .rev()
+            .map(|x| x.0)
+            .sum()
     }
 
     /// P(S < t)
@@ -138,7 +133,10 @@ impl Pmf {
         }
         let lo = a.max(self.min()) - self.offset;
         let hi = b.min(self.max()) - self.offset;
-        self.mass[lo as usize..=hi as usize].iter().sum()
+        self.mass[lo as usize..=hi as usize]
+            .iter()
+            .map(|x| x.0)
+            .sum()
     }
 }
 
@@ -191,7 +189,11 @@ mod tests {
         let expected = brute(&hits);
         assert_eq!(pmf.cells(), expected.len());
         for (i, &e) in expected.iter().enumerate() {
-            assert!((pmf.mass[i] - e).abs() < 1e-15, "cell {i}: {} vs {e}", pmf.mass[i]);
+            assert!(
+                (pmf.mass[i] - e).abs() < 1e-15,
+                "cell {i}: {} vs {e}",
+                pmf.mass[i]
+            );
         }
     }
 
@@ -203,7 +205,7 @@ mod tests {
             pmf.push(n, c, p);
         }
         // 누적합 차분의 상쇄로 총질량이 흘러내린다. 4타 8.3e7칸에서 이미 1e-10.
-        let total: f64 = pmf.mass.iter().sum();
+        let total: f64 = pmf.mass.iter().map(|x| x.0).sum();
         assert!((total - 1.0).abs() < 1e-9, "total = {total}");
         assert_eq!(pmf.min(), 4 * n.min);
         assert_eq!(pmf.max(), 4 * c.max);
@@ -217,31 +219,5 @@ mod tests {
         pmf.push(u(100, 100), u(100, 100), 0.4);
         assert_eq!(pmf.min(), before.min() + 100);
         assert_eq!(pmf.mass, before.mass);
-    }
-
-    #[test]
-    #[ignore = "allocates tens of GB; run explicitly with --release"]
-    fn measure() {
-        let (n, c, p) = measured();
-        let mut pmf = Pmf::default();
-        for hits in 1..=60usize {
-            let t0 = std::time::Instant::now();
-            pmf.push(n, c, p);
-            let build = t0.elapsed();
-
-            let t1 = std::time::Instant::now();
-            let hp = (pmf.min() + pmf.max()) / 2;
-            let tail = pmf.tail(hp);
-            let query = t1.elapsed();
-
-            let drift: f64 = pmf.mass.iter().sum::<f64>() - 1.0;
-            println!(
-                "n={hits:3} cells={:>12} ram={:>6.2}GB push={:>8.1}ms tail={:>7.1}ms P={tail:.6} drift={drift:+.2e}",
-                pmf.cells(),
-                pmf.cells() as f64 * 8.0 / 1e9,
-                build.as_secs_f64() * 1e3,
-                query.as_secs_f64() * 1e3,
-            );
-        }
     }
 }

@@ -1,6 +1,6 @@
 use std::ops::{Div, Mul};
 
-use stochastic::dist::{Hit, Uniform};
+use stochastic::{dist::Uniform, pmf::Pmf};
 
 pub mod key;
 
@@ -61,14 +61,6 @@ impl Damage {
 
     pub fn crit_rate(&self) -> f64 {
         self.crit_num as f64 / self.crit_den as f64
-    }
-
-    pub fn to_hit(&self) -> Hit {
-        Hit {
-            normal: self.normal,
-            crit: self.crit,
-            p: self.crit_rate(),
-        }
     }
 
     // pub fn from_state_data<'a>(
@@ -342,5 +334,50 @@ impl Div<u64> for Damage {
             crit_den: self.crit_den,
             flags: self.flags,
         }
+    }
+}
+
+/// Distribution of a sum of hits.
+///
+/// **This is the frozen boundary between the search and the probability code.**
+/// The backing representation is an exact per-unit PMF today and becomes a
+/// conditioned grid before release (see `.docs/DAMAGE_MODEL.md`); nothing
+/// outside this module may observe which. Every signature here is therefore in
+/// damage units and probabilities only. Adding methods is safe — changing or
+/// widening these is what the swap must not have to do.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct DamageDist {
+    inner: Pmf,
+}
+
+impl DamageDist {
+    pub fn push(&mut self, dmg: Damage) {
+        self.inner.push(dmg.normal, dmg.crit, dmg.crit_rate());
+    }
+
+    /// Exact integer bound, never approximated by any backend. A\*'s
+    /// admissibility rests on these two staying hard, so a backend swap may
+    /// not turn them into estimates.
+    pub fn min(&self) -> u64 {
+        self.inner.min()
+    }
+
+    pub fn max(&self) -> u64 {
+        self.inner.max()
+    }
+
+    /// P(S >= t)
+    pub fn tail(&self, t: u64) -> f64 {
+        self.inner.tail(t)
+    }
+
+    /// P(S < t)
+    pub fn cdf(&self, t: u64) -> f64 {
+        self.inner.cdf(t)
+    }
+
+    /// P(a <= S <= b)
+    pub fn range(&self, a: u64, b: u64) -> f64 {
+        self.inner.range(a, b)
     }
 }

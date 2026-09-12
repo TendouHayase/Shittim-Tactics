@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use error::Error;
 
 use crate::{
-    damage::{Damage, key::SkillsBitMask},
+    damage::{Damage, DamageDist, key::SkillsBitMask},
     extra::ExtraStateData,
     uid::Uid,
     utils::Position,
@@ -116,7 +116,7 @@ pub struct CommonStateData {
 
     pub cooldowns: Vec<u16>,
     pub remained_effects: Vec<RemainedEffects>,
-    pub accumulated_damage: Vec<AccumulatedDamage>,
+    pub accumulated_damage: DamageDist,
     pub effects: SkillsBitMask,
 
     pub coordinate: Position,
@@ -161,7 +161,7 @@ impl StateData {
                 cooldowns: Vec::new(),
                 effects: 0.into(),
                 remained_effects: Vec::new(),
-                accumulated_damage: Vec::new(),
+                accumulated_damage: Default::default(),
             },
             extra: None,
         }
@@ -173,14 +173,14 @@ impl StateData {
         cooldowns: &[u16],
         effects: SkillsBitMask,
         remained_effects: Vec<RemainedEffects>,
-        accumulated_damage: &[AccumulatedDamage],
+        accumulated_damage: DamageDist,
         extra: Option<Box<dyn ExtraStateData>>,
     ) -> Self {
         StateData {
             common: CommonStateData {
                 uid,
                 coordinate,
-                accumulated_damage: accumulated_damage.to_vec(),
+                accumulated_damage,
                 cooldowns: cooldowns.to_vec(),
                 effects: effects,
                 remained_effects: remained_effects.clone(),
@@ -229,11 +229,11 @@ impl StateData {
         &mut self.common.remained_effects
     }
 
-    pub fn accumulated_damage(&self) -> &[AccumulatedDamage] {
+    pub fn accumulated_damage(&self) -> &DamageDist {
         &self.common.accumulated_damage
     }
 
-    pub fn accumulated_damage_mut(&mut self) -> &mut Vec<AccumulatedDamage> {
+    pub fn accumulated_damage_mut(&mut self) -> &mut DamageDist {
         &mut self.common.accumulated_damage
     }
 
