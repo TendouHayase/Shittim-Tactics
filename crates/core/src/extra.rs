@@ -4,6 +4,8 @@ use std::hash::{Hash, Hasher};
 
 use error::Error;
 
+pub trait ExtraState: Any + Debug + Clone + PartialEq + Eq + Hash + Send + Sync {}
+
 pub trait ExtraStateData: Debug + Any + Send + Sync {
     fn clone_box(&self) -> Box<dyn ExtraStateData>;
     fn eq_dyn(&self, other: &dyn ExtraStateData) -> bool;
@@ -33,6 +35,36 @@ impl dyn ExtraStateData {
                 std::any::type_name::<T>(),
                 name
             )))
+    }
+}
+
+impl<T: ExtraState> ExtraStateData for T
+where
+    T: Any + Debug + Clone + PartialEq + Eq + Hash + Send + Sync,
+{
+    fn clone_box(&self) -> Box<dyn ExtraStateData> {
+        Box::new(self.clone())
+    }
+
+    fn eq_dyn(&self, other: &dyn ExtraStateData) -> bool {
+        other.as_any().downcast_ref::<Self>() == Some(self)
+    }
+
+    fn hash_dyn(&self, mut state: &mut dyn std::hash::Hasher) {
+        TypeId::of::<Self>().hash(&mut state); // 타입도 같아야함
+        Hash::hash(self, &mut state);
+    }
+
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
