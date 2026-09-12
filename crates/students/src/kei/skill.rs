@@ -315,8 +315,8 @@ impl Skill for KeiBasicSkill {
         }]
     }
 
-    fn apply<'b, 'c: 'b>(&self, _caster: &'c mut StateData, targets: &'b mut [&'c mut StateData]) {
-        assert_eq!(targets.len(), 1); // 대상이 1명이 아니면 오류
+    fn apply(&self, caster: Uid, targets: &[Uid], state: State) -> State {
+        todo!()
     }
 }
 
@@ -391,7 +391,8 @@ impl Skill for KeiSubSkill {
         }]
     }
 
-    fn apply<'b, 'c: 'b>(&self, caster: &'c mut StateData, _targets: &'b mut [&'c mut StateData]) {
+    fn apply(&self, caster: Uid, targets: &[Uid], state: S) -> State {
         caster.extra_as_mut::<KeiState>().acc_damage = 0;
+        todo!()
     }
 }
