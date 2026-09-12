@@ -250,17 +250,6 @@ impl StateData {
         &mut self.common.accumulated_damage
     }
 
-    pub fn acc_damage(&self) -> Vec<Damage> {
-        let mut result = Vec::with_capacity(self.common.accumulated_damage.len());
-        for d in &self.common.accumulated_damage {
-            if let Some(x) = d.damage {
-                result.push(x)
-            }
-        }
-
-        result
-    }
-
     pub fn extra(&self) -> Option<&dyn ExtraStateData> {
         self.extra.as_deref()
     }
