@@ -11,6 +11,7 @@ use core::{
     state::{State, StateData},
 };
 
+use error::Error::{self, WrongType};
 use params::Params;
 
 /// Pattern numbers not yet in json. Anything still unmeasured is `None` or `0`, and the effects
@@ -246,12 +247,9 @@ pub fn init_big_minion_hp(boss: &mut StateData, hp: u64) {
 
 create_boss_skill!(
     PerorodzillaWhiteHotHeatVision,
-    0,
-    params::DOT_DURATION,
-    params::WHITE_HOT_HEAT_VISION_FRAMES,
+    params: params::Params,
     SkillType::Ex,
     0,
-    params: params::Params,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
             let params = self.params;
@@ -349,12 +347,9 @@ create_boss_skill!(
 
 create_boss_skill!(
     PerorodzillaAquaBall,
-    0,
-    0,
-    params::AQUA_BALL_FRAMES,
+    params: params::Params,
     SkillType::Ex,
     1,
-    params: params::Params,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
             let params = self.params;
@@ -398,12 +393,9 @@ create_boss_skill!(
 
 create_boss_skill!(
     PerorodzillaSummonMinion,
-    0,
-    0,
-    params::SUMMON_MINION_FRAMES,
+    params: params::Params,
     SkillType::Ex,
     2,
-    params: params::Params,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
             vec![SkillEffect {
@@ -433,12 +425,9 @@ impl PerorodzillaSummonMinion {
 
 create_boss_skill!(
     PerorodzillaAbsorbMinion,
-    0,
-    0,
-    params::ABSORB_MINION_FRAMES,
+    params: params::Params,
     SkillType::Ex,
     3,
-    params: params::Params,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
             let params = self.params;
@@ -483,12 +472,9 @@ impl PerorodzillaAbsorbMinion {
 
 create_boss_skill!(
     PerorodzillaHyperSpiralGlareBeam,
-    0,
-    0,
-    params::HYPER_SPIRAL_GLARE_BEAM_FRAMES,
+    params: params::Params,
     SkillType::Ex,
     4,
-    params: params::Params,
     {
         fn skill_effects(&self) -> Vec<SkillEffect> {
             vec![SkillEffect {
@@ -518,12 +504,9 @@ create_boss_skill!(
 
 create_boss_skill!(
     PerorodzillaBurningPerorodzilla,
-    0,
-    0,
-    0,
+    params: params::Params,
     SkillType::Passive,
     5,
-    params: params::Params,
     {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         let scale = self.params.mystic_up_percent;
