@@ -65,7 +65,7 @@ impl<'a, S: Stateful> Node<'a, S> {
         self.record.clone()
     }
 
-    pub fn get_action<'b>(&'b self) -> Option<&'a Skill>
+    pub fn get_action<'b>(&'b self) -> Option<&'a dyn Skill>
     where
         'a: 'b,
     {

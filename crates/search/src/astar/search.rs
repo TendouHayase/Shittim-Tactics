@@ -29,7 +29,7 @@ impl<'a, Sim, S: Stateful, A: Agent<S, Value = u64>> Algorithm<'a> for Astar<'a,
 where
     Sim: Simulator<S>,
 {
-    fn search(&self, threshold: f64) -> Vec<(&'a Skill, u16)> {
+    fn search(&self, threshold: f64) -> Vec<(&'a dyn Skill, u16)> {
         let initial = self.sim.initial_state();
 
         // 결과 노드
