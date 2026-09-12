@@ -238,7 +238,7 @@ impl StateData {
         &self.common.remained_effects
     }
 
-    pub fn remained_effects_mut(&mut self) -> &mut [RemainedEffects] {
+    pub fn remained_effects_mut(&mut self) -> &mut Vec<RemainedEffects> {
         &mut self.common.remained_effects
     }
 
@@ -246,7 +246,7 @@ impl StateData {
         &self.common.accumulated_damage
     }
 
-    pub fn accumulated_damage_mut(&mut self) -> &mut [AccumulatedDamage] {
+    pub fn accumulated_damage_mut(&mut self) -> &mut Vec<AccumulatedDamage> {
         &mut self.common.accumulated_damage
     }
 
