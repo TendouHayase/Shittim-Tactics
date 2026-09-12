@@ -2,10 +2,21 @@ use crate::create_boss_skill;
 use core::{
     skill::{Skill, SkillEffect, SkillType},
     state::{State, StateData},
-    utils::time_to_ticks,
 };
 
-create_boss_skill!(GozNowYouSeeUs, 0, 0, 0, SkillType::Ex, 0, {
+/// Numbers not yet in json.
+pub mod params {
+    use core::utils::time_to_ticks;
+
+    pub const THREE_LIGHT_MONTE_COST: u8 = 3;
+    pub const THREE_LIGHT_MONTE_DURATION: u16 = time_to_ticks(7, 1);
+    pub const THREE_LIGHT_MONTE_FRAMES: u16 = time_to_ticks(16, 10);
+
+    pub const MAGICAL_COIN_HAT_DURATION: u16 = time_to_ticks(7, 1);
+    pub const MAGICAL_COIN_HAT_FRAMES: u16 = time_to_ticks(5, 1);
+}
+
+create_boss_skill!(GozNowYouSeeUs, params: (), SkillType::Ex, 0, {
     fn skill_effects(&self) -> Vec<SkillEffect> {
         todo!()
     }
@@ -27,9 +38,7 @@ impl GozNowYouSeeUs {
 
 create_boss_skill!(
     GozThreeLightMonte,
-    3,
-    time_to_ticks(7, 1),
-    time_to_ticks(16, 10),
+    params: (),
     SkillType::Ex,
     1,
     {
@@ -49,9 +58,7 @@ create_boss_skill!(
 
 create_boss_skill!(
     GozMagicalCoinHat,
-    0,
-    time_to_ticks(7, 1),
-    time_to_ticks(5, 1),
+    params: (),
     SkillType::Ex,
     2,
     {
