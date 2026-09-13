@@ -158,7 +158,6 @@ fn damage_effect(percent: u16) -> Effect {
 fn summon_minion_wave(boss: &mut StateData, params: Params) -> Result<(), Error> {
     let mut extra = boss.extra_mut();
     let pero = extra
-        .as_deref_mut()
         .ok_or(Error::Empty)?
         .downcast_as_mut::<PerorodzillaState>()?;
 
@@ -175,7 +174,7 @@ fn summon_minion_wave(boss: &mut StateData, params: Params) -> Result<(), Error>
 /// minions, which are targeted first.
 fn damage_since_wave_start(boss: &StateData) -> Result<u64, Error> {
     let extra = boss.extra();
-    let peroro_state = extra
+    let _peroro_state = extra
         .as_ref()
         .ok_or(Error::Empty)?
         .downcast_as::<PerorodzillaState>()?;

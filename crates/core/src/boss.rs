@@ -132,7 +132,7 @@ pub struct BossFile {
 
 impl BossFile {
     pub fn from_file(path: &str) -> Result<Self, Error> {
-        Ok(parsing_json::read_json(path)?)
+        parsing_json::read_json(path)
     }
 }
 

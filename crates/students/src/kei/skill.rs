@@ -266,7 +266,7 @@ impl Skill for KeiExSkill {
 
         for target in targets.iter_mut() {
             if is_inside(target.coordinate(), self.params.region, caster_coord)
-                && !active(&**target)
+                && !active(target)
             {
                 for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
                     if let SkillEffectTarget::Student { .. } = skill_effect.targets {

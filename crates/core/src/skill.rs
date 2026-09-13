@@ -1,4 +1,4 @@
-use crate::effect::{CCEffect, Effect, EffectTiming};
+use crate::effect::{Effect, EffectTiming};
 use crate::state::StateData;
 use crate::uid::Uid;
 use crate::utils::Position;

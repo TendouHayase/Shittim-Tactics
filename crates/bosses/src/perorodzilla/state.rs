@@ -1,5 +1,5 @@
-use core::extra::{ExtraState, ExtraStateData};
-use std::{any::TypeId, hash::Hash};
+use core::extra::ExtraState;
+use std::hash::Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct PerorodzillaState {

@@ -75,8 +75,8 @@ impl Simulator for Simulation {
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
             for (j, cooltime) in stat.cooldowns().iter().enumerate() {
-                if let Some(skill) = self.students[i].lookup_skill(j) {
-                    if *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
+                if let Some(skill) = self.students[i].lookup_skill(j)
+                    && *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
                         let caster = stat.uid();
                         let targets = self.resolve_targets(state, skill);
 
@@ -86,7 +86,6 @@ impl Simulator for Simulation {
                             skill,
                         }));
                     }
-                }
             }
         }
 
@@ -158,7 +157,7 @@ impl Simulator for Simulation {
         for student in state.students() {
             // 논리적으로 uid 항상 존재
             let character = self.character_by_uid(student.uid()).unwrap();
-            if (self.cost_per_second != 0) {
+            if self.cost_per_second != 0  {
                 for (i, time) in student.cooldowns().iter().enumerate() {
                     let cost = *time / self.cost_per_second;
                     if character.skills()[i].cost() as u16 >= cost {
@@ -175,11 +174,10 @@ impl Simulator for Simulation {
         // 논리적으로 uid 항상 존재
         let boss = self.character_by_uid(state.boss().uid()).unwrap();
         for (i, time) in state.boss().cooldowns().iter().enumerate() {
-            if (self.cost_per_second != 0) {
-                if boss.skills()[i].cost() as u16 >= *time / self.cost_per_second {
+            if self.cost_per_second != 0 
+                && boss.skills()[i].cost() as u16 >= *time / self.cost_per_second {
                     result = result.min(*time);
                 }
-            }
 
             for effect in state.boss().remained_effects() {
                 result = result.min(effect.ticks);

@@ -3,7 +3,6 @@ use core::{agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skil
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
-    marker::PhantomData,
     sync::Arc,
 };
 

@@ -1,4 +1,3 @@
-use crate::pmf::Pmf;
 
 /// An inclusive damage range, rolled uniformly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

@@ -503,9 +503,7 @@ where
 /// ```
 pub fn intersect_intervals(it: impl Iterator<Item = (f64, f64)>) -> Option<(f64, f64)> {
     let mut it = it.peekable();
-    if it.peek().is_none() {
-        return None;
-    }
+    it.peek()?;
 
     let mut left = f64::MIN;
     let mut right = f64::MAX;

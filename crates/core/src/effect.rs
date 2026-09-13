@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{skill::Skill, stat::StatKind, state::StateData};
+use crate::{skill::Skill, state::StateData};
 
 /// An `EffectKind::Other` body, called with the same `(caster, targets)` routing as
 /// [`Skill::apply`].
