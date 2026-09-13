@@ -3,9 +3,8 @@
 
 use crate::create_boss_skill;
 use core::{
-    effect::{Effect, EffectTiming},
-    skill::{SkillEffect, SkillEffectTarget, SkillKind, SkillMeta, SkillType},
-    stat::StatKind,
+    effect::{DebuffKind, Effect, EffectTiming},
+    skill::{SkillEffect, SkillEffectTarget, SkillKind, SkillType},
     state::StateData,
 };
 
@@ -206,33 +205,30 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     0,
+    effects(id, params) {
+        vec![
+            SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Land {
+                    kind: damage_effect(params.instant_percent),
+                    region: params.region,
+                },
+            },
+            SkillEffect {
+                id,
+                timing: EffectTiming::Persistent {
+                    interval_frames: params.dot_interval,
+                    duration_frames: params.dot_duration,
+                },
+                targets: SkillEffectTarget::Land {
+                    kind: damage_effect(params.dot_percent),
+                    region: params.region,
+                },
+            },
+        ]
+    },
     {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            let params = self.params;
-
-            vec![
-                SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Instant,
-                    targets: vec![SkillEffectTarget::Land {
-                        kind: damage_effect(params.instant_percent),
-                        region: params.region,
-                    }],
-                },
-                SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Persistent {
-                        interval_frames: params.dot_interval,
-                        duration_frames: params.dot_duration,
-                    },
-                    targets: vec![SkillEffectTarget::Land {
-                        kind: damage_effect(params.dot_percent),
-                        region: params.region,
-                    }],
-                },
-            ]
-        }
-
         fn apply(
             &self,
             _caster: &mut StateData,
@@ -249,34 +245,28 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     1,
+    effects(id, params) {
+        let mut effects = vec![SkillEffect {
+            id,
+            timing: EffectTiming::Instant,
+            targets: SkillEffectTarget::Student {
+                kind: damage_effect(params.all_percent),
+                count: params::ON_FIELD_COUNT,
+            },
+        }];
+
+        effects.extend(params.nearest_percents.iter().map(|&percent| SkillEffect {
+            id,
+            timing: EffectTiming::Instant,
+            targets: SkillEffectTarget::Student {
+                kind: damage_effect(percent),
+                count: 1,
+            },
+        }));
+
+        effects
+    },
     {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            let params = self.params;
-
-            vec![
-                SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Instant,
-                    targets: vec![SkillEffectTarget::Student {
-                        kind: damage_effect(params.all_percent),
-                        count: params::ON_FIELD_COUNT,
-                    }],
-                },
-                SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Instant,
-                    targets: params
-                        .nearest_percents
-                        .iter()
-                        .map(|&percent| SkillEffectTarget::Student {
-                            kind: damage_effect(percent),
-                            count: 1,
-                        })
-                        .collect(),
-                },
-            ]
-        }
-
         fn apply(
             &self,
             _caster: &mut StateData,
@@ -292,35 +282,32 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     2,
+    effects(id, params) {
+        vec![
+            SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Student {
+                    kind: Effect::Debuff {
+                        ty: DebuffKind::Def,
+                        duration: params.def_down_duration,
+                        scale: params.def_down_scale,
+                        amount: 0,
+                    },
+                    count: params.count,
+                },
+            },
+            SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Student {
+                    kind: damage_effect(params.percent),
+                    count: params.count,
+                },
+            },
+        ]
+    },
     {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            let params = self.params;
-
-            vec![
-                SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Instant,
-                    targets: vec![SkillEffectTarget::Student {
-                        kind: Effect::Debuff {
-                            ty: StatKind::Def,
-                            duration: params.def_down_duration,
-                            scale: params.def_down_scale,
-                            amount: 0,
-                        },
-                        count: params.count,
-                    }],
-                },
-                SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Instant,
-                    targets: vec![SkillEffectTarget::Student {
-                        kind: damage_effect(params.percent),
-                        count: params.count,
-                    }],
-                },
-            ]
-        }
-
         fn apply(
             &self,
             _caster: &mut StateData,

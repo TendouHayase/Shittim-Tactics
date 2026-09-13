@@ -14,13 +14,13 @@ pub struct SkillHeader {
     pub skill_offset: usize,
     pub skill_type: SkillType,
     pub skill_kind: SkillKind,
+    pub effects: Vec<SkillEffect>,
     pub cost: u8,
     pub duration: u16,
     pub frames: u16,
 }
 
 pub trait Skill: SkillMeta + Debug + Send + Sync {
-    fn skill_effects(&self) -> Vec<SkillEffect>;
     fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]);
 }
 
@@ -54,6 +54,9 @@ pub trait SkillMeta {
     fn skill_kind(&self) -> SkillKind {
         self.header().skill_kind
     }
+    fn skill_effects(&self) -> &[SkillEffect] {
+        &self.header().effects
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -80,7 +83,7 @@ pub enum SkillKind {
 pub struct SkillEffect {
     pub id: (Uid, usize),
     pub timing: EffectTiming,
-    pub targets: Vec<SkillEffectTarget>,
+    pub targets: SkillEffectTarget,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SkillType {

@@ -1,11 +1,10 @@
 use super::state::KeiState;
 use core::{
-    effect::{Effect, EffectTiming},
+    effect::{BuffKind, Effect, EffectTiming},
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillKind, SkillMeta, SkillParams,
         SkillType,
     },
-    stat::StatKind,
     state::{RemainedEffects, StateData},
     uid::Uid,
     utils::is_inside,
@@ -178,14 +177,67 @@ pub struct KeiExSkill {
 
 impl KeiExSkill {
     pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::ExParams) -> Self {
+        let id = (owner, 0);
+
+        let effective_buff = Effect::Buff {
+            ty: BuffKind::MysticEffectiveness,
+            duration: params.duration,
+            scale: params.effective_buff_scale,
+            amount: 0,
+        };
+
+        let atk_buff = Effect::Buff {
+            ty: BuffKind::Atk,
+            duration: params.duration,
+            scale: params.atk_buff_scale,
+            amount: 0,
+        };
+
+        let timing = EffectTiming::Persistent {
+            interval_frames: 0,
+            duration_frames: params.duration(),
+        };
+
+        let effects = vec![
+            SkillEffect {
+                id,
+                timing,
+                targets: SkillEffectTarget::Oneself {
+                    kind: effective_buff,
+                },
+            },
+            SkillEffect {
+                id,
+                timing,
+                targets: SkillEffectTarget::Oneself { kind: atk_buff },
+            },
+            SkillEffect {
+                id,
+                timing,
+                targets: SkillEffectTarget::Student {
+                    kind: effective_buff,
+                    count: params.ally_count,
+                },
+            },
+            SkillEffect {
+                id,
+                timing,
+                targets: SkillEffectTarget::Student {
+                    kind: atk_buff,
+                    count: params.ally_count,
+                },
+            },
+        ];
+
         Self {
             header: SkillHeader {
                 owner,
-                owner_offset: 0,
+                owner_offset: id.1,
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Ex,
                 skill_kind: SkillKind::Buff,
+                effects,
                 cost: params.cost(),
                 duration: params.duration(),
                 frames: params.frames(),
@@ -202,56 +254,24 @@ impl SkillMeta for KeiExSkill {
 }
 
 impl Skill for KeiExSkill {
-    fn skill_effects(&self) -> Vec<core::skill::SkillEffect> {
-        let effective_buff = Effect::Buff {
-            ty: StatKind::MysticEffectiveness,
-            duration: self.params.duration,
-            scale: self.params.effective_buff_scale,
-            amount: 0,
-        };
-
-        let atk_buff = Effect::Buff {
-            ty: StatKind::Atk,
-            duration: self.params.duration,
-            scale: self.params.atk_buff_scale,
-            amount: 0,
-        };
-
-        vec![SkillEffect {
-            id: self.id(),
-            timing: EffectTiming::Persistent {
-                interval_frames: 0,
-                duration_frames: self.duration(),
-            },
-            targets: vec![
-                SkillEffectTarget::Oneself {
-                    kind: effective_buff,
-                },
-                SkillEffectTarget::Oneself { kind: atk_buff },
-                SkillEffectTarget::Student {
-                    kind: effective_buff,
-                    count: self.params.ally_count,
-                },
-                SkillEffectTarget::Student {
-                    kind: atk_buff,
-                    count: self.params.ally_count,
-                },
-            ],
-        }]
-    }
-
     fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]) {
         let caster_coord = caster.coordinate();
         let bit = 0x01u64 << self.skill_offset();
+        let remained = |effect: usize| RemainedEffects {
+            ticks: self.duration(),
+            effect: effect as u8,
+            source: self.skill_offset() as u8,
+        };
 
         for target in targets.iter_mut() {
             if is_inside(target.coordinate(), self.params.region, caster_coord)
                 && (target.effects().0 & bit) == 0
             {
-                target.remained_effects_mut().push(RemainedEffects {
-                    ticks: self.duration(),
-                    offset: self.skill_offset() as u8,
-                });
+                for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
+                    if let SkillEffectTarget::Student { .. } = skill_effect.targets {
+                        target.remained_effects_mut().push(remained(effect));
+                    }
+                }
 
                 let effects = target.effects().0 | bit;
                 *target.effect_mut() = effects.into();
@@ -259,10 +279,11 @@ impl Skill for KeiExSkill {
         }
 
         if (caster.effects().0 & bit) == 0 {
-            caster.remained_effects_mut().push(RemainedEffects {
-                ticks: self.duration(),
-                offset: self.skill_offset() as u8,
-            });
+            for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
+                if let SkillEffectTarget::Oneself { .. } = skill_effect.targets {
+                    caster.remained_effects_mut().push(remained(effect));
+                }
+            }
 
             let effects = caster.effects().0 | bit;
             *caster.effect_mut() = effects.into();
@@ -281,14 +302,28 @@ pub struct KeiBasicSkill {
 
 impl KeiBasicSkill {
     pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::BasicParams) -> Self {
+        let id = (owner, 1);
+
+        let effects = vec![SkillEffect {
+            id,
+            timing: EffectTiming::Instant,
+            targets: SkillEffectTarget::Boss {
+                kind: Effect::Damage {
+                    coef_num: params.coef_percent,
+                    coef_den: params::PERCENT_DEN,
+                },
+            },
+        }];
+
         Self {
             header: SkillHeader {
                 owner,
-                owner_offset: 1,
+                owner_offset: id.1,
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Basic,
                 skill_kind: SkillKind::Damage,
+                effects,
                 cost: params.cost(),
                 duration: params.duration(),
                 frames: params.frames(),
@@ -305,19 +340,6 @@ impl SkillMeta for KeiBasicSkill {
 }
 
 impl Skill for KeiBasicSkill {
-    fn skill_effects(&self) -> Vec<core::skill::SkillEffect> {
-        vec![SkillEffect {
-            id: self.id(),
-            timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Boss {
-                kind: Effect::Damage {
-                    coef_num: self.params.coef_percent,
-                    coef_den: params::PERCENT_DEN,
-                },
-            }],
-        }]
-    }
-
     fn apply(&self, _caster: &mut StateData, _targets: &mut [&mut StateData]) {
         todo!()
     }
@@ -340,14 +362,28 @@ impl SkillMeta for KeiSubSkill {
 
 impl KeiSubSkill {
     pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::SubParams) -> Self {
+        let id = (owner, 2);
+
+        let effects = vec![SkillEffect {
+            id,
+            timing: EffectTiming::Persistent {
+                interval_frames: 0,
+                duration_frames: params.duration(),
+            },
+            targets: SkillEffectTarget::Boss {
+                kind: Effect::new_other(Self::effect_apply),
+            },
+        }];
+
         Self {
             header: SkillHeader {
                 owner,
-                owner_offset: 2,
+                owner_offset: id.1,
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Sub,
                 skill_kind: SkillKind::Other,
+                effects,
                 cost: params.cost(),
                 duration: params.duration(),
                 frames: params.frames(),
@@ -359,43 +395,16 @@ impl KeiSubSkill {
     /// target and the caster is Kei herself.
     pub fn effect_apply(
         _skill: &dyn Skill,
-        caster: &mut StateData,
-        targets: &mut [&mut StateData],
+        _caster: &mut StateData,
+        _targets: &mut [&mut StateData],
     ) {
-        let Some(boss) = targets.first() else {
-            return;
-        };
-
-        let len = boss.accumulated_damage().len();
-        let prior_idx = caster.extra_as::<KeiState>().recording_start_len;
-
-        let mut acc = 0;
-        for i in prior_idx..len {
-            if let Some(d) = boss.accumulated_damage()[i].damage {
-                acc += d.expected_value();
-            }
-        }
-
-        let ex = caster.extra_as_mut::<KeiState>();
-        ex.acc_damage += acc;
-        ex.recording_start_len = len;
+        // 보스 데미지가 로그가 아니라 분포(DamageDist)가 되어 "기록 시작 이후 구간"을 읽을
+        // 방법이 없다. 저장량을 어떻게 셀지는 A-4에서 정한다.
+        todo!()
     }
 }
 
 impl Skill for KeiSubSkill {
-    fn skill_effects(&self) -> Vec<SkillEffect> {
-        vec![SkillEffect {
-            id: self.id(),
-            timing: EffectTiming::Persistent {
-                interval_frames: 0,
-                duration_frames: self.duration(),
-            },
-            targets: vec![SkillEffectTarget::Boss {
-                kind: Effect::new_other(Self::effect_apply),
-            }],
-        }]
-    }
-
     fn apply(&self, caster: &mut StateData, _targets: &mut [&mut StateData]) {
         caster.extra_as_mut::<KeiState>().acc_damage = 0;
     }

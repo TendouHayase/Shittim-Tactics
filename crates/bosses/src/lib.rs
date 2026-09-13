@@ -216,8 +216,10 @@ mod tests {
 
     #[test]
     fn skill_params_follow_difficulty() {
-        let normal = binah(Difficulty::Normal).skills()[0].skill_effects();
-        let lunatic = binah(Difficulty::Lunatic).skills()[0].skill_effects();
+        let normal = binah(Difficulty::Normal);
+        let lunatic = binah(Difficulty::Lunatic);
+        let normal = normal.skills()[0].skill_effects();
+        let lunatic = lunatic.skills()[0].skill_effects();
 
         assert_ne!(normal[0].targets, lunatic[0].targets);
         assert_eq!(

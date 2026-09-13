@@ -25,13 +25,23 @@ impl SkillNumbers {
 ///
 /// ```ignore
 /// create_boss_skill!(
-///     Name, params: <Params>, SkillType::Ex, SkillKind::Damage, 0, { /* Skill methods */ }
+///     Name, params: <Params>, SkillType::Ex, SkillKind::Damage, 0,
+///     effects(id, params) { /* Vec<SkillEffect> */ },
+///     { /* Skill methods */ }
 /// );
 /// ```
 ///
-/// The trailing block holds the `Skill` methods (`skill_effects`, `apply`). It has to be passed
-/// in rather than written at the call site, since a trait can only be implemented in one block.
-/// Items belonging to no trait go into a separate inherent impl.
+/// The `effects` block runs once inside `new` and its result is stored in the header. The two
+/// names in parentheses are bound for the block: the skill id and a reference to the params.
+/// They are named at the call site because a name the macro invents would be invisible to the
+/// block under hygiene.
+///
+/// The block is the body of a closure, so `return` yields the list rather than returning from
+/// `new`, and a `todo!()` in it does not turn the rest of `new` into unreachable code.
+///
+/// The trailing block holds the `Skill` methods (`apply`). It has to be passed in rather than
+/// written at the call site, since a trait can only be implemented in one block. Items belonging
+/// to no trait go into a separate inherent impl.
 ///
 /// No number appears here. `cost`, `duration` and `frames` arrive as [`SkillNumbers`] and the
 /// rest as `$params`, both from whoever loads the boss; a skill with no numbers of its own takes
@@ -47,6 +57,7 @@ macro_rules! create_boss_skill {
         $skill_type:path,
         $skill_kind:path,
         $skill_id:literal,
+        effects($id:ident, $p:ident) $effects:block,
         { $($rest:tt)* }
     ) => {
         #[derive(Debug)]
@@ -63,6 +74,13 @@ macro_rules! create_boss_skill {
                 numbers: $crate::macros::SkillNumbers,
                 params: $params,
             ) -> Self {
+                let effects = (|$id: (::core::uid::Uid, usize),
+                                $p: &$params|
+                 -> Vec<::core::skill::SkillEffect> { $effects })(
+                    (owner, $skill_id),
+                    &params,
+                );
+
                 Self {
                     header: core::skill::SkillHeader {
                         owner,
@@ -71,6 +89,7 @@ macro_rules! create_boss_skill {
                         skill_offset,
                         skill_type: $skill_type,
                         skill_kind: $skill_kind,
+                        effects,
                         cost: numbers.cost,
                         duration: numbers.duration,
                         frames: numbers.frames,

@@ -5,9 +5,8 @@ use crate::create_boss_skill;
 use crate::perorodzilla::state::PerorodzillaState;
 use core::{
     constants::MAX_STUDENT_COUNT,
-    effect::{Effect, EffectTiming},
-    skill::{Skill, SkillEffect, SkillEffectTarget, SkillKind, SkillMeta, SkillType},
-    stat::StatKind,
+    effect::{BuffKind, DebuffKind, Effect, EffectTiming},
+    skill::{Skill, SkillEffect, SkillEffectTarget, SkillKind, SkillType},
     state::StateData,
 };
 
@@ -254,92 +253,94 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     0,
-    {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            let params = self.params;
+    effects(id, params) {
+        let dot_timing = EffectTiming::Persistent {
+            interval_frames: params.dot_interval,
+            duration_frames: params.dot_duration,
+        };
 
-            let dot_timing = EffectTiming::Persistent {
-                interval_frames: params.dot_interval,
-                duration_frames: params.dot_duration,
-            };
-
-            let mut effects = vec![
-                SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Instant,
-                    targets: vec![SkillEffectTarget::Student {
-                        kind: Effect::Debuff {
-                            ty: StatKind::Def,
-                            duration: params.def_down_duration,
-                            scale: 0,
-                            amount: params.def_down_amount,
-                        },
-                        count: 1,
-                    }],
+        let mut effects = vec![
+            SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Student {
+                    kind: Effect::Debuff {
+                        ty: DebuffKind::Def,
+                        duration: params.def_down_duration,
+                        scale: 0,
+                        amount: params.def_down_amount,
+                    },
+                    count: 1,
                 },
-                SkillEffect {
-                    id: self.id(),
-                    timing: dot_timing,
-                    targets: vec![SkillEffectTarget::Student {
-                        kind: damage_effect(params.heat_vision_percent),
-                        count: 1,
-                    }],
+            },
+            SkillEffect {
+                id,
+                timing: dot_timing,
+                targets: SkillEffectTarget::Student {
+                    kind: damage_effect(params.heat_vision_percent),
+                    count: 1,
                 },
-            ];
+            },
+        ];
 
-            // 첫 연쇄 대상만 [0]을 쓰고 나머지는 [1]을 반복.
-            if params.chain_count > 0 {
-                let [first, rest] = params.chain_percents;
-                let mut chain = vec![SkillEffectTarget::Student {
+        // 첫 연쇄 대상만 [0]을 쓰고 나머지는 [1]을 반복.
+        if params.chain_count > 0 {
+            let [first, rest] = params.chain_percents;
+
+            effects.push(SkillEffect {
+                id,
+                timing: dot_timing,
+                targets: SkillEffectTarget::Student {
                     kind: damage_effect(first),
                     count: 1,
-                }];
+                },
+            });
 
-                if params.chain_count > 1 {
-                    chain.push(SkillEffectTarget::Student {
+            if params.chain_count > 1 {
+                effects.push(SkillEffect {
+                    id,
+                    timing: dot_timing,
+                    targets: SkillEffectTarget::Student {
                         kind: damage_effect(rest),
                         count: params.chain_count - 1,
-                    });
-                }
-
-                effects.push(SkillEffect {
-                    id: self.id(),
-                    timing: dot_timing,
-                    targets: chain,
+                    },
                 });
             }
+        }
 
-            // 방어력 감소를 해제하지 못했을 때의 부채꼴 폭발.
-            if params.blast_percent > 0
-                && let Some(region) = params.blast_region
-            {
-                let mut targets = vec![SkillEffectTarget::Land {
+        // 방어력 감소를 해제하지 못했을 때의 부채꼴 폭발.
+        if params.blast_percent > 0
+            && let Some(region) = params.blast_region
+        {
+            effects.push(SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Land {
                     kind: damage_effect(params.blast_percent),
                     region,
-                }];
+                },
+            });
 
-                if params.blast_atk_down_scale > 0 {
-                    targets.push(SkillEffectTarget::Land {
+            if params.blast_atk_down_scale > 0 {
+                effects.push(SkillEffect {
+                    id,
+                    timing: EffectTiming::Instant,
+                    targets: SkillEffectTarget::Land {
                         kind: Effect::Debuff {
-                            ty: StatKind::Atk,
+                            ty: DebuffKind::Atk,
                             duration: params.blast_atk_down_duration,
                             scale: params.blast_atk_down_scale,
                             amount: 0,
                         },
                         region,
-                    });
-                }
-
-                effects.push(SkillEffect {
-                    id: self.id(),
-                    timing: EffectTiming::Instant,
-                    targets,
+                    },
                 });
             }
-
-            effects
         }
 
+        effects
+    },
+    {
         fn apply(
             &self,
             _caster: &mut StateData,
@@ -355,38 +356,39 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     1,
-    {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            let params = self.params;
+    effects(id, params) {
+        let mut effects = Vec::new();
 
-            let Some(region) = params.aqua_ball_region else {
-                return vec![];
-            };
-
-            let mut targets = vec![SkillEffectTarget::Land {
-                kind: damage_effect(params.aqua_ball_percent),
-                region,
-            }];
+        if let Some(region) = params.aqua_ball_region {
+            effects.push(SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Land {
+                    kind: damage_effect(params.aqua_ball_percent),
+                    region,
+                },
+            });
 
             if params.aqua_ball_def_down {
-                targets.push(SkillEffectTarget::Land {
-                    kind: Effect::Debuff {
-                        ty: StatKind::Def,
-                        duration: params.def_down_duration,
-                        scale: 0,
-                        amount: params.def_down_amount,
+                effects.push(SkillEffect {
+                    id,
+                    timing: EffectTiming::Instant,
+                    targets: SkillEffectTarget::Land {
+                        kind: Effect::Debuff {
+                            ty: DebuffKind::Def,
+                            duration: params.def_down_duration,
+                            scale: 0,
+                            amount: params.def_down_amount,
+                        },
+                        region,
                     },
-                    region,
                 });
             }
-
-            vec![SkillEffect {
-                id: self.id(),
-                timing: EffectTiming::Instant,
-                targets,
-            }]
         }
 
+        effects
+    },
+    {
         fn apply(
             &self,
             _caster: &mut StateData,
@@ -402,17 +404,16 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Other,
     2,
+    effects(id, _params) {
+        vec![SkillEffect {
+            id,
+            timing: EffectTiming::Instant,
+            targets: SkillEffectTarget::Oneself {
+                kind: Effect::new_other(Self::other_apply),
+            },
+        }]
+    },
     {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            vec![SkillEffect {
-                id: self.id(),
-                timing: EffectTiming::Instant,
-                targets: vec![SkillEffectTarget::Oneself {
-                    kind: Effect::new_other(Self::other_apply),
-                }],
-            }]
-        }
-
         fn apply(
             &self,
             caster: &mut StateData,
@@ -439,28 +440,29 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Other,
     3,
-    {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            let params = self.params;
-
-            let mut targets = vec![SkillEffectTarget::Oneself {
+    effects(id, params) {
+        let mut effects = vec![SkillEffect {
+            id,
+            timing: EffectTiming::Instant,
+            targets: SkillEffectTarget::Oneself {
                 kind: Effect::new_other(Self::other_apply),
-            }];
+            },
+        }];
 
-            if params.knockback_on_groggy {
-                targets.push(SkillEffectTarget::Student {
+        if params.knockback_on_groggy {
+            effects.push(SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Student {
                     kind: Effect::Move,
                     count: MAX_STUDENT_COUNT as u8,
-                });
-            }
-
-            vec![SkillEffect {
-                id: self.id(),
-                timing: EffectTiming::Instant,
-                targets,
-            }]
+                },
+            });
         }
 
+        effects
+    },
+    {
         fn apply(
             &self,
             caster: &mut StateData,
@@ -491,18 +493,17 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     4,
+    effects(id, params) {
+        vec![SkillEffect {
+            id,
+            timing: EffectTiming::Instant,
+            targets: SkillEffectTarget::Student {
+                kind: damage_effect(params.hyper_spiral_percent),
+                count: MAX_STUDENT_COUNT as u8,
+            },
+        }]
+    },
     {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            vec![SkillEffect {
-                id: self.id(),
-                timing: EffectTiming::Instant,
-                targets: vec![SkillEffectTarget::Student {
-                    kind: damage_effect(self.params.hyper_spiral_percent),
-                    count: MAX_STUDENT_COUNT as u8,
-                }],
-            }]
-        }
-
         fn apply(
             &self,
             caster: &mut StateData,
@@ -524,29 +525,28 @@ create_boss_skill!(
     SkillType::Passive,
     SkillKind::Buff,
     5,
-    {
-    fn skill_effects(&self) -> Vec<SkillEffect> {
-        let scale = self.params.mystic_up_percent;
+    effects(id, params) {
+        let scale = params.mystic_up_percent;
 
         // Torment 미만에는 이 패시브가 배정되지 않는다.
         if scale == 0 {
-            return vec![];
-        }
-
-        vec![SkillEffect {
-            id: self.id(),
-            timing: EffectTiming::Instant,
-            targets: vec![SkillEffectTarget::Oneself {
-                kind: Effect::Buff {
-                    ty: StatKind::MysticEffectiveness,
-                    duration: u16::MAX,
-                    scale,
-                    amount: 0,
+            Vec::new()
+        } else {
+            vec![SkillEffect {
+                id,
+                timing: EffectTiming::Instant,
+                targets: SkillEffectTarget::Oneself {
+                    kind: Effect::Buff {
+                        ty: BuffKind::MysticEffectiveness,
+                        duration: u16::MAX,
+                        scale,
+                        amount: 0,
+                    },
                 },
-            }],
-        }]
-    }
-
+            }]
+        }
+    },
+    {
     fn apply(
         &self,
         _caster: &mut StateData,

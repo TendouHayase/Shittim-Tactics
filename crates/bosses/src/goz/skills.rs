@@ -1,6 +1,6 @@
 use crate::create_boss_skill;
 use core::{
-    skill::{Skill, SkillEffect, SkillKind, SkillType},
+    skill::{Skill, SkillKind, SkillType},
     state::StateData,
 };
 
@@ -16,11 +16,9 @@ pub mod params {
     pub const MAGICAL_COIN_HAT_FRAMES: u16 = time_to_ticks(5, 1);
 }
 
-create_boss_skill!(GozNowYouSeeUs, params: (), SkillType::Ex, SkillKind::Other, 0, {
-    fn skill_effects(&self) -> Vec<SkillEffect> {
-        todo!()
-    }
-
+create_boss_skill!(GozNowYouSeeUs, params: (), SkillType::Ex, SkillKind::Other, 0, effects(_id, _params) {
+    todo!()
+}, {
     fn apply(
         &self,
         _caster: &mut StateData,
@@ -46,11 +44,10 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     1,
+    effects(_id, _params) {
+        todo!()
+    },
     {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            todo!()
-        }
-
         fn apply(
             &self,
             _caster: &mut StateData,
@@ -67,10 +64,9 @@ create_boss_skill!(
     SkillType::Ex,
     SkillKind::Damage,
     2,
-    {
-        fn skill_effects(&self) -> Vec<SkillEffect> {
-            todo!()
-            // match unsafe { self.parent.read().stats.difficulty } {
+    effects(_id, _params) {
+        todo!()
+        // match unsafe { self.parent.read().stats.difficulty } {
             //     Difficulty::Lunatic => {
             //         vec![SkillEffect {
             //             id: self.id,
@@ -178,8 +174,8 @@ create_boss_skill!(
             //         ],
             //     }],
             // }
-        }
-
+    },
+    {
         fn apply(
             &self,
             _caster: &mut StateData,
