@@ -141,7 +141,7 @@ impl StateData {
             common: CommonStateData {
                 uid,
                 coordinate: Default::default(),
-                cooldowns: Vec::with_capacity(cooldowns),
+                cooldowns: vec![0; cooldowns],
                 remained_effects: Vec::new(),
                 accumulated_damage: Default::default(),
             },
