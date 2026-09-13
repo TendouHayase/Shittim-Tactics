@@ -91,8 +91,8 @@ pub trait Simulator {
     /// Whether `ticks` is past the time limit.
     fn is_time_over(&self, ticks: u16) -> bool;
 
-    /// The skill at a given `SkillsBitMask` index.
-    fn lookup_skill(&self, index: usize) -> Result<&dyn Skill, error::Error>;
+    /// The skill at a given skill offset.
+    fn lookup_skill(&self, index: usize) -> Option<&dyn Skill>;
 
     /// The character with this `id`, if there is one.
     fn character_by_uid(&self, id: Uid) -> Option<&dyn Character>;

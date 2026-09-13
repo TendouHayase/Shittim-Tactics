@@ -6,20 +6,13 @@ use core::{
     boss::Boss,
     character::Character,
     constants::TPS,
-    damage::{Damage, key::SkillsBitMask},
-    effect::Effect,
     simulator::Simulator,
-    skill::{Skill, SkillEffectTarget::Land, SkillKind, SkillMeta, SkillOps},
-    state::{AccumulatedDamage, CommonStateData, RemainedEffects, State, StateData, Stateful},
+    skill::Skill,
+    state::{State, StateData},
     student::Student,
     uid::Uid,
-    utils::is_inside,
 };
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use error::Error;
 
@@ -30,13 +23,11 @@ pub struct Simulation {
 
     limit_ticks: u16,
 
-    cost_charge_time: HashMap<SkillsBitMask, u16>,
+    cost_per_second: u16,
 }
 
 impl Simulator for Simulation {
     fn initial_state(&self) -> State {
-        let mut it = self.students.iter();
-
         if self.students.len() == 6 {
             State {
                 students: core::state::StudentState::TotalAssault(std::array::from_fn(|i| {
@@ -91,8 +82,7 @@ impl Simulator for Simulation {
 
         let mut state = state.clone();
 
-        // 캐스터와 타깃을 각각 search_uid_mut으로 집으면 같은 State를 두 번 가변 대여하게 된다.
-        // 한 번의 분할에서 갈라내고, 타깃은 거리 순서를 보존하도록 action.targets 순서로 담는다.
+        // 타깃은 거리 순서를 보존하도록 action.targets 순서로 담음.
         let (boss, students) = state.split_mut();
         let mut caster = None;
         let mut slots: Vec<Option<&mut StateData>> =
@@ -117,138 +107,44 @@ impl Simulator for Simulation {
     }
 
     fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, Error> {
-        let mut skill_mask = 0u64;
+        let mut next = state.clone();
+        let (boss, students) = next.split_mut();
 
-        for student in state.students() {
-            skill_mask |= student.effects().data();
-        }
+        for data in std::iter::once(boss).chain(students.iter_mut()) {
+            for cooldown in data.cooldowns_mut() {
+                *cooldown = cooldown.saturating_sub(delta_ticks);
+            }
 
-        skill_mask |= state.boss().effects().data();
-
-        let cost_per_second: u16 = self.cost_charge_time[&skill_mask.into()]; // TODO
-
-        let boss_effects_len = state.boss().remained_effects().len();
-        let boss_remain_effects_ref = state.boss().remained_effects_mut();
-        let mut boss_effects_mask = state.boss().effects();
-        let mut boss_acc_damage = state.boss().accumulated_damage();
-        for (idx, item) in boss_remain_effects_ref.iter().enumerate() {
-            let skill = self.lookup_skill(item.source.into())?;
-
-            if item.ticks <= delta_ticks {
-                if skill.skill_kind() == SkillKind::Damage {
-                    boss_acc_damage.push(damage);
-                }
-                boss_effects_mask &= !(1 << item.source);
-            } else {
-                if skill.skill_kind() == SkillKind::Damage {
-                    boss_acc_damage.push(damage);
-                }
-                boss_remain_effects_ref[idx].ticks -= delta_ticks;
+            // 효과 구간이 [적용, 적용 + 지속)이라 남은 틱이 delta와 같으면 이번에 끝난다.
+            let effects = data.remained_effects_mut();
+            effects.retain(|effect| effect.ticks > delta_ticks);
+            for effect in effects.iter_mut() {
+                effect.ticks -= delta_ticks;
             }
         }
 
-        let boss_effects = boss_effects_mask.into();
+        // 데미지 누적은 효과별 틱 계산이 들어올 때까지 빔.
 
-        let cooldowns_lambda = |t: &u16| t.saturating_sub(delta_ticks);
+        // next_event_frames가 u16::MAX를 돌려줄 수 있어 u16으로 곱하거나 더하면 넘침.
+        let gained = (delta_ticks as u32 * self.cost_per_second as u32 / TPS as u32).min(10) as i8;
+        next.frames = next.frames.saturating_add(delta_ticks);
+        next.cost = (next.cost + gained).min(10);
 
-        let new_students: Vec<StateData> = state
-            .students()
-            .iter()
-            .map(|student: &StateData| {
-                let mut acc_damage = student.accumulated_damage();
-
-                let effects_len = student.remained_effects().len();
-                let mut new_remain_effects = Vec::with_capacity(effects_len);
-                let mut effects_mask = student.effects();
-                for item in student.remained_effects() {
-                    let skill = self.lookup_skill(item.source.into()).unwrap(); // 논리적으로 스킬 항상 존재
-
-                    if item.ticks <= delta_ticks {
-                        if skill.skill_effects() {
-                            acc_damage.push(damage);
-                        }
-                        effects_mask &= !(1 << item.source);
-                    } else {
-                        if skill.skill_kind() == SkillKind::Damage {
-                            acc_damage.push(damage);
-                        }
-
-                        let skill_type = self.lookup_skill(item.0.offset.into());
-                        if let Ok(sk) = skill_type {
-                            for skill_effect in sk.skill_effects() {
-                                for target in skill_effect.targets {
-                                    // 장판스킬일 경우 범위 안에 있는지 고려
-                                    if let Land { kind, region } = target {
-                                        if kind.is_other() {
-                                            todo!()
-                                        }
-                                        let caster_state = state.search_uid(sk.owner());
-                                        if let Some(data) = caster_state
-                                            && is_inside(
-                                                student.coordinate(),
-                                                region,
-                                                data.coordinate(),
-                                            )
-                                        {
-                                            new_remain_effects[];
-                                        }
-                                    } else {
-                                        new_remain_effects.push(RemainedEffects {
-                                            ticks: item.ticks - delta_ticks,
-                                            source: item.source,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                let new_cooldown: Vec<u16> = student
-                    .cooldowns()
-                    .iter()
-                    .map(|i| i.saturating_sub(delta_ticks))
-                    .collect();
-
-                StateData::from_parts(
-                    student.uid(),
-                    student.coordinate(),
-                    &new_cooldown,
-                    new_remain_effects,
-                    acc_damage.clone(),
-                    student.extra().as_ref().map(|s| s.clone_box()),
-                )
-            })
-            .collect();
-
-        let boss = state.boss();
-        let boss_state = StateData::from_parts(
-            boss.uid(),
-            boss.coordinate(),
-            boss.cooldowns(),
-            boss.remained_effects().to_vec(),
-            *boss.accumulated_damage(),
-            boss.extra().as_ref().map(|s| s.clone_box()),
-        );
-
-        let new_state = State::new(
-            &new_students,
-            boss_state,
-            state.frames() + delta_ticks,
-            (state.cost() + (delta_ticks * cost_per_second / TPS) as i8).min(10),
-        );
-        Ok(new_state)
+        Ok(next)
     }
 
     fn next_event_frames(&self, state: &State) -> u16 {
         let mut result: u16 = u16::MAX;
 
         for student in state.students() {
-            for (i, time) in student.cooldowns().iter().enumerate() {
-                let cost = *time / self.cost_charge_time[&student.effects()]; // TODO
-                // 논리적으로 uid 항상 존재
-                if self.character_by_uid(student.uid()).unwrap().skills()[i].cost() as u16 >= cost {
-                    result = result.min(*time);
+            // 논리적으로 uid 항상 존재
+            let character = self.character_by_uid(student.uid()).unwrap();
+            if (self.cost_per_second != 0) {
+                for (i, time) in student.cooldowns().iter().enumerate() {
+                    let cost = *time / self.cost_per_second;
+                    if character.skills()[i].cost() as u16 >= cost {
+                        result = result.min(*time);
+                    }
                 }
             }
 
@@ -257,15 +153,17 @@ impl Simulator for Simulation {
             }
         }
 
+        // 논리적으로 uid 항상 존재
+        let boss = self.character_by_uid(state.boss().uid()).unwrap();
         for (i, time) in state.boss().cooldowns().iter().enumerate() {
-            if self.character_by_uid(state.boss().uid()).unwrap().skills()[i].cost() as u16 // 논리적으로 uid 항상 존재
-                >= *time / self.cost_charge_time[&state.boss().effects()]
-            // TODO
-            {
+            if boss.skills()[i].cost() as u16 >= *time / self.cost_per_second {
                 result = result.min(*time);
             }
-        }
 
+            for effect in boss.remained_effects() {
+                result = result.min(effect.ticks);
+            }
+        }
         result
     }
 
@@ -274,7 +172,7 @@ impl Simulator for Simulation {
     }
 
     fn lookup_skill(&self, index: usize) -> Option<&dyn Skill> {
-        self.skills.get(index).cloned().as_deref()
+        self.skills.get(index).map(|skill| &**skill)
     }
 
     fn character_by_uid(&self, uid: Uid) -> Option<&dyn Character> {
