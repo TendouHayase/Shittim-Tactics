@@ -28,6 +28,7 @@ pub struct Simulation {
 
 impl Simulator for Simulation {
     fn initial_state(&self) -> State {
+        // 학생 스킬수는 항상 3
         if self.students.len() == 6 {
             State {
                 students: core::state::StudentState::TotalAssault(std::array::from_fn(|i| {
@@ -47,13 +48,15 @@ impl Simulator for Simulation {
             }
         } else if self.students.len() == 10 {
             State {
-                students: core::state::StudentState::TotalAssault(std::array::from_fn(|i| {
-                    StateData::new(
-                        self.students[i].uid(),
-                        3,
-                        self.students[i].extra.map(|init| init()),
-                    )
-                })),
+                students: core::state::StudentState::FinalRestrictionRelease(std::array::from_fn(
+                    |i| {
+                        StateData::new(
+                            self.students[i].uid(),
+                            3,
+                            self.students[i].extra.map(|init| init()),
+                        )
+                    },
+                )),
                 boss: StateData::new(
                     self.boss.uid(),
                     self.boss.skills.len(),
