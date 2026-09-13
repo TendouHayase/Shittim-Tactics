@@ -23,7 +23,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
 pub struct StudentSpec {
-    pub id: u32,
+    pub uid: Uid,
     pub name: String,
 
     pub level: u8,
@@ -162,7 +162,7 @@ pub struct StudentStats {
 
 impl PartialEq for StudentStats {
     fn eq(&self, other: &Self) -> bool {
-        self.student_stats.id == other.student_stats.id
+        self.student_stats.uid == other.student_stats.uid
     }
 }
 
@@ -170,7 +170,7 @@ impl Eq for StudentStats {}
 
 impl Hash for StudentStats {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.student_stats.id.hash(state);
+        self.student_stats.uid.hash(state);
     }
 }
 
@@ -199,6 +199,34 @@ impl Student {
             },
             skills,
         })
+    }
+}
+
+impl Character for Student {
+    fn uid(&self) -> Uid {
+        self.stats.student_stats.uid
+    }
+
+    fn stats(&self) -> &BaseStats {
+        &self.stats.base_stats
+    }
+
+    fn skills(&self) -> &[Box<dyn Skill>] {
+        &self.skills
+    }
+}
+
+impl Character for Box<Student> {
+    fn uid(&self) -> Uid {
+        self.stats.student_stats.uid
+    }
+
+    fn stats(&self) -> &BaseStats {
+        &self.stats.base_stats
+    }
+
+    fn skills(&self) -> &[Box<dyn Skill>] {
+        &self.skills
     }
 }
 
@@ -282,20 +310,6 @@ impl PartialEq for Student {
     }
 }
 
-impl Character for Student {
-    fn uid(&self) -> Uid {
-        Uid::new(self.stats.student_stats.id as u64)
-    }
-
-    fn stats(&self) -> &BaseStats {
-        &self.stats.base_stats
-    }
-
-    fn skills(&self) -> &[Box<dyn Skill>] {
-        &self.skills
-    }
-}
-
 impl Hash for Student {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.stats.hash(state);
@@ -315,7 +329,7 @@ mod tests {
 
     fn spec(level: u8, star: u8) -> StudentSpec {
         StudentSpec::builder()
-            .id(10135)
+            .uid(Uid::new(10135))
             .name("Kei".to_string())
             .level(level)
             .star(star)

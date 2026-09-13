@@ -96,5 +96,5 @@ pub trait Simulator {
     fn lookup_skill(&self, index: usize) -> Result<&dyn Skill, error::Error>;
 
     /// The character with this `id`, if there is one.
-    fn character_by_id(&self, id: Uid) -> Option<&dyn Character>;
+    fn character_by_uid(&self, id: Uid) -> Option<&dyn Character>;
 }

@@ -5,7 +5,7 @@ use crate::create_boss_skill;
 use crate::perorodzilla::state::PerorodzillaState;
 use core::{
     constants::MAX_STUDENT_COUNT,
-    effect::{EffectKind, EffectTiming},
+    effect::{Effect, EffectTiming},
     skill::{Skill, SkillEffect, SkillEffectTarget, SkillKind, SkillMeta, SkillType},
     stat::StatKind,
     state::StateData,
@@ -149,8 +149,8 @@ pub mod params {
     }
 }
 
-fn damage_effect(percent: u16) -> EffectKind {
-    EffectKind::Damage {
+fn damage_effect(percent: u16) -> Effect {
+    Effect::Damage {
         coef_num: percent,
         coef_den: params::PERCENT_DEN,
     }
@@ -268,7 +268,7 @@ create_boss_skill!(
                     id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
-                        kind: EffectKind::Debuff {
+                        kind: Effect::Debuff {
                             ty: StatKind::Def,
                             duration: params.def_down_duration,
                             scale: 0,
@@ -320,7 +320,7 @@ create_boss_skill!(
 
                 if params.blast_atk_down_scale > 0 {
                     targets.push(SkillEffectTarget::Land {
-                        kind: EffectKind::Debuff {
+                        kind: Effect::Debuff {
                             ty: StatKind::Atk,
                             duration: params.blast_atk_down_duration,
                             scale: params.blast_atk_down_scale,
@@ -370,7 +370,7 @@ create_boss_skill!(
 
             if params.aqua_ball_def_down {
                 targets.push(SkillEffectTarget::Land {
-                    kind: EffectKind::Debuff {
+                    kind: Effect::Debuff {
                         ty: StatKind::Def,
                         duration: params.def_down_duration,
                         scale: 0,
@@ -408,7 +408,7 @@ create_boss_skill!(
                 id: self.id(),
                 timing: EffectTiming::Instant,
                 targets: vec![SkillEffectTarget::Oneself {
-                    kind: EffectKind::new_other(Self::other_apply),
+                    kind: Effect::new_other(Self::other_apply),
                 }],
             }]
         }
@@ -444,12 +444,12 @@ create_boss_skill!(
             let params = self.params;
 
             let mut targets = vec![SkillEffectTarget::Oneself {
-                kind: EffectKind::new_other(Self::other_apply),
+                kind: Effect::new_other(Self::other_apply),
             }];
 
             if params.knockback_on_groggy {
                 targets.push(SkillEffectTarget::Student {
-                    kind: EffectKind::Move,
+                    kind: Effect::Move,
                     count: MAX_STUDENT_COUNT as u8,
                 });
             }
@@ -537,7 +537,7 @@ create_boss_skill!(
             id: self.id(),
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Oneself {
-                kind: EffectKind::Buff {
+                kind: Effect::Buff {
                     ty: StatKind::MysticEffectiveness,
                     duration: u16::MAX,
                     scale,

@@ -25,7 +25,7 @@ pub fn load(
     let file = StudentFile::from_file(path)?;
     let skills = build_skills(
         kind,
-        Uid::new(spec.id as u64),
+        Uid::new(spec.uid as u64),
         &file.skills,
         spec.skill_levels,
         skill_offset,
@@ -88,7 +88,7 @@ mod tests {
 
     fn load_kei() -> Student {
         let spec = StudentSpec::builder()
-            .id(10135)
+            .uid(10135)
             .name("Kei".to_string())
             .level(90)
             .star(5)

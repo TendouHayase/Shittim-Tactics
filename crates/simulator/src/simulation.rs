@@ -7,17 +7,20 @@ use core::{
     character::Character,
     constants::TPS,
     damage::{Damage, key::SkillsBitMask},
-    effect::EffectKind,
+    effect::Effect,
     simulator::Simulator,
-    skill::{Skill, SkillEffectTarget::Land, SkillMeta, SkillOps},
+    skill::{Skill, SkillEffectTarget::Land, SkillKind, SkillMeta, SkillOps},
     state::{AccumulatedDamage, CommonStateData, RemainedEffects, State, StateData, Stateful},
     student::Student,
+    uid::Uid,
     utils::is_inside,
 };
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
 };
+
+use error::Error;
 
 pub struct Simulation {
     pub students: Vec<Box<Student>>,
@@ -132,12 +135,12 @@ impl Simulator for Simulation {
             let skill = self.lookup_skill(item.offset.into())?;
 
             if item.ticks <= delta_ticks {
-                if skill.skill_kind() == EffectKind::Damage {
+                if skill.skill_kind() == SkillKind::Damage {
                     boss_acc_damage.push(damage);
                 }
-                boss_effects_mask &= !bit;
+                boss_effects_mask &= !(1 << item.offset);
             } else {
-                if skill.skill_kind() == EffectKind::Damage {
+                if skill.skill_kind() == SkillKind::Damage {
                     boss_acc_damage.push(damage);
                 }
                 new_boss_remain_effects.push(RemainedEffects {
@@ -157,19 +160,19 @@ impl Simulator for Simulation {
             .map(|student: &StateData| {
                 let mut acc_damage = student.accumulated_damage();
 
-                let effects_len = student.remained_effects.len();
+                let effects_len = student.remained_effects().len();
                 let mut new_remain_effects = Vec::with_capacity(effects_len);
-                let mut effects_mask = student.effects;
-                for item in student.remained_effects {
-                    let skill = self.lookup_skill(item.offset.into())?;
+                let mut effects_mask = student.effects();
+                for item in student.remained_effects() {
+                    let skill = self.lookup_skill(item.offset.into()).unwrap(); // 논리적으로 스킬 항상 존재
 
-                    if item.0.ticks <= delta_ticks {
-                        if skill.skill_kind() == EffectKind::Damage {
+                    if item.ticks <= delta_ticks {
+                        if skill.skill_kind() == SkillKind::Damage {
                             acc_damage.push(damage);
                         }
-                        effects_mask &= !bit;
+                        effects_mask &= !(1 << item.offset);
                     } else {
-                        if skill.skill_kind() == EffectKind::Damage {
+                        if skill.skill_kind() == SkillKind::Damage {
                             acc_damage.push(damage);
                         }
 
@@ -182,23 +185,23 @@ impl Simulator for Simulation {
                                         if kind.is_other() {
                                             todo!()
                                         }
-                                        let caster_state = state.state_data_by_id(sk.owner().id());
+                                        let caster_state = state.search_uid(sk.owner());
                                         if let Some(data) = caster_state
                                             && is_inside(
-                                                student.coordinate,
+                                                student.coordinate(),
                                                 region,
-                                                data.coordinate,
+                                                data.coordinate(),
                                             )
                                         {
                                             new_remain_effects.push(RemainedEffects {
-                                                ticks: item.0.ticks - delta_ticks,
-                                                offset: item.0.offset,
+                                                ticks: item.ticks - delta_ticks,
+                                                offset: item.offset,
                                             });
                                         }
                                     } else {
                                         new_remain_effects.push(RemainedEffects {
-                                            ticks: item.0.ticks - delta_ticks,
-                                            offset: item.0.offset,
+                                            ticks: item.ticks - delta_ticks,
+                                            offset: item.offset,
                                         });
                                     }
                                 }
@@ -207,14 +210,16 @@ impl Simulator for Simulation {
                     }
                 }
 
+                let new_cooldown: Vec<u16> = student
+                    .cooldowns()
+                    .iter()
+                    .map(|i| i.saturating_sub(delta_ticks))
+                    .collect();
+
                 StateData::from_parts(
                     student.uid(),
                     student.coordinate(),
-                    student
-                        .cooldowns()
-                        .iter()
-                        .map(|i| i.saturating_sub(delta_ticks))
-                        .collect(),
+                    &new_cooldown,
                     effects_mask.into(),
                     new_remain_effects,
                     acc_damage.clone(),
@@ -223,11 +228,20 @@ impl Simulator for Simulation {
             })
             .collect();
 
+        let boss = state.boss();
+        let boss_state = StateData::from_parts(
+            boss.uid(),
+            boss.coordinate(),
+            boss.cooldowns(),
+            boss.effects(),
+            boss.remained_effects().to_vec(),
+            *boss.accumulated_damage(),
+            boss.extra().as_ref().map(|s| s.clone_box()),
+        );
+
         let new_state = State::new(
             &new_students,
-            state
-                .boss()
-                .clone_matching(cooldowns_lambda, boss_effects, new_boss_remain_effects),
+            boss_state,
             state.frames() + delta_ticks,
             (state.cost() + (delta_ticks * cost_per_second / TPS) as i8).min(10),
         );
@@ -238,21 +252,22 @@ impl Simulator for Simulation {
         let mut result: u16 = u16::MAX;
 
         for student in state.students() {
-            for (i, time) in student.cooldowns.iter().enumerate() {
-                let cost = *time / self.cost_charge_time[&student.effects]; // TODO
-                if student.character.skill_list()[i].cost() as u16 >= cost {
+            for (i, time) in student.cooldowns().iter().enumerate() {
+                let cost = *time / self.cost_charge_time[&student.effects()]; // TODO
+                // 논리적으로 uid 항상 존재
+                if self.character_by_uid(student.uid()).unwrap().skills()[i].cost() as u16 >= cost {
                     result = result.min(*time);
                 }
             }
-            let remain_effect = student.remained_effects.peek();
-            if let Some(effect) = remain_effect {
-                result = result.min(effect.0.ticks);
+
+            for effect in student.remained_effects() {
+                result = result.min(effect.ticks);
             }
         }
 
-        for (i, time) in state.boss().cooldowns.iter().enumerate() {
-            if state.boss().character.skill_list()[i].cost() as u16
-                >= *time / self.cost_charge_time[&state.boss().effects]
+        for (i, time) in state.boss().cooldowns().iter().enumerate() {
+            if self.character_by_uid(state.boss().uid()).unwrap().skills()[i].cost() as u16 // 논리적으로 uid 항상 존재
+                >= *time / self.cost_charge_time[&state.boss().effects()]
             // TODO
             {
                 result = result.min(*time);
@@ -267,7 +282,7 @@ impl Simulator for Simulation {
     }
 
     fn lookup_skill(&self, index: usize) -> Result<&dyn Skill, error::Error> {
-        let total_skill_count = 3 + self.students.len() * 3 + self.boss.skill_list().len();
+        let total_skill_count = 3 + self.students.len() * 3 + self.boss.skills().len();
         let student_skill_offset = 3;
         let boss_skill_offset = 3 + 3 * self.students.len();
         if index < 3 || index >= total_skill_count {
@@ -278,7 +293,8 @@ impl Simulator for Simulation {
         }
 
         if index < boss_skill_offset {
-            self.students
+            Ok(&**self
+                .students
                 .get((index - student_skill_offset) / 3)
                 .ok_or(error::Error::Unknown(format!(
                     "index {} can't find skill",
@@ -290,30 +306,28 @@ impl Simulator for Simulation {
                 .ok_or(error::Error::Unknown(format!(
                     "index {} can't find skill",
                     index
-                )))
-                .map(|&x| &*x)
+                )))?)
         } else {
-            self.boss
+            Ok(&**self
+                .boss
                 .skills
                 .get(index - boss_skill_offset)
                 .ok_or(error::Error::Unknown(format!(
                     "index {} can't find skill",
                     index
-                )))
-                .map(|&x| &*x)
+                )))?)
         }
     }
 
-    fn character_by_id(&self, id: u32) -> Option<Character> {
-        if id == self.boss.uid() {
-            Some(Character::Boss(&self.boss))
+    fn character_by_uid(&self, uid: Uid) -> Option<&dyn Character> {
+        if uid == self.boss.uid() {
+            Some(&self.boss)
         } else {
             for student in &self.students {
-                if id == student.uid() {
-                    return Some(Character::Student(student));
+                if uid == student.uid() {
+                    return Some(student);
                 }
             }
-
             None
         }
     }

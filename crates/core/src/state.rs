@@ -4,6 +4,7 @@ use error::Error;
 
 use crate::{
     damage::{Damage, DamageDist, key::SkillsBitMask},
+    effect::Effect,
     extra::ExtraStateData,
     uid::Uid,
     utils::Position,
@@ -91,7 +92,6 @@ impl State {
         self.students()
             .iter()
             .find(|&student| uid == student.common.uid)
-            .map(|v| v as _)
     }
 
     pub fn search_uid_mut(&mut self, uid: Uid) -> Option<&mut StateData> {
@@ -99,13 +99,9 @@ impl State {
             return Some(&mut self.boss);
         }
 
-        for student in self.students_mut() {
-            if uid == student.common.uid {
-                return Some(student);
-            }
-        }
-
-        None
+        self.students_mut()
+            .iter_mut()
+            .find(|student| uid == student.common.uid)
     }
 }
 
@@ -125,6 +121,7 @@ pub struct CommonStateData {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct RemainedEffects {
     pub ticks: u16,
+    pub effect: Effect,
     pub offset: u8,
 }
 

@@ -28,7 +28,7 @@ impl Pmf {
         self.offset + self.mass.len() as u64 - 1
     }
 
-    /// 칸 수는 이 표현에만 있는 개념이라 밖으로 내보내지 않는다. 측정용.
+    /// 칸 수는 이 표현에만 있는 개념이라 밖으로 내보내지 않음. 측정용.
     #[cfg(test)]
     pub fn cells(&self) -> usize {
         self.mass.len()
@@ -44,7 +44,7 @@ impl Pmf {
         let lo = normal.min.min(crit.min);
         let hi = normal.max.max(crit.max);
 
-        // 한 점에 몰린 타(고정 데미지 기믹)는 합성곱이 아니라 평행이동이다.``
+        // 단일 트루뎀은 합성곱이 아니라 평행이동.``
         if lo == hi {
             self.offset += lo;
             return;
@@ -58,7 +58,7 @@ impl Pmf {
             new_len as f64 * 8.0 / 1e9,
         );
 
-        // 제자리 누적합. mass[i]는 이 시점부터 Σ_{x<=i} mass[x]를 뜻한다.
+        // 누적합
         for i in 1..old_len {
             self.mass[i].0 += self.mass[i - 1].0;
         }

@@ -37,7 +37,7 @@ pub enum EffectTiming {
 struct EffectKindOther(*const u8);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EffectKind {
+pub enum Effect {
     Damage {
         coef_num: u16,
         coef_den: u16,
@@ -66,14 +66,14 @@ pub enum EffectKind {
     Other(EffectKindOther),
 }
 
-impl EffectKind {
+impl Effect {
     #[inline]
     pub fn new_other(func: OtherEffectFn) -> Self {
-        EffectKind::Other(EffectKindOther(func as *const u8))
+        Effect::Other(EffectKindOther(func as *const u8))
     }
     #[inline]
     pub fn is_other(&self) -> bool {
-        if let EffectKind::Other(_) = self {
+        if let Effect::Other(_) = self {
             true
         } else {
             false
@@ -82,7 +82,7 @@ impl EffectKind {
     #[inline]
     pub fn as_other(&self) -> Option<OtherEffectFn> {
         match self {
-            EffectKind::Other(ptr) => unsafe {
+            Effect::Other(ptr) => unsafe {
                 if ptr.0.is_null() {
                     None
                 } else {

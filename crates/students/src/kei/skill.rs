@@ -1,6 +1,6 @@
 use super::state::KeiState;
 use core::{
-    effect::{EffectKind, EffectTiming},
+    effect::{Effect, EffectTiming},
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillKind, SkillMeta, SkillParams,
         SkillType,
@@ -203,14 +203,14 @@ impl SkillMeta for KeiExSkill {
 
 impl Skill for KeiExSkill {
     fn skill_effects(&self) -> Vec<core::skill::SkillEffect> {
-        let effective_buff = EffectKind::Buff {
+        let effective_buff = Effect::Buff {
             ty: StatKind::MysticEffectiveness,
             duration: self.params.duration,
             scale: self.params.effective_buff_scale,
             amount: 0,
         };
 
-        let atk_buff = EffectKind::Buff {
+        let atk_buff = Effect::Buff {
             ty: StatKind::Atk,
             duration: self.params.duration,
             scale: self.params.atk_buff_scale,
@@ -310,7 +310,7 @@ impl Skill for KeiBasicSkill {
             id: self.id(),
             timing: EffectTiming::Instant,
             targets: vec![SkillEffectTarget::Boss {
-                kind: EffectKind::Damage {
+                kind: Effect::Damage {
                     coef_num: self.params.coef_percent,
                     coef_den: params::PERCENT_DEN,
                 },
@@ -391,7 +391,7 @@ impl Skill for KeiSubSkill {
                 duration_frames: self.duration(),
             },
             targets: vec![SkillEffectTarget::Boss {
-                kind: EffectKind::new_other(Self::effect_apply),
+                kind: Effect::new_other(Self::effect_apply),
             }],
         }]
     }

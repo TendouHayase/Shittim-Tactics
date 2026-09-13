@@ -3,7 +3,7 @@
 
 use crate::create_boss_skill;
 use core::{
-    effect::{EffectKind, EffectTiming},
+    effect::{Effect, EffectTiming},
     skill::{SkillEffect, SkillEffectTarget, SkillKind, SkillMeta, SkillType},
     stat::StatKind,
     state::StateData,
@@ -193,8 +193,8 @@ pub mod params {
     }
 }
 
-fn damage_effect(percent: u16) -> EffectKind {
-    EffectKind::Damage {
+fn damage_effect(percent: u16) -> Effect {
+    Effect::Damage {
         coef_num: percent,
         coef_den: params::PERCENT_DEN,
     }
@@ -301,7 +301,7 @@ create_boss_skill!(
                     id: self.id(),
                     timing: EffectTiming::Instant,
                     targets: vec![SkillEffectTarget::Student {
-                        kind: EffectKind::Debuff {
+                        kind: Effect::Debuff {
                             ty: StatKind::Def,
                             duration: params.def_down_duration,
                             scale: params.def_down_scale,

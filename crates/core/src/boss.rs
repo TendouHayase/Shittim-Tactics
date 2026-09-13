@@ -27,64 +27,6 @@ pub struct Boss {
     pub skills: Vec<Box<dyn Skill>>,
 }
 
-/// Top level of `data/bosses/<boss>.json`.
-///
-/// Armor type keys differ per boss, so every remaining key is swept up. Any top-level key that
-/// is not an armor type, such as `skills`, must therefore be declared as a field here; leaving
-/// one out surfaces as an `ArmorType` parse failure.
-#[derive(Debug, Deserialize)]
-pub struct BossFile {
-    pub id: u32,
-    pub name: LocalizedName,
-    pub skills: serde_json::Value,
-
-    #[serde(flatten)]
-    by_armor: HashMap<ArmorType, HashMap<Difficulty, DifficultyEntry>>,
-}
-
-impl BossFile {
-    pub fn from_file(path: &str) -> Result<Self, Error> {
-        Ok(parsing_json::read_json(path)?)
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct DifficultyEntry {
-    #[serde(flatten)]
-    stats: BaseStats,
-    groggy_gauge: u64,
-    groggy_duration: u8,
-    phase_switching_hp: [u64; 3],
-}
-
-impl PartialEq for Boss {
-    fn eq(&self, other: &Self) -> bool {
-        self.stats == other.stats
-    }
-}
-
-impl Eq for Boss {}
-
-impl Hash for Boss {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.stats.id.hash(state);
-    }
-}
-
-impl Character for Boss {
-    fn uid(&self) -> Uid {
-        Uid::new(self.stats.id as u64)
-    }
-
-    fn stats(&self) -> &BaseStats {
-        &self.stats.base_stats
-    }
-
-    fn skills(&self) -> &[Box<dyn Skill>] {
-        &self.skills
-    }
-}
-
 impl Boss {
     pub fn new(
         file: &BossFile,
@@ -123,6 +65,78 @@ impl Boss {
 
         Ok(Boss { stats, skills })
     }
+}
+
+impl PartialEq for Boss {
+    fn eq(&self, other: &Self) -> bool {
+        self.stats == other.stats
+    }
+}
+
+impl Eq for Boss {}
+
+impl Hash for Boss {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.stats.id.hash(state);
+    }
+}
+
+impl Character for Boss {
+    fn uid(&self) -> Uid {
+        Uid::new(self.stats.id as u64)
+    }
+
+    fn stats(&self) -> &BaseStats {
+        &self.stats.base_stats
+    }
+
+    fn skills(&self) -> &[Box<dyn Skill>] {
+        &self.skills
+    }
+}
+
+impl Character for Box<Boss> {
+    fn uid(&self) -> Uid {
+        Uid::new(self.stats.id as u64)
+    }
+
+    fn stats(&self) -> &BaseStats {
+        &self.stats.base_stats
+    }
+
+    fn skills(&self) -> &[Box<dyn Skill>] {
+        &self.skills
+    }
+}
+
+/// Top level of `data/bosses/<boss>.json`.
+///
+/// Armor type keys differ per boss, so every remaining key is swept up. Any top-level key that
+/// is not an armor type, such as `skills`, must therefore be declared as a field here; leaving
+/// one out surfaces as an `ArmorType` parse failure.
+#[derive(Debug, Deserialize)]
+pub struct BossFile {
+    pub id: u32,
+    pub name: LocalizedName,
+    pub skills: serde_json::Value,
+
+    #[serde(flatten)]
+    by_armor: HashMap<ArmorType, HashMap<Difficulty, DifficultyEntry>>,
+}
+
+impl BossFile {
+    pub fn from_file(path: &str) -> Result<Self, Error> {
+        Ok(parsing_json::read_json(path)?)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct DifficultyEntry {
+    #[serde(flatten)]
+    stats: BaseStats,
+    groggy_gauge: u64,
+    groggy_duration: u8,
+    phase_switching_hp: [u64; 3],
 }
 
 #[cfg(test)]

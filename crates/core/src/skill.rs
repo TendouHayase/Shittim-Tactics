@@ -1,4 +1,4 @@
-use crate::effect::{CCEffect, EffectKind, EffectTiming};
+use crate::effect::{CCEffect, Effect, EffectTiming};
 use crate::state::StateData;
 use crate::uid::Uid;
 use crate::utils::Position;
@@ -58,15 +58,16 @@ pub trait SkillMeta {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SkillEffectTarget {
-    Boss { kind: EffectKind },
-    Student { kind: EffectKind, count: u8 },
-    Land { kind: EffectKind, region: Region },
-    Oneself { kind: EffectKind },
+    Boss { kind: Effect },
+    Student { kind: Effect, count: u8 },
+    Land { kind: Effect, region: Region },
+    Oneself { kind: Effect },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SkillKind {
     Damage,
+    SustainedDamage,
     Heal,
     Buff,
     Debuff,
