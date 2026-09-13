@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
 
 use error::Error;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub struct BossStats {
 #[derive(Debug)]
 pub struct Boss {
     pub stats: BossStats,
-    pub skills: Vec<Box<dyn Skill>>,
+    pub skills: Vec<Arc<dyn Skill>>,
 }
 
 impl Boss {
@@ -33,7 +33,7 @@ impl Boss {
         armor_type: ArmorType,
         difficulty: Difficulty,
         terrain: Terrain,
-        skills: Vec<Box<dyn Skill>>,
+        skills: Vec<Arc<dyn Skill>>,
     ) -> Result<Self, Error> {
         let entry = file
             .by_armor
@@ -90,7 +90,7 @@ impl Character for Boss {
         &self.stats.base_stats
     }
 
-    fn skills(&self) -> &[Box<dyn Skill>] {
+    fn skills(&self) -> &[Arc<dyn Skill>] {
         &self.skills
     }
 }
@@ -104,7 +104,7 @@ impl Character for Box<Boss> {
         &self.stats.base_stats
     }
 
-    fn skills(&self) -> &[Box<dyn Skill>] {
+    fn skills(&self) -> &[Arc<dyn Skill>] {
         &self.skills
     }
 }

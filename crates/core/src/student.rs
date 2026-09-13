@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
 
 use error::Error;
 use typed_builder::TypedBuilder;
@@ -180,7 +180,7 @@ pub struct Student {
 
     /// Ex, Basic and Sub. The enhanced skill is always a stat increase, so it is folded into
     /// [`StudentStats::base_stats`] instead of being a skill.
-    pub skills: Vec<Box<dyn Skill>>,
+    pub skills: Vec<Arc<dyn Skill>>,
 }
 
 impl Student {
@@ -188,7 +188,7 @@ impl Student {
         spec: StudentSpec,
         file: &StudentFile,
         gears: &GearTable,
-        skills: Vec<Box<dyn Skill>>,
+        skills: Vec<Arc<dyn Skill>>,
     ) -> Result<Self, Error> {
         let base_stats = build_stats(file, &spec, gears)?;
 
@@ -211,7 +211,7 @@ impl Character for Student {
         &self.stats.base_stats
     }
 
-    fn skills(&self) -> &[Box<dyn Skill>] {
+    fn skills(&self) -> &[Arc<dyn Skill>] {
         &self.skills
     }
 }
@@ -225,7 +225,7 @@ impl Character for Box<Student> {
         &self.stats.base_stats
     }
 
-    fn skills(&self) -> &[Box<dyn Skill>] {
+    fn skills(&self) -> &[Arc<dyn Skill>] {
         &self.skills
     }
 }

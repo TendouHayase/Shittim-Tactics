@@ -32,41 +32,40 @@ pub trait Simulator {
         let mut targets = Vec::new();
 
         for skill_effect in skill.skill_effects() {
-            for target in skill_effect.targets {
-                match target {
-                    // 캐스터 자신에 대한 효과는 `Skill::apply`의 caster 인자로 처리한다.
-                    // 여기 넣어봐야 `apply`가 걸러낸다.
-                    SkillEffectTarget::Oneself { .. } => {}
+            let target = skill_effect.targets;
+            match target {
+                // 캐스터 자신에 대한 효과는 `Skill::apply`의 caster 인자로 처리한다.
+                // 여기 넣어봐야 `apply`가 걸러낸다.
+                SkillEffectTarget::Oneself { .. } => {}
 
-                    SkillEffectTarget::Student { count, .. } => {
-                        let mut students: Vec<(Position, Uid)> = state
-                            .students()
-                            .iter()
-                            .map(|student| (student.coordinate(), student.uid()))
-                            .filter(|student| student.1 != caster_id)
-                            .collect();
+                SkillEffectTarget::Student { count, .. } => {
+                    let mut students: Vec<(Position, Uid)> = state
+                        .students()
+                        .iter()
+                        .map(|student| (student.coordinate(), student.uid()))
+                        .filter(|student| student.1 != caster_id)
+                        .collect();
 
-                        // 유클리드 거리로 정렬
-                        students.sort_by(|lhs, rhs| {
-                            euclidean_distance(caster_coord, lhs.0)
-                                .total_cmp(&euclidean_distance(caster_coord, rhs.0))
-                        });
+                    // 유클리드 거리로 정렬
+                    students.sort_by(|lhs, rhs| {
+                        euclidean_distance(caster_coord, lhs.0)
+                            .total_cmp(&euclidean_distance(caster_coord, rhs.0))
+                    });
 
-                        // 캐스터를 뺀 인원이 count보다 적을 수 있으므로 인덱싱 대신 take.
-                        targets.extend(students.iter().take(count.into()).map(|s| s.1));
+                    // 캐스터를 뺀 인원이 count보다 적을 수 있으므로 인덱싱 대신 take.
+                    targets.extend(students.iter().take(count.into()).map(|s| s.1));
+                }
+
+                SkillEffectTarget::Boss { .. } => targets.push(state.boss().uid()),
+
+                SkillEffectTarget::Land { region, .. } => {
+                    if is_inside(state.boss().coordinate(), region, caster_coord) {
+                        targets.push(state.boss().uid());
                     }
 
-                    SkillEffectTarget::Boss { .. } => targets.push(state.boss().uid()),
-
-                    SkillEffectTarget::Land { region, .. } => {
-                        if is_inside(state.boss().coordinate(), region, caster_coord) {
-                            targets.push(state.boss().uid());
-                        }
-
-                        for student in state.students() {
-                            if is_inside(student.coordinate(), region, caster_coord) {
-                                targets.push(student.uid());
-                            }
+                    for student in state.students() {
+                        if is_inside(student.coordinate(), region, caster_coord) {
+                            targets.push(student.uid());
                         }
                     }
                 }
