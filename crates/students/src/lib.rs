@@ -1,14 +1,19 @@
 pub mod kei;
 
 use core::{
+    extra::ExtraInit,
     skill::Skill,
     student::{Student, StudentFile, StudentSpec},
     table::gear::GearTable,
     uid::Uid,
 };
 use error::Error;
-use kei::skill::{KeiBasicSkill, KeiExSkill, KeiSubSkill, params::RawSkills};
+use kei::{
+    skill::{KeiBasicSkill, KeiExSkill, KeiSubSkill, params::RawSkills},
+    state::KeiState,
+};
 use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StudentKind {
@@ -25,13 +30,17 @@ pub fn load(
     let file = StudentFile::from_file(path)?;
     let skills = build_skills(
         kind,
-        Uid::new(spec.uid as u64),
+        spec.uid,
         &file.skills,
         spec.skill_levels,
         skill_offset,
     )?;
 
-    Student::new(spec, &file, gears, skills)
+    let extra: Option<ExtraInit> = match kind {
+        StudentKind::Kei => Some(core::extra::init::<KeiState>),
+    };
+
+    Student::new(spec, &file, gears, skills, extra)
 }
 
 fn build_skills(
@@ -40,7 +49,7 @@ fn build_skills(
     skills: &serde_json::Value,
     skill_levels: [u8; 4],
     offset: usize,
-) -> Result<Vec<Box<dyn Skill>>, Error> {
+) -> Result<Vec<Arc<dyn Skill>>, Error> {
     let missing = |skill: &str, level: u8| {
         Error::InvalidData(format!("no data for {skill} skill at level {level}"))
     };
@@ -51,13 +60,13 @@ fn build_skills(
             let [ex_lvl, basic_lvl, _, sub_lvl] = skill_levels;
 
             vec![
-                Box::new(KeiExSkill::new(
+                Arc::new(KeiExSkill::new(
                     owner,
                     raw.ex.name.get(),
                     offset,
                     raw.ex.pick(ex_lvl).ok_or_else(|| missing("ex", ex_lvl))?,
                 )),
-                Box::new(KeiBasicSkill::new(
+                Arc::new(KeiBasicSkill::new(
                     owner,
                     raw.basic.name.get(),
                     offset + 1,
@@ -65,7 +74,7 @@ fn build_skills(
                         .pick(basic_lvl)
                         .ok_or_else(|| missing("basic", basic_lvl))?,
                 )),
-                Box::new(KeiSubSkill::new(
+                Arc::new(KeiSubSkill::new(
                     owner,
                     raw.sub.name.get(),
                     offset + 2,
@@ -88,7 +97,7 @@ mod tests {
 
     fn load_kei() -> Student {
         let spec = StudentSpec::builder()
-            .uid(10135)
+            .uid(Uid::new(10135))
             .name("Kei".to_string())
             .level(90)
             .star(5)

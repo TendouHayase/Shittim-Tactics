@@ -10,6 +10,7 @@ use binah::skills::{
 use core::{
     boss::{Boss, BossFile},
     difficulty::Difficulty,
+    extra::ExtraInit,
     skill::Skill,
     terrains::Terrain,
     types::ArmorType,
@@ -22,7 +23,9 @@ use perorodzilla::skills::{
     PerorodzillaHyperSpiralGlareBeam, PerorodzillaSummonMinion, PerorodzillaWhiteHotHeatVision,
     params as pero_params,
 };
+use perorodzilla::state::PerorodzillaState;
 use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BossKind {
@@ -41,8 +44,12 @@ pub fn load(
 ) -> Result<Boss, Error> {
     let file = BossFile::from_file(path)?;
     let skills = build_skills(kind, &file, difficulty, skill_offset)?;
+    let extra: Option<ExtraInit> = match kind {
+        BossKind::Perorodzilla => Some(core::extra::init::<PerorodzillaState>),
+        BossKind::Binah | BossKind::Goz => None,
+    };
 
-    Boss::new(&file, armor_type, difficulty, terrain, skills)
+    Boss::new(&file, armor_type, difficulty, terrain, skills, extra)
 }
 
 fn build_skills(
@@ -50,7 +57,7 @@ fn build_skills(
     file: &BossFile,
     difficulty: Difficulty,
     offset: usize,
-) -> Result<Vec<Box<dyn Skill>>, Error> {
+) -> Result<Vec<Arc<dyn Skill>>, Error> {
     let owner = Uid::new(file.id as u64);
     let name = || file.name.get().to_string();
 
@@ -63,21 +70,21 @@ fn build_skills(
             let purifying_storm = raw.purifying_storm.pick(difficulty);
 
             vec![
-                Box::new(BinahAtsilutsLight::new(
+                Arc::new(BinahAtsilutsLight::new(
                     owner,
                     offset,
                     raw.atsiluts_light.name.get().to_string(),
                     SkillNumbers::of(&atsiluts_light),
                     atsiluts_light,
                 )),
-                Box::new(BinahFiresofSeverity::new(
+                Arc::new(BinahFiresofSeverity::new(
                     owner,
                     offset + 1,
                     raw.fires_of_severity.name.get().to_string(),
                     SkillNumbers::of(&fires_of_severity),
                     fires_of_severity,
                 )),
-                Box::new(BinahPurifyingStorm::new(
+                Arc::new(BinahPurifyingStorm::new(
                     owner,
                     offset + 2,
                     raw.purifying_storm.name.get().to_string(),
@@ -88,7 +95,7 @@ fn build_skills(
         }
 
         BossKind::Goz => vec![
-            Box::new(GozMagicalCoinHat::new(
+            Arc::new(GozMagicalCoinHat::new(
                 owner,
                 offset,
                 name(),
@@ -99,14 +106,14 @@ fn build_skills(
                 },
                 (),
             )),
-            Box::new(GozNowYouSeeUs::new(
+            Arc::new(GozNowYouSeeUs::new(
                 owner,
                 offset + 1,
                 name(),
                 SkillNumbers::default(),
                 (),
             )),
-            Box::new(GozThreeLightMonte::new(
+            Arc::new(GozThreeLightMonte::new(
                 owner,
                 offset + 2,
                 name(),
@@ -123,7 +130,7 @@ fn build_skills(
             let params = pero_params::Params::of(difficulty);
 
             vec![
-                Box::new(PerorodzillaWhiteHotHeatVision::new(
+                Arc::new(PerorodzillaWhiteHotHeatVision::new(
                     owner,
                     offset,
                     name(),
@@ -134,7 +141,7 @@ fn build_skills(
                     },
                     params,
                 )),
-                Box::new(PerorodzillaAquaBall::new(
+                Arc::new(PerorodzillaAquaBall::new(
                     owner,
                     offset + 1,
                     name(),
@@ -144,7 +151,7 @@ fn build_skills(
                     },
                     params,
                 )),
-                Box::new(PerorodzillaSummonMinion::new(
+                Arc::new(PerorodzillaSummonMinion::new(
                     owner,
                     offset + 2,
                     name(),
@@ -154,7 +161,7 @@ fn build_skills(
                     },
                     params,
                 )),
-                Box::new(PerorodzillaAbsorbMinion::new(
+                Arc::new(PerorodzillaAbsorbMinion::new(
                     owner,
                     offset + 3,
                     name(),
@@ -164,7 +171,7 @@ fn build_skills(
                     },
                     params,
                 )),
-                Box::new(PerorodzillaHyperSpiralGlareBeam::new(
+                Arc::new(PerorodzillaHyperSpiralGlareBeam::new(
                     owner,
                     offset + 4,
                     name(),
@@ -174,7 +181,7 @@ fn build_skills(
                     },
                     params,
                 )),
-                Box::new(PerorodzillaBurningPerorodzilla::new(
+                Arc::new(PerorodzillaBurningPerorodzilla::new(
                     owner,
                     offset + 5,
                     name(),
