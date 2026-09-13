@@ -4,7 +4,13 @@ use std::hash::{Hash, Hasher};
 
 use error::Error;
 
-pub trait ExtraState: Any + Debug + Clone + PartialEq + Eq + Hash + Send + Sync {}
+pub trait ExtraState: Any + Debug + Clone + PartialEq + Eq + Default + Hash + Send + Sync {}
+
+pub type ExtraInit = fn() -> Box<dyn ExtraStateData>;
+
+pub fn init<T: ExtraState>() -> Box<dyn ExtraStateData> {
+    Box::new(T::default())
+}
 
 pub trait ExtraStateData: Debug + Any + Send + Sync {
     fn clone_box(&self) -> Box<dyn ExtraStateData>;

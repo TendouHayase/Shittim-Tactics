@@ -9,6 +9,7 @@ use crate::{
     base::BaseStats,
     character::Character,
     constants::MAX_SKILL_LEVEL,
+    extra::ExtraInit,
     locale::LocalizedName,
     skill::Skill,
     stat::{StatKind, StatValueKind},
@@ -181,6 +182,8 @@ pub struct Student {
     /// Ex, Basic and Sub. The enhanced skill is always a stat increase, so it is folded into
     /// [`StudentStats::base_stats`] instead of being a skill.
     pub skills: Vec<Arc<dyn Skill>>,
+
+    pub extra: Option<ExtraInit>,
 }
 
 impl Student {
@@ -189,6 +192,7 @@ impl Student {
         file: &StudentFile,
         gears: &GearTable,
         skills: Vec<Arc<dyn Skill>>,
+        extra: Option<ExtraInit>,
     ) -> Result<Self, Error> {
         let base_stats = build_stats(file, &spec, gears)?;
 
@@ -198,6 +202,7 @@ impl Student {
                 base_stats,
             },
             skills,
+            extra,
         })
     }
 }
@@ -349,7 +354,14 @@ mod tests {
     fn load(spec: StudentSpec) -> Student {
         let gears = GearTable::from_file(GEARS).expect("failed to load gears");
         let file = StudentFile::from_file(KEI).expect("failed to load kei");
-        Student::new(spec, &file, &gears, Vec::new()).expect("failed to build kei")
+        Student::new(
+            spec,
+            &file,
+            &gears,
+            Vec::new(),
+            None,
+        )
+        .expect("failed to build kei")
     }
 
     /// With no gear, talent or weapon the endpoints must come back exactly as transcribed, or the

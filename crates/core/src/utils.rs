@@ -216,25 +216,32 @@ pub fn is_inside(p: Position, region: Region, bias: Position) -> bool {
                 .collect();
 
             // 부호 비트 추출
-            let sign_bit = cross_product(valid_region[0], valid_region[1], valid_region[0], p)
-                .0
-                .to_bits()
-                & 0x80;
+            let sign_bit: i32 =
+                if cross_product(valid_region[0], valid_region[1], valid_region[0], p)
+                    .is_sign_positive()
+                {
+                    1
+                } else {
+                    -1
+                };
             let mut is_include = 0;
 
             for idx in 1..count {
-                let s = cross_product(
+                let s = if cross_product(
                     valid_region[idx as usize],
-                    valid_region[idx as usize % count as usize],
+                    valid_region[(idx as usize + 1) % count as usize],
                     valid_region[idx as usize],
                     p,
                 )
-                .0
-                .to_bits()
-                    & 0x80;
+                .is_sign_positive()
+                {
+                    1
+                } else {
+                    -1
+                };
 
                 // 기존 부호와 같은지 비교
-                is_include = sign_bit ^ s;
+                is_include |= sign_bit ^ s;
             }
 
             is_include == 0
@@ -265,7 +272,7 @@ pub fn is_inside(p: Position, region: Region, bias: Position) -> bool {
             let dot = dot_product(o, y_axis, o, relative_p);
 
             // atan(sin(θ)/cos(θ))
-            let radian = cross.atan2(*dot);
+            let radian = cross.atan2(*dot).rem_euclid(360.0);
 
             start_angle_degree as f32 <= radian.to_degrees()
                 && radian.to_degrees() <= end_angle_degree as f32

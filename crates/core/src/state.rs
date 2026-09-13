@@ -3,8 +3,7 @@ use std::hash::{Hash, Hasher};
 use error::Error;
 
 use crate::{
-    damage::{Damage, DamageDist, key::SkillsBitMask},
-    effect::Effect,
+    damage::{Damage, DamageDist},
     extra::ExtraStateData,
     uid::Uid,
     utils::Position,
@@ -113,34 +112,21 @@ pub struct CommonStateData {
     pub cooldowns: Vec<u16>,
     pub remained_effects: Vec<RemainedEffects>,
     pub accumulated_damage: DamageDist,
-    pub effects: SkillsBitMask,
 
     pub coordinate: Position,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RemainedEffects {
     pub ticks: u16,
-    pub effect: Effect,
-    pub offset: u8,
+    pub effect: u8,
+    pub source: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AccumulatedDamage {
     pub ticks: u16,
     pub damage: Option<Damage>,
-}
-
-impl PartialOrd for RemainedEffects {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for RemainedEffects {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.ticks.cmp(&other.ticks)
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -150,17 +136,16 @@ pub struct StateData {
 }
 
 impl StateData {
-    pub fn new(uid: Uid) -> Self {
+    pub fn new(uid: Uid, cooldowns: usize, extra: Option<Box<dyn ExtraStateData>>) -> Self {
         StateData {
             common: CommonStateData {
                 uid,
                 coordinate: Default::default(),
-                cooldowns: Vec::new(),
-                effects: 0.into(),
+                cooldowns: Vec::with_capacity(cooldowns),
                 remained_effects: Vec::new(),
                 accumulated_damage: Default::default(),
             },
-            extra: None,
+            extra,
         }
     }
 
@@ -168,7 +153,6 @@ impl StateData {
         uid: Uid,
         coordinate: Position,
         cooldowns: &[u16],
-        effects: SkillsBitMask,
         remained_effects: Vec<RemainedEffects>,
         accumulated_damage: DamageDist,
         extra: Option<Box<dyn ExtraStateData>>,
@@ -179,7 +163,6 @@ impl StateData {
                 coordinate,
                 accumulated_damage,
                 cooldowns: cooldowns.to_vec(),
-                effects: effects,
                 remained_effects: remained_effects.clone(),
             },
             extra,
@@ -208,14 +191,6 @@ impl StateData {
 
     pub fn cooldowns_mut(&mut self) -> &mut [u16] {
         &mut self.common.cooldowns
-    }
-
-    pub const fn effects(&self) -> SkillsBitMask {
-        self.common.effects
-    }
-
-    pub const fn effect_mut(&mut self) -> &mut SkillsBitMask {
-        &mut self.common.effects
     }
 
     pub fn remained_effects(&self) -> &[RemainedEffects] {

@@ -13,11 +13,10 @@ pub struct SkillHeader {
     pub name: String,
     pub skill_offset: usize,
     pub skill_type: SkillType,
-    pub skill_kind: SkillKind,
     pub effects: Vec<SkillEffect>,
     pub cost: u8,
-    pub duration: u16,
-    pub frames: u16,
+    pub duration: u16, // 시전후 시전 종료까지의 시간
+    pub frames: u16,   // 발동후 시전까지 시간
 }
 
 pub trait Skill: SkillMeta + Debug + Send + Sync {
@@ -32,9 +31,6 @@ pub trait SkillMeta {
     }
     fn owner(&self) -> Uid {
         self.header().owner
-    }
-    fn id(&self) -> (Uid, usize) {
-        (self.header().owner, self.header().owner_offset)
     }
     fn cost(&self) -> u8 {
         self.header().cost
@@ -51,9 +47,6 @@ pub trait SkillMeta {
     fn skill_type(&self) -> SkillType {
         self.header().skill_type
     }
-    fn skill_kind(&self) -> SkillKind {
-        self.header().skill_kind
-    }
     fn skill_effects(&self) -> &[SkillEffect] {
         &self.header().effects
     }
@@ -65,18 +58,6 @@ pub enum SkillEffectTarget {
     Student { kind: Effect, count: u8 },
     Land { kind: Effect, region: Region },
     Oneself { kind: Effect },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SkillKind {
-    Damage,
-    SustainedDamage,
-    Heal,
-    Buff,
-    Debuff,
-    Move,
-    CC,
-    Other,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

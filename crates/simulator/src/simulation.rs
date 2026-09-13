@@ -17,8 +17,8 @@ use std::sync::Arc;
 use error::Error;
 
 pub struct Simulation {
-    pub students: Vec<Box<Student>>,
-    pub boss: Box<Boss>,
+    pub students: Vec<Student>,
+    pub boss: Boss,
     pub skills: Vec<Arc<dyn Skill>>,
 
     limit_ticks: u16,
@@ -31,18 +31,34 @@ impl Simulator for Simulation {
         if self.students.len() == 6 {
             State {
                 students: core::state::StudentState::TotalAssault(std::array::from_fn(|i| {
-                    StateData::new(self.students[i].uid())
+                    StateData::new(
+                        self.students[i].uid(),
+                        3,
+                        self.students[i].extra.map(|init| init()),
+                    )
                 })),
-                boss: StateData::new(self.boss.uid()),
+                boss: StateData::new(
+                    self.boss.uid(),
+                    self.boss.skills.len(),
+                    self.boss.extra.map(|init| init()),
+                ),
                 frames: 0,
                 cost: 0,
             }
         } else if self.students.len() == 10 {
             State {
-                students: core::state::StudentState::FinalRestrictionRelease(std::array::from_fn(
-                    |i| StateData::new(self.students[i].uid()),
-                )),
-                boss: StateData::new(self.boss.uid()),
+                students: core::state::StudentState::TotalAssault(std::array::from_fn(|i| {
+                    StateData::new(
+                        self.students[i].uid(),
+                        3,
+                        self.students[i].extra.map(|init| init()),
+                    )
+                })),
+                boss: StateData::new(
+                    self.boss.uid(),
+                    self.boss.skills.len(),
+                    self.boss.extra.map(|init| init()),
+                ),
                 frames: 0,
                 cost: 0,
             }
@@ -156,11 +172,13 @@ impl Simulator for Simulation {
         // 논리적으로 uid 항상 존재
         let boss = self.character_by_uid(state.boss().uid()).unwrap();
         for (i, time) in state.boss().cooldowns().iter().enumerate() {
-            if boss.skills()[i].cost() as u16 >= *time / self.cost_per_second {
-                result = result.min(*time);
+            if (self.cost_per_second != 0) {
+                if boss.skills()[i].cost() as u16 >= *time / self.cost_per_second {
+                    result = result.min(*time);
+                }
             }
 
-            for effect in boss.remained_effects() {
+            for effect in state.boss().remained_effects() {
                 result = result.min(effect.ticks);
             }
         }

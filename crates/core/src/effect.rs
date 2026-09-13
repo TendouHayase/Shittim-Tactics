@@ -48,20 +48,17 @@ pub enum Effect {
     },
     Buff {
         ty: BuffKind,
-        duration: u16,
         scale: u16,
         amount: u32,
     },
     Debuff {
         ty: DebuffKind,
-        duration: u16,
         scale: u16,
         amount: u32,
     },
     Move,
     CC {
         ty: CCEffect,
-        duration: u16,
     },
     Other(EffectKindOther),
 }

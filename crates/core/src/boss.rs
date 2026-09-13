@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 use crate::{
-    base::BaseStats, character::Character, difficulty::Difficulty, locale::LocalizedName,
-    skill::Skill, terrains::Terrain, types::ArmorType, uid::Uid,
+    base::BaseStats, character::Character, difficulty::Difficulty, extra::ExtraInit,
+    locale::LocalizedName, skill::Skill, terrains::Terrain, types::ArmorType, uid::Uid,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
@@ -25,6 +25,7 @@ pub struct BossStats {
 pub struct Boss {
     pub stats: BossStats,
     pub skills: Vec<Arc<dyn Skill>>,
+    pub extra: Option<ExtraInit>,
 }
 
 impl Boss {
@@ -34,6 +35,7 @@ impl Boss {
         difficulty: Difficulty,
         terrain: Terrain,
         skills: Vec<Arc<dyn Skill>>,
+        extra: Option<ExtraInit>,
     ) -> Result<Self, Error> {
         let entry = file
             .by_armor
@@ -63,7 +65,11 @@ impl Boss {
             .phase_switching_hp(entry.phase_switching_hp)
             .build();
 
-        Ok(Boss { stats, skills })
+        Ok(Boss {
+            stats,
+            skills,
+            extra,
+        })
     }
 }
 
@@ -155,6 +161,7 @@ mod tests {
             Difficulty::Lunatic,
             Terrain::Outdoor,
             Vec::new(),
+            None,
         )
         .expect("failed to build binah");
 
