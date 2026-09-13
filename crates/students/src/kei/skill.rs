@@ -2,8 +2,7 @@ use super::state::KeiState;
 use core::{
     effect::{BuffKind, Effect, EffectTiming},
     skill::{
-        Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillKind, SkillMeta, SkillParams,
-        SkillType,
+        Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
     state::{RemainedEffects, StateData},
     uid::Uid,
@@ -181,14 +180,12 @@ impl KeiExSkill {
 
         let effective_buff = Effect::Buff {
             ty: BuffKind::MysticEffectiveness,
-            duration: params.duration,
             scale: params.effective_buff_scale,
             amount: 0,
         };
 
         let atk_buff = Effect::Buff {
             ty: BuffKind::Atk,
-            duration: params.duration,
             scale: params.atk_buff_scale,
             amount: 0,
         };
@@ -236,7 +233,6 @@ impl KeiExSkill {
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Ex,
-                skill_kind: SkillKind::Buff,
                 effects,
                 cost: params.cost(),
                 duration: params.duration(),
@@ -256,37 +252,36 @@ impl SkillMeta for KeiExSkill {
 impl Skill for KeiExSkill {
     fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]) {
         let caster_coord = caster.coordinate();
-        let bit = 0x01u64 << self.skill_offset();
+        let source = self.skill_offset() as u8;
+        let active = |data: &StateData| {
+            data.remained_effects()
+                .iter()
+                .any(|remained| remained.source == source)
+        };
         let remained = |effect: usize| RemainedEffects {
             ticks: self.duration(),
             effect: effect as u8,
-            source: self.skill_offset() as u8,
+            source,
         };
 
         for target in targets.iter_mut() {
             if is_inside(target.coordinate(), self.params.region, caster_coord)
-                && (target.effects().0 & bit) == 0
+                && !active(&**target)
             {
                 for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
                     if let SkillEffectTarget::Student { .. } = skill_effect.targets {
                         target.remained_effects_mut().push(remained(effect));
                     }
                 }
-
-                let effects = target.effects().0 | bit;
-                *target.effect_mut() = effects.into();
             }
         }
 
-        if (caster.effects().0 & bit) == 0 {
+        if !active(&*caster) {
             for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
                 if let SkillEffectTarget::Oneself { .. } = skill_effect.targets {
                     caster.remained_effects_mut().push(remained(effect));
                 }
             }
-
-            let effects = caster.effects().0 | bit;
-            *caster.effect_mut() = effects.into();
         }
     }
 }
@@ -322,7 +317,6 @@ impl KeiBasicSkill {
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Basic,
-                skill_kind: SkillKind::Damage,
                 effects,
                 cost: params.cost(),
                 duration: params.duration(),
@@ -382,7 +376,6 @@ impl KeiSubSkill {
                 name: name.to_string(),
                 skill_offset,
                 skill_type: SkillType::Sub,
-                skill_kind: SkillKind::Other,
                 effects,
                 cost: params.cost(),
                 duration: params.duration(),

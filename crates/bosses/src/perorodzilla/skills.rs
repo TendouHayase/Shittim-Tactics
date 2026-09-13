@@ -6,7 +6,7 @@ use crate::perorodzilla::state::PerorodzillaState;
 use core::{
     constants::MAX_STUDENT_COUNT,
     effect::{BuffKind, DebuffKind, Effect, EffectTiming},
-    skill::{Skill, SkillEffect, SkillEffectTarget, SkillKind, SkillType},
+    skill::{Skill, SkillEffect, SkillEffectTarget, SkillType},
     state::StateData,
 };
 
@@ -251,7 +251,6 @@ create_boss_skill!(
     PerorodzillaWhiteHotHeatVision,
     params: params::Params,
     SkillType::Ex,
-    SkillKind::Damage,
     0,
     effects(id, params) {
         let dot_timing = EffectTiming::Persistent {
@@ -262,11 +261,13 @@ create_boss_skill!(
         let mut effects = vec![
             SkillEffect {
                 id,
-                timing: EffectTiming::Instant,
+                timing: EffectTiming::Persistent {
+                    interval_frames: 0,
+                    duration_frames: params.def_down_duration,
+                },
                 targets: SkillEffectTarget::Student {
                     kind: Effect::Debuff {
                         ty: DebuffKind::Def,
-                        duration: params.def_down_duration,
                         scale: 0,
                         amount: params.def_down_amount,
                     },
@@ -324,11 +325,13 @@ create_boss_skill!(
             if params.blast_atk_down_scale > 0 {
                 effects.push(SkillEffect {
                     id,
-                    timing: EffectTiming::Instant,
+                    timing: EffectTiming::Persistent {
+                        interval_frames: 0,
+                        duration_frames: params.blast_atk_down_duration,
+                    },
                     targets: SkillEffectTarget::Land {
                         kind: Effect::Debuff {
                             ty: DebuffKind::Atk,
-                            duration: params.blast_atk_down_duration,
                             scale: params.blast_atk_down_scale,
                             amount: 0,
                         },
@@ -354,7 +357,6 @@ create_boss_skill!(
     PerorodzillaAquaBall,
     params: params::Params,
     SkillType::Ex,
-    SkillKind::Damage,
     1,
     effects(id, params) {
         let mut effects = Vec::new();
@@ -372,11 +374,13 @@ create_boss_skill!(
             if params.aqua_ball_def_down {
                 effects.push(SkillEffect {
                     id,
-                    timing: EffectTiming::Instant,
+                    timing: EffectTiming::Persistent {
+                        interval_frames: 0,
+                        duration_frames: params.def_down_duration,
+                    },
                     targets: SkillEffectTarget::Land {
                         kind: Effect::Debuff {
                             ty: DebuffKind::Def,
-                            duration: params.def_down_duration,
                             scale: 0,
                             amount: params.def_down_amount,
                         },
@@ -402,7 +406,6 @@ create_boss_skill!(
     PerorodzillaSummonMinion,
     params: params::Params,
     SkillType::Ex,
-    SkillKind::Other,
     2,
     effects(id, _params) {
         vec![SkillEffect {
@@ -438,7 +441,6 @@ create_boss_skill!(
     PerorodzillaAbsorbMinion,
     params: params::Params,
     SkillType::Ex,
-    SkillKind::Other,
     3,
     effects(id, params) {
         let mut effects = vec![SkillEffect {
@@ -491,7 +493,6 @@ create_boss_skill!(
     PerorodzillaHyperSpiralGlareBeam,
     params: params::Params,
     SkillType::Ex,
-    SkillKind::Damage,
     4,
     effects(id, params) {
         vec![SkillEffect {
@@ -523,7 +524,6 @@ create_boss_skill!(
     PerorodzillaBurningPerorodzilla,
     params: params::Params,
     SkillType::Passive,
-    SkillKind::Buff,
     5,
     effects(id, params) {
         let scale = params.mystic_up_percent;
@@ -534,11 +534,13 @@ create_boss_skill!(
         } else {
             vec![SkillEffect {
                 id,
-                timing: EffectTiming::Instant,
+                timing: EffectTiming::Persistent {
+                    interval_frames: 0,
+                    duration_frames: u16::MAX,
+                },
                 targets: SkillEffectTarget::Oneself {
                     kind: Effect::Buff {
                         ty: BuffKind::MysticEffectiveness,
-                        duration: u16::MAX,
                         scale,
                         amount: 0,
                     },

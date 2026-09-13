@@ -25,7 +25,7 @@ impl SkillNumbers {
 ///
 /// ```ignore
 /// create_boss_skill!(
-///     Name, params: <Params>, SkillType::Ex, SkillKind::Damage, 0,
+///     Name, params: <Params>, SkillType::Ex, 0,
 ///     effects(id, params) { /* Vec<SkillEffect> */ },
 ///     { /* Skill methods */ }
 /// );
@@ -47,15 +47,13 @@ impl SkillNumbers {
 /// rest as `$params`, both from whoever loads the boss; a skill with no numbers of its own takes
 /// `()`.
 ///
-/// `SkillType` and `SkillKind` must be in scope at the call site, since the variants are passed
-/// in as paths.
+/// `SkillType` must be in scope at the call site, since the variant is passed in as a path.
 #[macro_export]
 macro_rules! create_boss_skill {
     (
         $name:ident,
         params: $params:ty,
         $skill_type:path,
-        $skill_kind:path,
         $skill_id:literal,
         effects($id:ident, $p:ident) $effects:block,
         { $($rest:tt)* }
@@ -88,7 +86,6 @@ macro_rules! create_boss_skill {
                         name,
                         skill_offset,
                         skill_type: $skill_type,
-                        skill_kind: $skill_kind,
                         effects,
                         cost: numbers.cost,
                         duration: numbers.duration,

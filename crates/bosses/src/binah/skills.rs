@@ -4,7 +4,7 @@
 use crate::create_boss_skill;
 use core::{
     effect::{DebuffKind, Effect, EffectTiming},
-    skill::{SkillEffect, SkillEffectTarget, SkillKind, SkillType},
+    skill::{SkillEffect, SkillEffectTarget, SkillType},
     state::StateData,
 };
 
@@ -203,7 +203,6 @@ create_boss_skill!(
     BinahAtsilutsLight,
     params: params::AtsilutsLightParams,
     SkillType::Ex,
-    SkillKind::Damage,
     0,
     effects(id, params) {
         vec![
@@ -243,7 +242,6 @@ create_boss_skill!(
     BinahFiresofSeverity,
     params: params::FiresOfSeverityParams,
     SkillType::Ex,
-    SkillKind::Damage,
     1,
     effects(id, params) {
         let mut effects = vec![SkillEffect {
@@ -280,17 +278,18 @@ create_boss_skill!(
     BinahPurifyingStorm,
     params: params::PurifyingStormParams,
     SkillType::Ex,
-    SkillKind::Damage,
     2,
     effects(id, params) {
         vec![
             SkillEffect {
                 id,
-                timing: EffectTiming::Instant,
+                timing: EffectTiming::Persistent {
+                    interval_frames: 0,
+                    duration_frames: params.def_down_duration,
+                },
                 targets: SkillEffectTarget::Student {
                     kind: Effect::Debuff {
                         ty: DebuffKind::Def,
-                        duration: params.def_down_duration,
                         scale: params.def_down_scale,
                         amount: 0,
                     },
