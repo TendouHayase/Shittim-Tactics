@@ -2,8 +2,6 @@ use std::ops::{Div, Mul};
 
 use stochastic::{dist::Uniform, pmf::Pmf};
 
-pub mod key;
-
 /// A damage distribution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Damage {
