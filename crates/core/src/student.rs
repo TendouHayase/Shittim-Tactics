@@ -354,14 +354,7 @@ mod tests {
     fn load(spec: StudentSpec) -> Student {
         let gears = GearTable::from_file(GEARS).expect("failed to load gears");
         let file = StudentFile::from_file(KEI).expect("failed to load kei");
-        Student::new(
-            spec,
-            &file,
-            &gears,
-            Vec::new(),
-            None,
-        )
-        .expect("failed to build kei")
+        Student::new(spec, &file, &gears, Vec::new(), None).expect("failed to build kei")
     }
 
     /// With no gear, talent or weapon the endpoints must come back exactly as transcribed, or the
