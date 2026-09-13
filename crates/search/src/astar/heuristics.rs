@@ -1,6 +1,4 @@
-use core::{
-    actions::ActionContext, agent::Agent, simulator::Simulator, skill::SkillMeta, state::State,
-};
+use core::{actions::ActionContext, agent::Agent, simulator::Simulator, state::State};
 
 /// The default agent for A\*.
 ///
@@ -18,56 +16,9 @@ impl Agent for Heuristic {
         actions.into_iter().map(|action| (action, prior)).collect()
     }
 
-    fn value(&self, sim: &impl Simulator, state: &State) -> Self::Value {
-        let boss = state.boss();
-
-        let dealt = boss.accumulated_damage();
-
-        // 누적 데미지의 최댓값을 빼야 남은 체력이 최소가 되고, 그래야 남은 프레임을
-        // 과대평가하지 않는다. 과대평가하면 A*의 최적성이 조용히 깨진다.
-        let remain_hp = dealt.saturating_sub(dealt.max());
-        if remain_hp == 0 {
-            return 0;
-        }
-
-        let max_damage = sim.damage_map().max_damage().unwrap_or_default();
-
-        let mut all_ex_damage = 0u64;
-        let mut max_ex_dps = 0u64;
-        let mut max_ex_frames = 0u16;
-
-        for student in state.students() {
-            let damage = student.damage_with_effects().unwrap_or_default();
-            all_ex_damage += damage.crit.max;
-
-            // 0번이 EX 스킬이라는 전제. 스킬 목록이 빈 학생은 건너뛴다.
-            let Some(frames) = student.character.skill_list().first().map(|s| s.duration()) else {
-                continue;
-            };
-            if frames == 0 {
-                continue;
-            }
-
-            let dps = damage.crit.max / frames as u64;
-            if dps > max_ex_dps {
-                max_ex_dps = dps;
-                max_ex_frames = frames;
-            }
-        }
-
-        // 세 하한 중 가장 큰 것이 가장 촘촘하다. 분모가 0인 항은 하한을 못 주므로 뺀다.
-        let mut result = 0u64;
-
-        if max_damage.normal.max > 0 {
-            result = result.max(remain_hp / max_damage.normal.max);
-        }
-        if all_ex_damage > 0 {
-            result = result.max(remain_hp / all_ex_damage);
-        }
-        if max_ex_dps > 0 {
-            result = result.max(remain_hp.saturating_mul(max_ex_frames as u64) / max_ex_dps);
-        }
-
-        result
+    fn value(&self, _sim: &impl Simulator, _state: &State) -> Self::Value {
+        // 한 타의 데미지 상한을 계산할 곳이 아직 없어 남은 체력을 프레임으로 바꿀 수 없다.
+        // 0은 항상 허용적이라 A*가 균일 비용 탐색으로 동작할 뿐 답은 틀리지 않는다.
+        0
     }
 }

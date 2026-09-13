@@ -14,7 +14,7 @@ impl<'a> Solver<'a> {
         Solver { algorithm }
     }
 
-    pub fn solve(&self, threshold: f64) -> Vec<(&'a Skill, u16)> {
+    pub fn solve(&self, threshold: f64) -> Vec<(&'a dyn Skill, u16)> {
         self.algorithm.search(threshold)
     }
 }

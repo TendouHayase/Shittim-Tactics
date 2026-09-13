@@ -18,6 +18,15 @@ impl<'a, Sim, A: Agent<Value = u64>> Astar<'a, Sim, A> {
     }
 }
 
+/// Whether the boss is down with probability at least `threshold`.
+fn is_goal(sim: &impl Simulator, state: &State, threshold: f64) -> bool {
+    let Some(boss) = sim.character_by_uid(state.boss().uid()) else {
+        return false;
+    };
+
+    state.boss().accumulated_damage().tail(boss.stats().hp) >= threshold
+}
+
 impl<'a, Sim, A: Agent<Value = u64>> Algorithm<'a> for Astar<'a, Sim, A>
 where
     Sim: Simulator,
@@ -43,7 +52,7 @@ where
         // 탐색 시작
         while let Some(Reverse(node)) = open.pop() {
             // 보스 처치시 종료
-            if node.state.is_goal(threshold) {
+            if is_goal(self.sim, &node.state, threshold) {
                 result_node = Some(node);
                 break;
             }
@@ -66,15 +75,15 @@ where
                 continue;
             };
 
-            if advanced.is_terminated() {
+            if self.sim.is_time_over(advanced.frames()) {
                 continue;
             }
 
             // 무엇을 할 수 있는지는 에이전트에게 묻는다. 합법성은 에이전트가 거치는
             // `Simulator::legal_actions`가 책임지므로 여기서 다시 검사하지 않는다.
             for (action, _) in self.agent.policy(self.sim, &advanced) {
-                // 스킬 적용
-                let next_state = self.sim.apply(advanced, &action);
+                // 행동마다 같은 진행 상태에서 갈라진다.
+                let next_state = self.sim.apply(advanced.clone(), &action);
 
                 // g, h값 계산
                 let g = next_state.frames().into();
