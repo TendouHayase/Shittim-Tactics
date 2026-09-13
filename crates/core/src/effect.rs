@@ -34,7 +34,7 @@ pub enum EffectTiming {
 /// functions that behave identically are identical for this purpose.
 #[warn(private_interfaces)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct EffectKindOther(*const u8);
+struct EffectKindOther(usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Effect {
@@ -47,13 +47,13 @@ pub enum Effect {
         coef_den: u16,
     },
     Buff {
-        ty: StatKind,
+        ty: BuffKind,
         duration: u16,
         scale: u16,
         amount: u32,
     },
     Debuff {
-        ty: StatKind,
+        ty: DebuffKind,
         duration: u16,
         scale: u16,
         amount: u32,
@@ -69,7 +69,7 @@ pub enum Effect {
 impl Effect {
     #[inline]
     pub fn new_other(func: OtherEffectFn) -> Self {
-        Effect::Other(EffectKindOther(func as *const u8))
+        Effect::Other(EffectKindOther(func as usize))
     }
     #[inline]
     pub fn is_other(&self) -> bool {
@@ -83,13 +83,68 @@ impl Effect {
     pub fn as_other(&self) -> Option<OtherEffectFn> {
         match self {
             Effect::Other(ptr) => unsafe {
-                if ptr.0.is_null() {
+                if (ptr.0 as *const u8).is_null() {
                     None
                 } else {
-                    Some(std::mem::transmute::<*const u8, OtherEffectFn>(ptr.0))
+                    Some(std::mem::transmute::<usize, OtherEffectFn>(ptr.0))
                 }
             },
             _ => None,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DebuffKind {
+    Accuracy,
+    Atk,
+    AtkSpeed,
+    Burn,
+    PassionateCheering,
+    Chill,
+    ChillDmgTaken,
+    FocusedAssault,
+    CritRes,
+    CritDmgRes,
+    Crit,
+    WeaknessDetection,
+    Def,
+    Evasion,
+    Shock,
+    RecoveryBoost,
+    MovSpeed,
+    CcRes,
+    Poison,
+    WeaknessDmgTaken,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BuffKind {
+    Accuracy,
+    Atk,
+    AtkSpeed,
+    ExSkillCost,
+    CritRes,
+    CritDmg,
+    CritDmgRes,
+    Crit,
+    Def,
+    Evasion,
+    HpRegen,
+    BasicsProficiency,
+    ExSkillDmgDealt,
+    ExplosiveEffectiveness,
+    PiercingEffectiveness,
+    MysticEffectiveness,
+    SonicEffectiveness,
+    RecoveryBoost,
+    Healing,
+    MaxHp,
+    MovSpeed,
+    CcPower,
+    CcRes,
+    CostRecovery,
+    Barrier,
+    DmgDealt,
+    NormalAttackRange,
 }
