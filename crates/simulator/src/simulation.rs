@@ -1,16 +1,14 @@
 use core::{
-    actions::{
-        Action,
-        ActionContext::{self},
-    },
+    actions::ActionContext,
     boss::Boss,
     character::Character,
     constants::TPS,
     simulator::Simulator,
-    skill::Skill,
+    skill::{Skill, SkillEffectTarget},
     state::{State, StateData},
     student::Student,
-    uid::Uid,
+    uid::{SkillUid, Uid},
+    utils::{euclidean_distance, is_inside},
 };
 use std::sync::Arc;
 
@@ -70,58 +68,101 @@ impl Simulator for Simulation {
         }
     }
 
-    fn legal_actions(&self, state: &State) -> Vec<ActionContext<'_>> {
+    fn legal_actions(&self, state: &State) -> Vec<ActionContext> {
         let cost = state.cost();
         let mut result = vec![];
         for (i, stat) in state.students().iter().enumerate() {
             for (j, cooltime) in stat.cooldowns().iter().enumerate() {
                 if let Some(skill) = self.students[i].lookup_skill(j)
-                    && *cooltime == 0 && cost >= skill.cost().try_into().unwrap() {
-                        let caster = stat.uid();
-                        let targets = self.resolve_targets(state, skill);
+                    && *cooltime == 0
+                    && cost >= skill.cost().try_into().unwrap()
+                {
+                    let caster = stat.uid();
+                    let targets = self.resolve_targets(state, skill);
 
-                        result.push(ActionContext::Use(Action {
-                            caster,
-                            targets,
-                            skill,
-                        }));
-                    }
+                    result.push(ActionContext {
+                        caster,
+                        targets,
+                        skill: skill.uid(),
+                    });
+                }
             }
         }
 
         result
     }
 
-    fn apply(&self, state: State, action: &core::actions::ActionContext) -> State {
-        let action = match action {
-            ActionContext::Wait => return state,
-            ActionContext::Use(action) => action,
-        };
+    fn resolve_targets(&self, state: &State, skill: &dyn Skill) -> Vec<Uid> {
+        let caster_id = skill.owner();
+        let caster_coord = state
+            .search_uid(caster_id)
+            .map(|data| data.coordinate())
+            .unwrap_or_default();
 
-        let mut state = state.clone();
+        let mut targets = Vec::new();
 
-        // 타깃은 거리 순서를 보존하도록 action.targets 순서로 담음.
-        let (boss, students) = state.split_mut();
-        let mut caster = None;
-        let mut slots: Vec<Option<&mut StateData>> =
-            (0..action.targets.len()).map(|_| None).collect();
+        for skill_effect in skill.skill_effects() {
+            let target = skill_effect.targets;
+            match target {
+                // 캐스터 자신에 대한 효과는 `Skill::apply`의 caster 인자로 처리
+                SkillEffectTarget::Oneself { .. } => {}
 
-        for data in std::iter::once(boss).chain(students.iter_mut()) {
-            let uid = data.uid();
+                SkillEffectTarget::Student { count, .. } => {
+                    let mut students: Vec<(Position, Uid)> = state
+                        .students()
+                        .iter()
+                        .map(|student| (student.coordinate(), student.uid()))
+                        .filter(|student| student.1 != caster_id)
+                        .collect();
 
-            if uid == action.caster {
-                caster = Some(data);
-            } else if let Some(i) = action.targets.iter().position(|&target| target == uid) {
-                slots[i] = Some(data);
+                    // 유클리드 거리로 정렬
+                    students.sort_by(|lhs, rhs| {
+                        euclidean_distance(caster_coord, lhs.0)
+                            .total_cmp(&euclidean_distance(caster_coord, rhs.0))
+                    });
+
+                    // 캐스터를 뺀 인원이 count보다 적을 수 있으므로 인덱싱 대신 take.
+                    targets.extend(students.iter().take(count.into()).map(|s| s.1));
+                }
+
+                SkillEffectTarget::Boss { .. } => targets.push(state.boss().uid()),
+
+                SkillEffectTarget::Land { region, .. } => {
+                    if is_inside(state.boss().coordinate(), region, caster_coord) {
+                        targets.push(state.boss().uid());
+                    }
+
+                    for student in state.students() {
+                        if is_inside(student.coordinate(), region, caster_coord) {
+                            targets.push(student.uid());
+                        }
+                    }
+                }
             }
         }
 
-        let mut targets: Vec<&mut StateData> = slots.into_iter().flatten().collect();
-        action
-            .skill
-            .apply(caster.expect("unexpected uid"), &mut targets);
+        targets
+    }
 
-        state
+    fn apply(&self, state: State, action: &core::actions::ActionContext) -> Result<State, Error> {
+        let mut state = state.clone();
+
+        // 타깃은 거리 순서를 보존하도록 action.targets 순서로 담음.
+
+        let targets_result: Result<Vec<&mut StateData>, Error> = action
+            .targets
+            .iter()
+            .map(|&uid| state.search_uid_mut(uid).ok_or(Error::NotFound))
+            .collect();
+
+        let targets = targets_result?;
+
+        let caster = state.search_uid_mut(action.caster).ok_or(Error::NotFound)?;
+
+        let skill = self.lookup_skill(action.skill).ok_or(Error::Empty)?;
+        skill.apply(caster, &mut targets);
+
+        Ok(state)
     }
 
     fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, Error> {
@@ -157,7 +198,7 @@ impl Simulator for Simulation {
         for student in state.students() {
             // 논리적으로 uid 항상 존재
             let character = self.character_by_uid(student.uid()).unwrap();
-            if self.cost_per_second != 0  {
+            if self.cost_per_second != 0 {
                 for (i, time) in student.cooldowns().iter().enumerate() {
                     let cost = *time / self.cost_per_second;
                     if character.skills()[i].cost() as u16 >= cost {
@@ -174,10 +215,11 @@ impl Simulator for Simulation {
         // 논리적으로 uid 항상 존재
         let boss = self.character_by_uid(state.boss().uid()).unwrap();
         for (i, time) in state.boss().cooldowns().iter().enumerate() {
-            if self.cost_per_second != 0 
-                && boss.skills()[i].cost() as u16 >= *time / self.cost_per_second {
-                    result = result.min(*time);
-                }
+            if self.cost_per_second != 0
+                && boss.skills()[i].cost() as u16 >= *time / self.cost_per_second
+            {
+                result = result.min(*time);
+            }
 
             for effect in state.boss().remained_effects() {
                 result = result.min(effect.ticks);
@@ -190,8 +232,8 @@ impl Simulator for Simulation {
         self.limit_ticks <= ticks
     }
 
-    fn lookup_skill(&self, index: usize) -> Option<&dyn Skill> {
-        self.skills.get(index).map(|skill| &**skill)
+    fn lookup_skill(&self, uid: SkillUid) -> Option<&dyn Skill> {
+        self.skills.get(uid.skill_index()).map(|skill| &**skill)
     }
 
     fn character_by_uid(&self, uid: Uid) -> Option<&dyn Character> {
