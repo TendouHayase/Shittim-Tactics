@@ -75,6 +75,19 @@ impl State {
         (&mut self.boss, students)
     }
 
+    pub fn split_all_mut(&mut self) -> Vec<&mut StateData> {
+        match &mut self.students {
+            StudentState::TotalAssault(students) => {
+                let [a, b, c, d, e, f] = students;
+                vec![&mut self.boss, a, b, c, d, e, f]
+            }
+            StudentState::FinalRestrictionRelease(students) => {
+                let [a, b, c, d, e, f, g, h, i, j] = students;
+                vec![&mut self.boss, a, b, c, d, e, f, g, h, i, j]
+            }
+        }
+    }
+
     pub const fn cost(&self) -> i8 {
         self.cost
     }
