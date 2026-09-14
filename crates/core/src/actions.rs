@@ -1,14 +1,8 @@
-use crate::{skill::Skill, uid::Uid};
+use crate::uid::{SkillUid, Uid};
 
-#[derive(Debug, Clone)]
-pub struct Action<'a> {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ActionContext {
     pub caster: Uid,
     pub targets: Vec<Uid>,
-    pub skill: &'a dyn Skill,
-}
-
-#[derive(Debug)]
-pub enum ActionContext<'a> {
-    Wait,
-    Use(Action<'a>),
+    pub skill: SkillUid,
 }

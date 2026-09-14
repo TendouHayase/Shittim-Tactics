@@ -1,47 +1,27 @@
-use core::{
-    actions::ActionContext::{self, Use, Wait},
-    skill::Skill,
-    state::State,
-};
+use core::{actions::ActionContext, skill::Skill, state::State};
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct Node<'a> {
+pub struct Node {
     pub state: State,
     pub g: u64,
     pub f: u64,
-    record: Option<Arc<Node<'a>>>,
-    action: Option<ActionContext<'a>>,
+    pub edge: Option<Edge>,
 }
 
-impl<'a> PartialEq for Node<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        self.state == other.state
-    }
+#[derive(Debug, Clone)]
+pub struct Edge {
+    record: Arc<Node>,
+    action: ActionContext,
 }
 
-impl<'a> Eq for Node<'a> {}
-
-impl<'a> Ord for Node<'a> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.f.cmp(&other.f)
-    }
-}
-
-impl<'a> PartialOrd for Node<'a> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.f.cmp(&other.f))
-    }
-}
-
-impl<'a> Node<'a> {
+impl Node {
     pub fn new(state: State, g: u64, h: u64) -> Self {
         Node {
             state,
             g,
             f: g + h,
-            record: None,
-            action: None,
+            edge: None,
         }
     }
 
@@ -49,29 +29,45 @@ impl<'a> Node<'a> {
         state: State,
         g: u64,
         h: u64,
-        parent_node: Arc<Node<'a>>,
-        action: ActionContext<'a>,
+        parent_node: Arc<Node>,
+        action: ActionContext,
     ) -> Self {
         Node {
             state,
             g,
             f: g + h,
-            record: Some(parent_node),
-            action: Some(action),
+            edge: Some(Edge {
+                record: parent_node,
+                action,
+            }),
         }
     }
 
-    pub fn get_parent(&self) -> Option<Arc<Node<'a>>> {
-        self.record.clone()
+    pub fn get_parent(&self) -> Option<Arc<Node>> {
+        Some(self.edge.clone()?.record)
     }
 
-    pub fn get_action<'b>(&'b self) -> Option<&'a dyn Skill>
-    where
-        'a: 'b,
-    {
-        match self.action.as_ref()? {
-            Wait => None,
-            Use(a) => Some(a.skill),
-        }
+    pub fn get_action(&self) -> Option<ActionContext> {
+        Some(self.edge.clone()?.action)
+    }
+}
+
+impl<'a> PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.state == other.state
+    }
+}
+
+impl Eq for Node {}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.f.cmp(&other.f)
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.f.cmp(&other.f))
     }
 }
