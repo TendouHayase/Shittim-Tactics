@@ -17,12 +17,6 @@ pub struct State {
     pub cost: i8,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum StudentState {
-    TotalAssault([StateData; 6]),
-    FinalRestrictionRelease([StateData; 10]),
-}
-
 impl State {
     pub fn new(students: &[StateData], boss: StateData, frames: u16, cost: i8) -> Self {
         match students.len() {
@@ -114,6 +108,36 @@ impl State {
         self.students_mut()
             .iter_mut()
             .find(|student| uid == student.common.uid)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StudentState {
+    TotalAssault([StateData; 6]),
+    FinalRestrictionRelease([StateData; 10]),
+}
+
+impl StudentState {
+    pub fn search_uid(&self, uid: Uid) -> Option<&StateData> {
+        match self {
+            StudentState::TotalAssault(arr) => {
+                arr.iter().find(|&student| uid == student.common.uid)
+            }
+            StudentState::FinalRestrictionRelease(arr) => {
+                arr.iter().find(|&student| uid == student.common.uid)
+            }
+        }
+    }
+
+    pub fn search_uid_mut(&mut self, uid: Uid) -> Option<&mut StateData> {
+        match self {
+            StudentState::TotalAssault(arr) => {
+                arr.iter_mut().find(|student| uid == student.common.uid)
+            }
+            StudentState::FinalRestrictionRelease(arr) => {
+                arr.iter_mut().find(|student| uid == student.common.uid)
+            }
+        }
     }
 }
 

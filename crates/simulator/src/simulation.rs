@@ -1,5 +1,5 @@
 use core::{
-    actions::ActionContext,
+    actions::{self, ActionContext},
     boss::Boss,
     character::Character,
     constants::TPS,
@@ -144,21 +144,48 @@ impl Simulator for Simulation {
         targets
     }
 
-    fn apply(&self, state: State, action: &core::actions::ActionContext) -> Result<State, Error> {
-        let mut state = state.clone();
-
+    fn apply(
+        &self,
+        mut state: State,
+        action: &core::actions::ActionContext,
+    ) -> Result<State, Error> {
         // 타깃은 거리 순서를 보존하도록 action.targets 순서로 담음.
 
-        let targets_result: Result<Vec<&mut StateData>, Error> = action
-            .targets
-            .iter()
-            .map(|&uid| state.search_uid_mut(uid).ok_or(Error::NotFound))
-            .collect();
+        let (boss, students) = state.split_mut();
+        let caster;
+        let mut targets: Vec<&mut StateData> = Vec::with_capacity(action.targets.len());
 
-        let targets = targets_result?;
+        let caster_uid = action.caster;
 
-        let caster = state.search_uid_mut(action.caster).ok_or(Error::NotFound)?;
+        if boss.uid() == caster_uid {
+            caster = boss;
 
+            // Students 배열에 있는 target 인덱스 비트마스크
+            let key: u32 = students.iter().enumerate().fold(0u32, |m, (idx, s)| {
+                if action.targets.contains(&s.uid()) {
+                    m | 1 << idx
+                } else {
+                    m
+                }
+            });
+
+            targets = students
+                .iter_mut()
+                .enumerate()
+                .filter(|(idx, _)| key >> idx & 1 != 0)
+                .map(|(_, s)| s)
+                .collect();
+        } else {
+            let mut tmp = None;
+            for s in students.iter_mut() {
+                if s.uid() == caster_uid {
+                    tmp = Some(s);
+                } else if action.targets.contains(&s.uid()) {
+                    targets.push(s);
+                }
+            }
+            caster = tmp.ok_or(Error::NotFound)?;
+        }
         let skill = self.lookup_skill(action.skill).ok_or(Error::Empty)?;
         skill.apply(caster, &mut targets);
 
