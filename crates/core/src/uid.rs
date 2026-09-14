@@ -16,3 +16,23 @@ impl Display for Uid {
         self.0.fmt(f)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SkillUid(Uid, usize);
+
+impl SkillUid {
+    pub fn owner(&self) -> Uid {
+        self.0
+    }
+
+    /// Global skill index
+    pub fn skill_index(&self) -> usize {
+        self.1
+    }
+}
+
+impl SkillUid {
+    pub fn new(owner: Uid, index: usize) -> Self {
+        SkillUid(owner, index)
+    }
+}
