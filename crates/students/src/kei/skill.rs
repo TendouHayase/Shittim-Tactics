@@ -250,7 +250,7 @@ impl SkillMeta for KeiExSkill {
 }
 
 impl Skill for KeiExSkill {
-    fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]) {
+    fn apply(&self, mut caster: StateData, targets: &mut [StateData]) -> StateData {
         let caster_coord = caster.coordinate();
         let source = self.skill_offset() as u8;
         let active = |data: &StateData| {
@@ -265,9 +265,7 @@ impl Skill for KeiExSkill {
         };
 
         for target in targets.iter_mut() {
-            if is_inside(target.coordinate(), self.params.region, caster_coord)
-                && !active(target)
-            {
+            if is_inside(target.coordinate(), self.params.region, caster_coord) && !active(target) {
                 for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
                     if let SkillEffectTarget::Student { .. } = skill_effect.targets {
                         target.remained_effects_mut().push(remained(effect));
@@ -276,13 +274,15 @@ impl Skill for KeiExSkill {
             }
         }
 
-        if !active(&*caster) {
+        if !active(&mut caster) {
             for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
                 if let SkillEffectTarget::Oneself { .. } = skill_effect.targets {
                     caster.remained_effects_mut().push(remained(effect));
                 }
             }
         }
+
+        caster
     }
 }
 
@@ -334,7 +334,7 @@ impl SkillMeta for KeiBasicSkill {
 }
 
 impl Skill for KeiBasicSkill {
-    fn apply(&self, _caster: &mut StateData, _targets: &mut [&mut StateData]) {
+    fn apply(&self, _caster: StateData, _targets: &mut [StateData]) -> StateData {
         todo!()
     }
 }
@@ -398,7 +398,8 @@ impl KeiSubSkill {
 }
 
 impl Skill for KeiSubSkill {
-    fn apply(&self, caster: &mut StateData, _targets: &mut [&mut StateData]) {
+    fn apply(&self, mut caster: StateData, _targets: &mut [StateData]) -> StateData {
         caster.extra_as_mut::<KeiState>().acc_damage = 0;
+        caster
     }
 }

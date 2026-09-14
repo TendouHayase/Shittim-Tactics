@@ -20,7 +20,7 @@ pub struct SkillHeader {
 }
 
 pub trait Skill: SkillMeta + Debug + Send + Sync {
-    fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]);
+    fn apply(&self, caster: StateData, targets: &mut [StateData]) -> StateData;
 }
 
 pub trait SkillMeta {

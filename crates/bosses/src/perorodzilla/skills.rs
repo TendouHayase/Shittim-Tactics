@@ -345,9 +345,10 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            mut caster: StateData,
+        _targets: &mut [ StateData],
+        ) -> StateData {
+            todo!()
         }
     }
 );
@@ -394,9 +395,9 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            mut _caster:  StateData,
+            _targets: &mut [ StateData],
+        ) -> StateData{todo!()
         }
     }
 );
@@ -418,10 +419,11 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
-            summon_minion_wave(caster, self.params);
+            mut caster: StateData,
+            _targets: &mut [StateData],
+        ) -> StateData {
+            summon_minion_wave(&mut caster, self.params);
+            caster
         }
     }
 );
@@ -466,14 +468,15 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            mut caster: StateData,
+            _targets: &mut [ StateData],
+        )->StateData {
             let params = self.params;
-            let is_groggy = absorb_minion_wave(caster, params).is_ok();
+            let is_groggy = absorb_minion_wave(&mut caster, params).is_ok();
 
             // 넉백 거리 데이터가 없어 좌표 변경은 보류한다.
             let _ = is_groggy && params.knockback_on_groggy;
+            caster
         }
     }
 );
@@ -506,15 +509,16 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+           mut caster: StateData,
+            _targets: &mut [StateData],
+        ) -> StateData {
             // 게이지를 소모하는 쪽이 여기이므로 시전 조건을 직접 확인한다.
             if caster.extra_as::<PerorodzillaState>().atg_percent < 100 {
-                return;
+                return caster;
             }
 
             caster.extra_as_mut::<PerorodzillaState>().atg_percent = 0;
+            caster
         }
     }
 );
@@ -550,9 +554,9 @@ create_boss_skill!(
     {
     fn apply(
         &self,
-        _caster: &mut StateData,
-        _targets: &mut [&mut StateData],
-    ) {
+        _caster:  StateData,
+        _targets: &mut [StateData],
+    ) -> StateData{todo!()
     }
     }
 );

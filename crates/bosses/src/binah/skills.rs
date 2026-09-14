@@ -230,9 +230,9 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            _caster: StateData,
+            _targets: &mut [ StateData],
+        )->StateData {
             todo!()
         }
     }
@@ -267,9 +267,9 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            mut _caster: StateData,
+            _targets: &mut [ StateData],
+        ) -> StateData{todo!()
         }
     }
 );
@@ -309,9 +309,9 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+           mut _caster:  StateData,
+            _targets: &mut [ StateData],
+        ) -> StateData {todo!()
         }
     }
 );
