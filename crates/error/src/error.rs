@@ -27,6 +27,7 @@ pub enum Error {
     InvalidCasting(String),
     LockPoisoned(String),
     WrongType(String),
+    SearchFail(String),
     NotFound,
     Empty,
 }
