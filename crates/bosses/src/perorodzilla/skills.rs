@@ -156,7 +156,7 @@ fn damage_effect(percent: u16) -> Effect {
 }
 
 fn summon_minion_wave(boss: &mut StateData, params: Params) -> Result<(), Error> {
-    let mut extra = boss.extra_mut();
+    let extra = boss.extra_mut();
     let pero = extra
         .ok_or(Error::Empty)?
         .downcast_as_mut::<PerorodzillaState>()?;

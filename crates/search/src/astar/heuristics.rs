@@ -9,7 +9,7 @@ pub struct Heuristic;
 impl Agent for Heuristic {
     type Value = u64;
 
-    fn policy<'s>(&self, sim: &'s impl Simulator, state: &State) -> Vec<(ActionContext, f64)> {
+    fn policy(&self, sim: &impl Simulator, state: &State) -> Vec<(ActionContext, f64)> {
         let actions = sim.legal_actions(state);
         let prior = 1.0 / actions.len() as f64;
 
