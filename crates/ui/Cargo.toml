@@ -9,4 +9,5 @@ name = "shittim-tactics"
 path = "src/main.rs"
 
 [dependencies]
-windows = "0.62.2"
+iced = "0.14.0"
+
