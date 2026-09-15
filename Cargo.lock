@@ -2638,6 +2638,7 @@ version = "0.1.0"
 dependencies = [
  "bosses",
  "core",
+ "error",
 ]
 
 [[package]]
@@ -2863,6 +2864,7 @@ name = "solver"
 version = "0.1.0"
 dependencies = [
  "core",
+ "error",
  "search",
 ]
 

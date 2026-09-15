@@ -7,3 +7,4 @@ edition.workspace = true
 [dependencies]
 core = {path="../core"}
 bosses = {path = "../bosses"}
+error = {path = "../error"}
