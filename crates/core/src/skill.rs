@@ -1,6 +1,6 @@
 use crate::effect::{Effect, EffectTiming};
 use crate::state::StateData;
-use crate::uid::Uid;
+use crate::uid::{SkillUid, Uid};
 use crate::utils::Position;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -28,6 +28,9 @@ pub trait SkillMeta {
 
     fn name(&self) -> &str {
         &self.header().name
+    }
+    fn uid(&self) -> SkillUid {
+        SkillUid::new(self.owner(), self.skill_offset())
     }
     fn owner(&self) -> Uid {
         self.header().owner
