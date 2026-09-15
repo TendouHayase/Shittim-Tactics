@@ -1,5 +1,7 @@
 use core::{algorithm::Algorithm, skill::Skill};
 
+use error::Error;
+
 /// Runs a search and hands back the skill order it found.
 ///
 /// The algorithm is boxed because which one to run is decided at runtime. That is only possible
