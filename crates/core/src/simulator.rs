@@ -3,10 +3,9 @@ use error::Error;
 use crate::{
     actions::ActionContext,
     character::Character,
-    skill::{Skill, SkillEffectTarget},
+    skill::Skill,
     state::State,
     uid::{SkillUid, Uid},
-    utils::{Position, euclidean_distance, is_inside},
 };
 
 pub trait Simulator {
