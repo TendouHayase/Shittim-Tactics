@@ -8,7 +8,7 @@ use core::{
     state::{State, StateData},
     student::Student,
     uid::{SkillUid, Uid},
-    utils::{euclidean_distance, is_inside},
+    utils::{Position, euclidean_distance, is_inside},
 };
 use std::sync::Arc;
 
@@ -153,38 +153,32 @@ impl Simulator for Simulation {
 
         let (boss, students) = state.split_mut();
         let caster;
-        let mut targets: Vec<&mut StateData> = Vec::with_capacity(action.targets.len());
+        let mut targets: Vec<&mut StateData>;
 
         let caster_uid = action.caster;
 
         if boss.uid() == caster_uid {
             caster = boss;
 
-            // Students 배열에 있는 target 인덱스 비트마스크
-            let key: u32 = students.iter().enumerate().fold(0u32, |m, (idx, s)| {
-                if action.targets.contains(&s.uid()) {
-                    m | 1 << idx
-                } else {
-                    m
-                }
-            });
-
             targets = students
                 .iter_mut()
-                .enumerate()
-                .filter(|(idx, _)| key >> idx & 1 != 0)
-                .map(|(_, s)| s)
+                .filter(|s| action.targets.contains(&s.uid()))
                 .collect();
         } else {
-            let mut tmp = None;
-            for s in students.iter_mut() {
-                if s.uid() == caster_uid {
-                    tmp = Some(s);
-                } else if action.targets.contains(&s.uid()) {
-                    targets.push(s);
-                }
-            }
-            caster = tmp.ok_or(Error::NotFound)?;
+            let caster_idx = students
+                .iter()
+                .position(|s| s.uid() == caster_uid)
+                .ok_or(Error::NotFound)?;
+
+            let (left, right) = students.split_at_mut(caster_idx);
+            let other;
+            (caster, other) = right.split_first_mut().unwrap(); // 위에서 캐스터 존재여부 검사함
+
+            targets = left
+                .iter_mut()
+                .chain(other.iter_mut())
+                .filter(|s| action.targets.contains(&s.uid()))
+                .collect();
         }
         let skill = self.lookup_skill(action.skill).ok_or(Error::Empty)?;
         skill.apply(caster, &mut targets);
