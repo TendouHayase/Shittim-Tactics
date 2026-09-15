@@ -9,5 +9,4 @@ name = "shittim-tactics"
 path = "src/main.rs"
 
 [dependencies]
-egui = "0.31"
-eframe = "0.31"
+windows = "0.62.2"
