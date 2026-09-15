@@ -1,5 +1,10 @@
+use error::Error;
+
 use crate::astar::node::Node;
-use core::{agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skill, state::State};
+use core::{
+    actions::ActionContext, agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skill,
+    state::State,
+};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
@@ -30,14 +35,14 @@ impl<'a, Sim, A: Agent<Value = u64>> Algorithm<'a> for Astar<'a, Sim, A>
 where
     Sim: Simulator,
 {
-    fn search(&self, threshold: f64) -> Vec<(&'a dyn Skill, u16)> {
+    fn search(&self, threshold: f64) -> Result<Vec<(&'a dyn Skill, u16)>, Error> {
         let initial = self.sim.initial_state();
 
         // 결과 노드
         let mut result_node = None;
 
         // open 리스트, close 리스트 생성
-        let mut open: BinaryHeap<Reverse<Arc<Node<'a>>>> = BinaryHeap::new();
+        let mut open: BinaryHeap<Reverse<Arc<Node>>> = BinaryHeap::new();
         let mut closed: HashMap<State, u64> = HashMap::new();
 
         // 초기 state의 h 값
@@ -79,10 +84,14 @@ where
             }
 
             // 무엇을 할 수 있는지는 에이전트에게 묻는다. 합법성은 에이전트가 거치는
-            // `Simulator::legal_actions`가 책임지므로 여기서 다시 검사하지 않는다.
+            // `Simulator::legal_actions`가 책임지므로 여기서 다시 검사하지 않음.
             for (action, _) in self.agent.policy(self.sim, &advanced) {
                 // 행동마다 같은 진행 상태에서 갈라진다.
-                let next_state = self.sim.apply(advanced.clone(), &action);
+                let next_state = if let Ok(state) = self.sim.apply(advanced.clone(), &action) {
+                    state
+                } else {
+                    continue;
+                };
 
                 // g, h값 계산
                 let g = next_state.frames().into();
@@ -101,25 +110,36 @@ where
 
         // 역추적으로 스킬 순서 계산
         let Some(reverse_node) = result_node else {
-            return vec![];
+            return Err(Error::SearchFail("there is no final node".to_string()));
         };
 
         let mut node = reverse_node;
         let mut result = vec![];
 
-        if let Some(skill) = node.get_action() {
-            result.push((skill, node.state.frames()));
+        if let Some(action) = node.get_action() {
+            result = push_skill(action, node.state.frames(), result, self.sim)?;
         }
 
         while let Some(next_node) = node.get_parent() {
-            if let Some(skill) = next_node.get_action() {
-                result.push((skill, next_node.state.frames()));
+            if let Some(action) = next_node.get_action() {
+                result = push_skill(action, next_node.state.frames(), result, self.sim)?;
             }
 
             node = next_node;
         }
 
         result.reverse();
-        result
+        Ok(result)
     }
+}
+
+fn push_skill<'a, 'b: 'a>(
+    action: ActionContext,
+    time: u16,
+    mut arr: Vec<(&'a dyn Skill, u16)>,
+    sim: &'b impl Simulator,
+) -> Result<Vec<(&'a dyn Skill, u16)>, Error> {
+    let skill = sim.lookup_skill(action.skill).ok_or(Error::NotFound)?;
+    arr.push((skill, time));
+    Ok(arr)
 }
