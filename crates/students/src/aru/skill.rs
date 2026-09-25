@@ -1,10 +1,9 @@
 use core::{
     character::Character,
-    damage::Damage,
     effect::{Effect, EffectTiming},
     simulator::Simulator,
     skill::{Region, Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillType},
-    state::{State, StateData},
+    state::State,
     uid::Uid,
 };
 use std::sync::Weak;
@@ -80,7 +79,7 @@ impl SkillMeta for ExSkill {
 }
 
 impl Skill for ExSkill {
-    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
+    fn apply(&self, mut state: State, _caster: &dyn Character, targets: &[&dyn Character]) -> State {
         debug_assert!(targets.len() == 1);
 
         let target_char = targets[0];
@@ -89,7 +88,7 @@ impl Skill for ExSkill {
             .search_uid_mut(target_char.uid())
             .expect("target uid not found");
 
-        let target_coor = target.coordinate();
+        let _target_coor = target.coordinate();
 
         state
     }

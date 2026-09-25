@@ -1,5 +1,4 @@
 use super::params;
-use super::state::KeiState;
 use core::{
     character::Character,
     effect::{
@@ -220,7 +219,7 @@ impl SkillMeta for BasicSkill {
 }
 
 impl Skill for BasicSkill {
-    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
+    fn apply(&self, _state: State, _caster: &dyn Character, _targets: &[&dyn Character]) -> State {
         todo!()
     }
 }
@@ -291,7 +290,7 @@ impl SubSkill {
 }
 
 impl Skill for SubSkill {
-    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
+    fn apply(&self, _state: State, _caster: &dyn Character, _targets: &[&dyn Character]) -> State {
         todo!()
     }
 }

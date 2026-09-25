@@ -12,7 +12,6 @@ use core::{
 use error::Error;
 use kei::{
     params::RawSkills,
-    skill::{BasicSkill, ExSkill, SubSkill},
     state::KeiState,
 };
 use serde::Deserialize;
