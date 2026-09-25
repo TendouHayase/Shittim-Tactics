@@ -1,5 +1,5 @@
+pub mod aru;
 pub mod kei;
-pub mod skill;
 
 use core::{
     extra::ExtraInit,
