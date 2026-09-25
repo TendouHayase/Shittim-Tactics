@@ -2,13 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use error::Error;
 
-use crate::{
-    damage::{Damage, DamageDist},
-    effect::Effect,
-    extra::ExtraStateData,
-    uid::Uid,
-    utils::Position,
-};
+use crate::{effect::Effect, extra::ExtraStateData, uid::Uid, utils::Position};
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommonStateData {
@@ -16,22 +10,17 @@ pub struct CommonStateData {
 
     pub cooldowns: Vec<u16>,
     pub remained_effects: Vec<RemainedEffects>,
-    pub accumulated_damage: DamageDist,
+    pub hp: u64,
+    pub shield: u64,
 
     pub coordinate: Position,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RemainedEffects {
-    pub ticks: u16,
+    pub end_frame: u16,
     pub effect: Effect,
     pub source: u8,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AccumulatedDamage {
-    pub ticks: u16,
-    pub damage: Option<Damage>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,14 +30,20 @@ pub struct StateData {
 }
 
 impl StateData {
-    pub fn new(uid: Uid, cooldowns: usize, extra: Option<Box<dyn ExtraStateData>>) -> Self {
+    pub fn new(
+        uid: Uid,
+        hp: u64,
+        skill_count: usize,
+        extra: Option<Box<dyn ExtraStateData>>,
+    ) -> Self {
         StateData {
             common: CommonStateData {
                 uid,
+                hp,
+                shield: 0,
                 coordinate: Default::default(),
-                cooldowns: vec![0; cooldowns],
+                cooldowns: vec![0; skill_count],
                 remained_effects: Vec::new(),
-                accumulated_damage: Default::default(),
             },
             extra,
         }
@@ -56,17 +51,19 @@ impl StateData {
 
     pub fn from_parts(
         uid: Uid,
+        hp: u64,
+        shield: u64,
         coordinate: Position,
         cooldowns: &[u16],
         remained_effects: Vec<RemainedEffects>,
-        accumulated_damage: DamageDist,
         extra: Option<Box<dyn ExtraStateData>>,
     ) -> Self {
         StateData {
             common: CommonStateData {
                 uid,
                 coordinate,
-                accumulated_damage,
+                hp,
+                shield,
                 cooldowns: cooldowns.to_vec(),
                 remained_effects: remained_effects.clone(),
             },
@@ -104,14 +101,6 @@ impl StateData {
 
     pub fn remained_effects_mut(&mut self) -> &mut Vec<RemainedEffects> {
         &mut self.common.remained_effects
-    }
-
-    pub fn accumulated_damage(&self) -> &DamageDist {
-        &self.common.accumulated_damage
-    }
-
-    pub fn accumulated_damage_mut(&mut self) -> &mut DamageDist {
-        &mut self.common.accumulated_damage
     }
 
     pub fn extra(&self) -> Option<&dyn ExtraStateData> {

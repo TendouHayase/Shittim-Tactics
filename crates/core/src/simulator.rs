@@ -32,12 +32,14 @@ impl Simulator {
                 students: StudentState::TotalAssault(std::array::from_fn(|i| {
                     StateData::new(
                         self.students[i].uid(),
+                        self.students[i].stats().hp,
                         3,
                         self.students[i].extra.map(|init| init()),
                     )
                 })),
                 boss: StateData::new(
                     self.boss.uid(),
+                    self.boss.stats().hp,
                     self.boss.skills.len(),
                     self.boss.extra.map(|init| init()),
                 ),
@@ -49,12 +51,14 @@ impl Simulator {
                 students: StudentState::FinalRestrictionRelease(std::array::from_fn(|i| {
                     StateData::new(
                         self.students[i].uid(),
+                        self.students[i].stats().hp,
                         3,
                         self.students[i].extra.map(|init| init()),
                     )
                 })),
                 boss: StateData::new(
                     self.boss.uid(),
+                    self.boss.stats().hp,
                     self.boss.skills.len(),
                     self.boss.extra.map(|init| init()),
                 ),
@@ -165,6 +169,8 @@ impl Simulator {
         let mut next = state.clone();
         let (boss, students) = next.split_mut();
 
+        let end_tick = state.frames + delta_ticks;
+
         for data in std::iter::once(boss).chain(students.iter_mut()) {
             for cooldown in data.cooldowns_mut() {
                 *cooldown = cooldown.saturating_sub(delta_ticks);
@@ -172,10 +178,7 @@ impl Simulator {
 
             // 효과 구간이 [적용, 적용 + 지속)이라 남은 틱이 delta와 같으면 이번에 끝난다.
             let effects = data.remained_effects_mut();
-            effects.retain(|effect| effect.ticks > delta_ticks);
-            for effect in effects.iter_mut() {
-                effect.ticks -= delta_ticks;
-            }
+            effects.retain(|effect| effect.end_frame > end_tick);
         }
 
         // 데미지 누적은 효과별 틱 계산이 들어올 때까지 빔.
@@ -204,7 +207,7 @@ impl Simulator {
             }
 
             for effect in student.remained_effects() {
-                result = result.min(effect.ticks);
+                result = result.min(effect.end_frame);
             }
         }
 
@@ -218,7 +221,7 @@ impl Simulator {
             }
 
             for effect in state.boss().remained_effects() {
-                result = result.min(effect.ticks);
+                result = result.min(effect.end_frame);
             }
         }
         result

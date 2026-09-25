@@ -1,7 +1,7 @@
-use crate::{state::data::StateData, uid::Uid};
+use crate::uid::Uid;
 
 pub mod data;
-
+pub use data::*;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct State {
     pub students: StudentState,
