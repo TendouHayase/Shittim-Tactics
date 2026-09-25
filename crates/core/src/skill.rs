@@ -14,7 +14,7 @@ use std::sync::Weak;
 pub struct SkillHeader {
     pub owner: Uid,
     pub owner_offset: usize,
-    pub name: &'static str,
+    pub name: String,
     pub skill_offset: usize,
     pub skill_type: SkillType,
     pub effects: Vec<SkillEffect>,
@@ -29,7 +29,7 @@ impl SkillHeader {
     pub fn new(
         owner: Uid,
         owner_offset: usize,
-        name: &'static str,
+        name: &str,
         skill_offset: usize,
         skill_type: SkillType,
         effects: Vec<SkillEffect>,
@@ -41,7 +41,7 @@ impl SkillHeader {
         Self {
             owner,
             owner_offset,
-            name,
+            name: name.to_string(),
             skill_offset,
             skill_type,
             effects,
@@ -61,7 +61,7 @@ pub trait SkillMeta {
     fn header(&self) -> &SkillHeader;
 
     fn name(&self) -> &str {
-        self.header().name
+        &self.header().name
     }
     fn uid(&self) -> SkillUid {
         SkillUid::new(self.owner_uid(), self.skill_offset())
