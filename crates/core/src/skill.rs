@@ -14,7 +14,7 @@ use std::sync::Weak;
 pub struct SkillHeader {
     pub owner: Uid,
     pub owner_offset: usize,
-    pub name: String,
+    pub name: &'static str,
     pub skill_offset: usize,
     pub skill_type: SkillType,
     pub effects: Vec<SkillEffect>,
@@ -29,7 +29,7 @@ impl SkillHeader {
     pub fn new(
         owner: Uid,
         owner_offset: usize,
-        name: String,
+        name: &'static str,
         skill_offset: usize,
         skill_type: SkillType,
         effects: Vec<SkillEffect>,
@@ -61,7 +61,7 @@ pub trait SkillMeta {
     fn header(&self) -> &SkillHeader;
 
     fn name(&self) -> &str {
-        &self.header().name
+        self.header().name
     }
     fn uid(&self) -> SkillUid {
         SkillUid::new(self.owner_uid(), self.skill_offset())
@@ -127,6 +127,17 @@ pub struct SkillEffect {
     pub timing: EffectTiming,
     pub targets: SkillEffectTarget,
 }
+
+impl SkillEffect {
+    pub fn new(id: (Uid, usize), timing: EffectTiming, targets: SkillEffectTarget) -> Self {
+        Self {
+            id,
+            timing,
+            targets,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SkillType {
     Ex,
