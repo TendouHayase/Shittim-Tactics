@@ -1,7 +1,7 @@
 use std::{
     fmt::Debug,
     hash::Hash,
-    sync::{Arc, Weak},
+    sync::Arc,
 };
 
 use error::Error;
@@ -10,7 +10,6 @@ use crate::{
     base::BaseStats,
     character::Character,
     extra::ExtraInit,
-    simulator::Simulator,
     skill::Skill,
     student::{
         file::StudentFile,

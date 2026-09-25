@@ -8,6 +8,7 @@ use core::{
         BuffKind::{self, Atk, MysticEffectiveness},
         Effect, EffectTiming,
     },
+    simulator::Simulator,
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
@@ -15,6 +16,7 @@ use core::{
     uid::Uid,
     utils::is_inside,
 };
+use std::sync::Weak;
 
 /// Skill numbers not yet in json.
 pub mod params {
@@ -182,7 +184,13 @@ pub struct KeiExSkill {
 }
 
 impl KeiExSkill {
-    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::ExParams) -> Self {
+    pub fn new(
+        owner: Uid,
+        name: &str,
+        skill_offset: usize,
+        params: params::ExParams,
+        sim: Weak<Simulator>,
+    ) -> Self {
         let id = (owner, 0);
 
         let effective_buff = Effect::Buff {
@@ -234,17 +242,18 @@ impl KeiExSkill {
         ];
 
         Self {
-            header: SkillHeader {
+            header: SkillHeader::new(
                 owner,
-                owner_offset: id.1,
-                name: name.to_string(),
+                id.1,
+                name.to_string(),
                 skill_offset,
-                skill_type: SkillType::Ex,
+                SkillType::Ex,
                 effects,
-                cost: params.cost(),
-                duration: params.duration(),
-                frames: params.frames(),
-            },
+                params.cost(),
+                params.duration(),
+                params.frames(),
+                sim,
+            ),
             params,
         }
     }
@@ -303,7 +312,13 @@ pub struct KeiBasicSkill {
 }
 
 impl KeiBasicSkill {
-    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::BasicParams) -> Self {
+    pub fn new(
+        owner: Uid,
+        name: &str,
+        skill_offset: usize,
+        params: params::BasicParams,
+        sim: Weak<Simulator>,
+    ) -> Self {
         let id = (owner, 1);
 
         let effects = vec![SkillEffect {
@@ -318,17 +333,18 @@ impl KeiBasicSkill {
         }];
 
         Self {
-            header: SkillHeader {
+            header: SkillHeader::new(
                 owner,
-                owner_offset: id.1,
-                name: name.to_string(),
+                id.1,
+                name.to_string(),
                 skill_offset,
-                skill_type: SkillType::Basic,
+                SkillType::Basic,
                 effects,
-                cost: params.cost(),
-                duration: params.duration(),
-                frames: params.frames(),
-            },
+                params.cost(),
+                params.duration(),
+                params.frames(),
+                sim,
+            ),
             params,
         }
     }
@@ -362,7 +378,13 @@ impl SkillMeta for KeiSubSkill {
 }
 
 impl KeiSubSkill {
-    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::SubParams) -> Self {
+    pub fn new(
+        owner: Uid,
+        name: &str,
+        skill_offset: usize,
+        params: params::SubParams,
+        sim: Weak<Simulator>,
+    ) -> Self {
         let id = (owner, 2);
 
         let effects = vec![SkillEffect {
@@ -377,17 +399,18 @@ impl KeiSubSkill {
         }];
 
         Self {
-            header: SkillHeader {
+            header: SkillHeader::new(
                 owner,
-                owner_offset: id.1,
-                name: name.to_string(),
+                id.1,
+                name.to_string(),
                 skill_offset,
-                skill_type: SkillType::Sub,
+                SkillType::Sub,
                 effects,
-                cost: params.cost(),
-                duration: params.duration(),
-                frames: params.frames(),
-            },
+                params.cost(),
+                params.duration(),
+                params.frames(),
+                sim,
+            ),
         }
     }
 
@@ -396,7 +419,7 @@ impl KeiSubSkill {
     pub fn effect_apply(skill: &dyn Skill, caster: &mut StateData, targets: &mut [&mut StateData]) {
         // 보스 데미지가 로그가 아니라 분포(DamageDist)가 되어 "기록 시작 이후 구간"을 읽을
         // 방법이 없다. 저장량을 어떻게 셀지는 A-4에서 정한다.
-        let boss_state = for state in targets {if state.uid()  == };
+        let boss_state = for state in targets {};
     }
 }
 
