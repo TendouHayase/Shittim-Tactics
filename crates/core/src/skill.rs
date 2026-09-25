@@ -24,6 +24,35 @@ pub struct SkillHeader {
     sim: Weak<Simulator>,
 }
 
+impl SkillHeader {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        owner: Uid,
+        owner_offset: usize,
+        name: String,
+        skill_offset: usize,
+        skill_type: SkillType,
+        effects: Vec<SkillEffect>,
+        cost: u8,
+        duration: u16,
+        frames: u16,
+        sim: Weak<Simulator>,
+    ) -> Self {
+        Self {
+            owner,
+            owner_offset,
+            name,
+            skill_offset,
+            skill_type,
+            effects,
+            cost,
+            duration,
+            frames,
+            sim,
+        }
+    }
+}
+
 pub trait Skill: SkillMeta + Debug + Send + Sync {
     fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]);
 }

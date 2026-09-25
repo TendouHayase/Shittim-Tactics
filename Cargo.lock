@@ -2804,7 +2804,6 @@ version = "0.1.0"
 dependencies = [
  "core",
  "error",
- "parsing-json",
  "serde",
  "serde_json",
 ]
