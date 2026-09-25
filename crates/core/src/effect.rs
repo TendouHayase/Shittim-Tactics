@@ -70,11 +70,7 @@ impl Effect {
     }
     #[inline]
     pub fn is_other(&self) -> bool {
-        if let Effect::Other(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Effect::Other(_))
     }
     #[inline]
     pub fn as_other(&self) -> Option<OtherEffectFn> {

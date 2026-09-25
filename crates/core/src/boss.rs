@@ -1,8 +1,7 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
+use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 use error::Error;
-use serde::{Deserialize, Serialize};
-use typed_builder::TypedBuilder;
+use serde::Deserialize;
 
 use crate::{
     base::BaseStats,
@@ -10,7 +9,6 @@ use crate::{
     character::Character,
     difficulty::Difficulty,
     extra::ExtraInit,
-    locale::LocalizedName,
     skill::Skill,
     terrains::Terrain,
     types::ArmorType,

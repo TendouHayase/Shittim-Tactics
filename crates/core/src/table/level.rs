@@ -1,5 +1,5 @@
 use crate::{
-    student::{RawStats, StarCurves, UniqueWeapon},
+    student::stats::{RawStats, StarCurves, UniqueWeapon},
     utils::lerp,
 };
 

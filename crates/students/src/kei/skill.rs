@@ -1,6 +1,13 @@
+use error::Error;
+
+use crate::kei::skill::params::RawExBuff;
+
 use super::state::KeiState;
 use core::{
-    effect::{BuffKind, Effect, EffectTiming},
+    effect::{
+        BuffKind::{self, Atk, MysticEffectiveness},
+        Effect, EffectTiming,
+    },
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
@@ -258,26 +265,28 @@ impl Skill for KeiExSkill {
                 .iter()
                 .any(|remained| remained.source == source)
         };
-        let remained = |effect: usize| RemainedEffects {
+        let remained = |effect: Effect| RemainedEffects {
             ticks: self.duration(),
-            effect: effect as u8,
+            effect,
             source,
         };
 
+        // 공버프와 신비특효 버프 추가
         for target in targets.iter_mut() {
             if is_inside(target.coordinate(), self.params.region, caster_coord) && !active(target) {
-                for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
+                for skill_effect in self.skill_effects().iter() {
                     if let SkillEffectTarget::Student { .. } = skill_effect.targets {
-                        target.remained_effects_mut().push(remained(effect));
+                        target.remained_effects_mut().push(remained(Effect::Buff {
+                            ty: Atk,
+                            scale: self.params.atk_buff_scale,
+                            amount: 0,
+                        }));
+                        target.remained_effects_mut().push(remained(Effect::Buff {
+                            ty: MysticEffectiveness,
+                            scale: self.params.effective_buff_scale,
+                            amount: 0,
+                        }));
                     }
-                }
-            }
-        }
-
-        if !active(&*caster) {
-            for (effect, skill_effect) in self.skill_effects().iter().enumerate() {
-                if let SkillEffectTarget::Oneself { .. } = skill_effect.targets {
-                    caster.remained_effects_mut().push(remained(effect));
                 }
             }
         }
@@ -384,14 +393,10 @@ impl KeiSubSkill {
 
     /// The effect is declared against [`SkillEffectTarget::Boss`], so the boss is the only
     /// target and the caster is Kei herself.
-    pub fn effect_apply(
-        _skill: &dyn Skill,
-        _caster: &mut StateData,
-        _targets: &mut [&mut StateData],
-    ) {
+    pub fn effect_apply(skill: &dyn Skill, caster: &mut StateData, targets: &mut [&mut StateData]) {
         // 보스 데미지가 로그가 아니라 분포(DamageDist)가 되어 "기록 시작 이후 구간"을 읽을
         // 방법이 없다. 저장량을 어떻게 셀지는 A-4에서 정한다.
-        todo!()
+        let boss_state = for state in targets {if state.uid()  == };
     }
 }
 
