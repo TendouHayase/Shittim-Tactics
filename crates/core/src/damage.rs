@@ -2,6 +2,17 @@ use std::ops::{Div, Mul};
 
 use stochastic::{dist::Uniform, pmf::Pmf};
 
+use crate::{
+    base::BaseStats,
+    character::Character,
+    damage::utils::{apply_def, crit_rate, crit_rate_fraction, stability_coefficient},
+    skill::Skill,
+    state::StateData,
+    types::{AttackType, damage_scale, is_weak},
+};
+
+pub mod utils;
+
 /// A damage distribution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Damage {
@@ -9,7 +20,6 @@ pub struct Damage {
     pub crit: Uniform,
     pub crit_num: u32,
     pub crit_den: u32,
-    pub flags: u32,
 }
 
 impl Default for Damage {
@@ -19,7 +29,6 @@ impl Default for Damage {
             crit: Uniform { min: 0, max: 0 },
             crit_num: 0,
             crit_den: 1,
-            flags: 0,
         }
     }
 }
@@ -32,7 +41,6 @@ impl Damage {
         crit_min: u64,
         crit_num: u32,
         crit_den: u32,
-        flags: u32,
     ) -> Self {
         Self {
             normal: Uniform {
@@ -45,7 +53,6 @@ impl Damage {
             },
             crit_num,
             crit_den,
-            flags,
         }
     }
 
@@ -61,240 +68,66 @@ impl Damage {
         self.crit_num as f64 / self.crit_den as f64
     }
 
-    // pub fn from_state_data<'a>(
-    //     src: &StateData,
-    //     tgt: &StateData,
-    //     scale_num: u64,
-    //     scale_den: u64,
-    //     skill
-    // ) -> Damage {
-    //     // Since stats are added via multiplication or addition depending on buffs and debuffs,
-    //     // a `scale` variable is required, so each element is copied rather than copying the entire object.
+    pub fn attack_damage(
+        src: &dyn Character,
+        tgt: &dyn Character,
+        scale_num: u64,
+        scale_den: u64,
+    ) -> Damage {
+        // Since stats are added via multiplication or addition depending on buffs and debuffs,
+        // a `scale` variable is required, so each element is copied rather than copying the entire object.
+        let mut effectiveness_dmg_scale: u32 = 0;
+        if is_weak(src.stats().attack_type, tgt.stats().armor_type) {
+            match src.stats().attack_type {
+                AttackType::Explosive => {
+                    effectiveness_dmg_scale = src.stats().explosive_effectiveness
+                }
+                AttackType::Piercing => {
+                    effectiveness_dmg_scale = src.stats().piercing_effectiveness
+                }
+                AttackType::Mystic => effectiveness_dmg_scale = src.stats().mystic_effectiveness,
+                AttackType::Corrosive => {
+                    effectiveness_dmg_scale = src.stats().corrosive_effectiveness
+                }
+                AttackType::Sonic => effectiveness_dmg_scale = src.stats().sonic_effectiveness,
+                _ => (),
+            }
+        }
 
-    //     let mut atk = src.character.stats().atk;
-    //     let mut stability = src.character.stats().stability;
-    //     let mut stability_rate = src.character.stats().stability_rate;
-    //     let mut crit = src.character.stats().crit;
-    //     let mut crit_dmg = src.character.stats().crit_dmg;
-    //     let mut dmg_dealt = src.character.stats().dmg_dealt;
-    //     let mut ex_skill_dmg_dealt = src.character.stats().ex_skill_dmg_dealt;
-    //     let mut basic_proficiency = src.character.stats().basics_proficiency;
-    //     let mut explosive_effectiveness = src.character.stats().explosive_effectiveness;
-    //     let mut piercing_effectiveness = src.character.stats().piercing_effectiveness;
-    //     let mut corrosive_effectiveness = src.character.stats().corrosive_effectiveness;
-    //     let mut mystic_effectiveness = src.character.stats().mystic_effectiveness;
-    //     let mut sonic_effectiveness = src.character.stats().sonic_effectiveness;
+        effectiveness_dmg_scale = effectiveness_dmg_scale / 10000
+            + damage_scale(src.stats().attack_type, tgt.stats().armor_type);
 
-    //     let mut target_def = tgt.character.stats().def;
+        let mut max_dmg: u64 = src.stats().atk.into();
 
-    //     let mut atk_scale = 100;
-    //     let mut crit_scale = 100;
-    //     let mut crit_dmg_scale = 100;
-    //     let stability_scale = 100;
-    //     let stability_rate_scale = 100;
-    //     let mut dmg_dealt_scale = 100;
-    //     let mut ex_skill_dmg_dealt_scale = 100;
-    //     let mut basic_proficiency_scale = 100;
-    //     let mut explosive_effectiveness_scale = 100;
-    //     let mut piercing_effectiveness_scale = 100;
-    //     let mut corrosive_effectiveness_scale = 100;
-    //     let mut mystic_effectiveness_scale = 100;
-    //     let mut sonic_effectiveness_scale = 100;
+        max_dmg *= effectiveness_dmg_scale as u64;
 
-    //     let mut target_def_scale = 100;
+        max_dmg = apply_def(max_dmg, tgt.stats().def, src.stats().defense_piercing);
 
-    //     for effect in &src.effects {
-    //         effect. {
-    //             &EffectKind::Buff {
-    //                 ty,
-    //                 duration: _,
-    //                 scale,
-    //                 amount: increase,
-    //             } => match ty {
-    //                 StatKind::Atk => {
-    //                     atk += increase;
-    //                     atk_scale += scale;
-    //                 }
-    //                 StatKind::Crit => {
-    //                     crit += increase as u16;
-    //                     crit_scale += scale;
-    //                 }
-    //                 StatKind::CritDmg => {
-    //                     crit_dmg += increase;
-    //                     crit_dmg_scale += scale;
-    //                 }
-    //                 StatKind::DmgDealt => {
-    //                     dmg_dealt += increase;
-    //                     dmg_dealt_scale += scale;
-    //                 }
-    //                 StatKind::ExSkillDmgDealt => {
-    //                     ex_skill_dmg_dealt += increase;
-    //                     ex_skill_dmg_dealt_scale += scale;
-    //                 }
+        max_dmg *= src.stats().dmg_dealt as u64 / 10000;
+        max_dmg -= max_dmg * (tgt.stats().dmg_resist as u64 - 10000) / 10000;
 
-    //                 StatKind::ExplosiveEffectiveness => {
-    //                     explosive_effectiveness += increase;
-    //                     explosive_effectiveness_scale += scale;
-    //                 }
-    //                 StatKind::PiercingEffectiveness => {
-    //                     piercing_effectiveness += increase;
-    //                     piercing_effectiveness_scale += scale;
-    //                 }
-    //                 StatKind::CorrosiveEffectiveness => {
-    //                     corrosive_effectiveness += increase;
-    //                     corrosive_effectiveness_scale += scale;
-    //                 }
-    //                 StatKind::MysticEffectiveness => {
-    //                     mystic_effectiveness += increase;
-    //                     mystic_effectiveness_scale += scale;
-    //                 }
-    //                 StatKind::SonicEffectiveness => {
-    //                     sonic_effectiveness += increase;
-    //                     sonic_effectiveness_scale += scale;
-    //                 }
-    //                 StatKind::BasicsProficiency => {
-    //                     basic_proficiency += increase;
-    //                     basic_proficiency_scale += scale;
-    //                 }
-    //                 _ => (),
-    //             },
-    //             &EffectKind::Debuff {
-    //                 ty,
-    //                 duration: _,
-    //                 scale,
-    //                 amount: decrease,
-    //             } => match ty {
-    //                 StatKind::Atk => {
-    //                     atk -= decrease;
-    //                     atk_scale -= scale;
-    //                 }
-    //                 StatKind::Crit => {
-    //                     crit -= decrease as u16;
-    //                     crit_scale -= scale;
-    //                 }
-    //                 StatKind::CritDmg => {
-    //                     crit_dmg -= decrease;
-    //                     crit_dmg_scale -= scale;
-    //                 }
-    //                 StatKind::DmgDealt => {
-    //                     dmg_dealt -= decrease;
-    //                     dmg_dealt_scale -= scale;
-    //                 }
-    //                 StatKind::ExSkillDmgDealt => {
-    //                     ex_skill_dmg_dealt -= decrease;
-    //                     ex_skill_dmg_dealt_scale -= scale;
-    //                 }
+        max_dmg *= scale_num;
+        max_dmg /= scale_den;
 
-    //                 StatKind::ExplosiveEffectiveness => {
-    //                     explosive_effectiveness -= decrease;
-    //                     explosive_effectiveness_scale -= scale;
-    //                 }
-    //                 StatKind::PiercingEffectiveness => {
-    //                     piercing_effectiveness -= decrease;
-    //                     piercing_effectiveness_scale -= scale;
-    //                 }
-    //                 StatKind::CorrosiveEffectiveness => {
-    //                     corrosive_effectiveness -= decrease;
-    //                     corrosive_effectiveness_scale -= scale;
-    //                 }
-    //                 StatKind::MysticEffectiveness => {
-    //                     mystic_effectiveness -= decrease;
-    //                     mystic_effectiveness_scale -= scale;
-    //                 }
-    //                 StatKind::SonicEffectiveness => {
-    //                     sonic_effectiveness -= decrease;
-    //                     sonic_effectiveness_scale -= scale;
-    //                 }
-    //                 StatKind::BasicsProficiency => {
-    //                     basic_proficiency -= decrease;
-    //                     basic_proficiency_scale -= scale;
-    //                 }
-    //                 StatKind::Def => {
-    //                     target_def -= decrease;
-    //                     target_def_scale -= scale;
-    //                 }
-    //                 _ => (),
-    //             },
-    //             _ => (),
-    //         }
-    //     }
+        let min_dmg: u64 = (max_dmg as f64
+            * stability_coefficient(src.stats().stability, src.stats().stability_rate))
+            as u64;
 
-    //     atk = atk * atk_scale as u32 / 100;
-    //     stability = stability * stability_scale / 100;
-    //     stability_rate = stability_rate * stability_rate_scale / 100;
-    //     crit = crit * crit_scale / 100;
-    //     crit_dmg = crit_dmg * crit_dmg_scale as u32 / 100;
-    //     dmg_dealt = dmg_dealt * dmg_dealt_scale as u32 / 100;
-    //     ex_skill_dmg_dealt = ex_skill_dmg_dealt * ex_skill_dmg_dealt_scale as u32 / 100;
-    //     basic_proficiency = basic_proficiency * basic_proficiency_scale as u32 / 100;
-    //     explosive_effectiveness =
-    //         explosive_effectiveness * explosive_effectiveness_scale as u32 / 100;
-    //     piercing_effectiveness = piercing_effectiveness * piercing_effectiveness_scale as u32 / 100;
-    //     corrosive_effectiveness =
-    //         corrosive_effectiveness * corrosive_effectiveness_scale as u32 / 100;
-    //     mystic_effectiveness = mystic_effectiveness * mystic_effectiveness_scale as u32 / 100;
-    //     sonic_effectiveness = sonic_effectiveness * sonic_effectiveness_scale as u32 / 100;
+        let crit = crit_rate_fraction(src.stats().crit, tgt.stats().crit_res);
 
-    //     let mut max_dmg: u64 = atk_scale as u64 * atk as u64 / 100;
-
-    //     match skill_type {
-    //         SkillType::Ex => max_dmg *= ex_skill_dmg_dealt as u64 / 10000,
-    //         _ => max_dmg *= basic_proficiency as u64 / 10000,
-    //     }
-
-    //     let final_crit_num = (crit as i32 - tgt.character.stats().crit_res).max(0) as u32 * 100u32;
-    //     let final_crit_deno =
-    //         (crit as i32 - tgt.character.stats().crit_res).max(0) as u32 * 100u32 + 666666;
-
-    //     let final_crit_dmg_scale: f64 =
-    //         (crit_dmg - tgt.character.stats().crit_dmg_res) as f64 / 10000f64;
-
-    //     let src_atk_type = src.character.stats().attack_type;
-
-    //     let mut effectiveness_dmg_scale: u32 = 0;
-    //     if is_weak(src_atk_type, tgt.character.stats().armor_type) {
-    //         match src_atk_type {
-    //             AttackType::Explosive => effectiveness_dmg_scale = explosive_effectiveness,
-    //             AttackType::Piercing => effectiveness_dmg_scale = piercing_effectiveness,
-    //             AttackType::Mystic => effectiveness_dmg_scale = mystic_effectiveness,
-    //             AttackType::Corrosive => effectiveness_dmg_scale = corrosive_effectiveness,
-    //             AttackType::Sonic => effectiveness_dmg_scale = sonic_effectiveness,
-    //             _ => (),
-    //         }
-    //     }
-
-    //     effectiveness_dmg_scale = effectiveness_dmg_scale / 10000
-    //         + damage_scale(&src_atk_type, &tgt.character.stats().armor_type);
-
-    //     target_def = target_def * target_def_scale as u32 / 100;
-
-    //     max_dmg *= effectiveness_dmg_scale as u64;
-
-    //     max_dmg = max_dmg * 1666
-    //         / (target_def - src.character.stats().defense_piercing as u32 + 1666) as u64;
-
-    //     max_dmg *= dmg_dealt as u64 / 10000;
-    //     max_dmg -= max_dmg * (tgt.character.stats().dmg_resist as u64 - 10000) / 10000;
-
-    //     max_dmg *= scale_num;
-    //     max_dmg /= scale_den;
-
-    //     let min_dmg: u64 =
-    //         max_dmg - (((stability) / (stability + 1000)) + stability_rate / 5) as u64;
-
-    //     Damage {
-    //         normal: Uniform {
-    //             min: min_dmg,
-    //             max: max_dmg,
-    //         },
-    //         crit: Uniform {
-    //             min: (min_dmg as f64 * final_crit_dmg_scale) as u64,
-    //             max: (max_dmg as f64 * final_crit_dmg_scale) as u64,
-    //         },
-    //         crit_num: final_crit_num,
-    //         crit_den: final_crit_deno,
-    //     }
-    // }
+        Damage {
+            normal: Uniform {
+                min: min_dmg,
+                max: max_dmg,
+            },
+            crit: Uniform {
+                min: (min_dmg as f64 * (src.stats().crit_dmg as f64 / 10000.0)) as u64,
+                max: (max_dmg as f64 * (src.stats().crit_dmg as f64 / 10000.0)) as u64,
+            },
+            crit_num: crit.0,
+            crit_den: crit.1,
+        }
+    }
 }
 
 impl Mul<u64> for Damage {
@@ -311,7 +144,6 @@ impl Mul<u64> for Damage {
             },
             crit_num: self.crit_num,
             crit_den: self.crit_den,
-            flags: self.flags,
         }
     }
 }
@@ -330,7 +162,6 @@ impl Div<u64> for Damage {
             },
             crit_num: self.crit_num,
             crit_den: self.crit_den,
-            flags: self.flags,
         }
     }
 }

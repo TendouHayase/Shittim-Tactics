@@ -47,7 +47,7 @@ pub enum ArmorType {
     Structure,
 }
 
-pub fn damage_scale(atk_type: &AttackType, armor_type: &ArmorType) -> u32 {
+pub fn damage_scale(atk_type: AttackType, armor_type: ArmorType) -> u32 {
     match atk_type {
         AttackType::Normal => 100,
         AttackType::Explosive => match armor_type {
