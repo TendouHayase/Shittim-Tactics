@@ -106,7 +106,7 @@ impl UniqueWeapon {
 
 /// Level stats folded together with the gear, in the order the game applies them: every flat
 /// increase is summed, then the summed rates multiply once.
-pub(crate) fn build_stats(
+pub(super) fn build_stats(
     file: &StudentFile,
     spec: &StudentSpec,
     gears: &GearTable,
