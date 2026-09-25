@@ -1,6 +1,7 @@
 use super::params;
 use super::state::KeiState;
 use core::{
+    character::Character,
     effect::{
         BuffKind::{self, Atk, MysticEffectiveness},
         Effect, EffectTiming,
@@ -9,7 +10,7 @@ use core::{
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
-    state::{RemainedEffects, StateData},
+    state::{RemainedEffects, State, StateData},
     uid::Uid,
     utils::is_inside,
 };
@@ -18,12 +19,12 @@ use std::sync::Weak;
 /// 증폭 장치를 설치하여 원형범위 내에 있는 아군의 공격력 26.8 → 51% 증가,
 /// 신비 특효 44.1 → 83.8% 가산 (25초간)
 #[derive(Debug)]
-pub struct KeiExSkill {
+pub struct ExSkill {
     header: SkillHeader,
     params: params::ExParams,
 }
 
-impl KeiExSkill {
+impl ExSkill {
     pub fn new(
         owner: Uid,
         name: &str,
@@ -85,7 +86,7 @@ impl KeiExSkill {
             header: SkillHeader::new(
                 owner,
                 id.1,
-                name.to_string(),
+                name,
                 skill_offset,
                 SkillType::Ex,
                 effects,
@@ -99,46 +100,68 @@ impl KeiExSkill {
     }
 }
 
-impl SkillMeta for KeiExSkill {
+impl SkillMeta for ExSkill {
     fn header(&self) -> &SkillHeader {
         &self.header
     }
 }
 
-impl Skill for KeiExSkill {
-    fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]) {
-        let caster_coord = caster.coordinate();
+impl Skill for ExSkill {
+    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
+        let caster_coord;
+        {
+            let caster_state = state
+                .search_uid_mut(caster.uid())
+                .expect("kei uid is not found in state");
+
+            caster_coord = caster_state.coordinate();
+        }
         let source = self.skill_offset() as u8;
+
         let active = |data: &StateData| {
             data.remained_effects()
                 .iter()
                 .any(|remained| remained.source == source)
         };
+
+        let current_frame = state.frames();
+
         let remained = |effect: Effect| RemainedEffects {
-            ticks: self.duration(),
+            end_frame: current_frame + self.duration(),
             effect,
             source,
         };
 
         // 공버프와 신비특효 버프 추가
-        for target in targets.iter_mut() {
-            if is_inside(target.coordinate(), self.params.region, caster_coord) && !active(target) {
+        for target in targets {
+            let target_state = state
+                .search_uid_mut(target.uid())
+                .expect("target uid is not found in state");
+            if is_inside(target_state.coordinate(), self.params.region, caster_coord)
+                && !active(target_state)
+            {
                 for skill_effect in self.skill_effects().iter() {
                     if let SkillEffectTarget::Student { .. } = skill_effect.targets {
-                        target.remained_effects_mut().push(remained(Effect::Buff {
-                            ty: Atk,
-                            scale: self.params.atk_buff_scale,
-                            amount: 0,
-                        }));
-                        target.remained_effects_mut().push(remained(Effect::Buff {
-                            ty: MysticEffectiveness,
-                            scale: self.params.effective_buff_scale,
-                            amount: 0,
-                        }));
+                        target_state
+                            .remained_effects_mut()
+                            .push(remained(Effect::Buff {
+                                ty: Atk,
+                                scale: self.params.atk_buff_scale,
+                                amount: 0,
+                            }));
+                        target_state
+                            .remained_effects_mut()
+                            .push(remained(Effect::Buff {
+                                ty: MysticEffectiveness,
+                                scale: self.params.effective_buff_scale,
+                                amount: 0,
+                            }));
                     }
                 }
             }
         }
+
+        state
     }
 }
 
@@ -146,15 +169,15 @@ impl Skill for KeiExSkill {
 /// 추가로 해당 증폭 장치 저장량의 40 → 100%만큼 대미지
 /// (이 대미지는 치명 공격이 발생하지 않으며, 케이의 능력치에 영향받지 않습니다.)
 #[derive(Debug)]
-pub struct KeiBasicSkill {
+pub struct BasicSkill {
     header: SkillHeader,
     params: params::BasicParams,
 }
 
-impl KeiBasicSkill {
+impl BasicSkill {
     pub fn new(
         owner: Uid,
-        name: &str,
+        name: &'static str,
         skill_offset: usize,
         params: params::BasicParams,
         sim: Weak<Simulator>,
@@ -176,7 +199,7 @@ impl KeiBasicSkill {
             header: SkillHeader::new(
                 owner,
                 id.1,
-                name.to_string(),
+                name,
                 skill_offset,
                 SkillType::Basic,
                 effects,
@@ -190,14 +213,14 @@ impl KeiBasicSkill {
     }
 }
 
-impl SkillMeta for KeiBasicSkill {
+impl SkillMeta for BasicSkill {
     fn header(&self) -> &SkillHeader {
         &self.header
     }
 }
 
-impl Skill for KeiBasicSkill {
-    fn apply(&self, _caster: &mut StateData, _targets: &mut [&mut StateData]) {
+impl Skill for BasicSkill {
+    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
         todo!()
     }
 }
@@ -207,20 +230,20 @@ impl Skill for KeiBasicSkill {
 /// 적에게 가한 대미지의 10%를 저장 (케이 기본 공격력의 5000%까지)
 /// (저장량은 덮어씌워집니다)
 #[derive(Debug)]
-pub struct KeiSubSkill {
+pub struct SubSkill {
     header: SkillHeader,
 }
 
-impl SkillMeta for KeiSubSkill {
+impl SkillMeta for SubSkill {
     fn header(&self) -> &SkillHeader {
         &self.header
     }
 }
 
-impl KeiSubSkill {
+impl SubSkill {
     pub fn new(
         owner: Uid,
-        name: &str,
+        name: &'static str,
         skill_offset: usize,
         params: params::SubParams,
         sim: Weak<Simulator>,
@@ -242,7 +265,7 @@ impl KeiSubSkill {
             header: SkillHeader::new(
                 owner,
                 id.1,
-                name.to_string(),
+                name,
                 skill_offset,
                 SkillType::Sub,
                 effects,
@@ -267,8 +290,8 @@ impl KeiSubSkill {
     }
 }
 
-impl Skill for KeiSubSkill {
-    fn apply(&self, caster: &mut StateData, _targets: &mut [&mut StateData]) {
-        caster.extra_as_mut::<KeiState>().acc_damage = 0;
+impl Skill for SubSkill {
+    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
+        todo!()
     }
 }
