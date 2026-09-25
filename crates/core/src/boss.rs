@@ -5,21 +5,20 @@ use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 use crate::{
-    base::BaseStats, character::Character, difficulty::Difficulty, extra::ExtraInit,
-    locale::LocalizedName, skill::Skill, terrains::Terrain, types::ArmorType, uid::Uid,
+    base::BaseStats,
+    boss::{file::BossFile, stats::BossStats},
+    character::Character,
+    difficulty::Difficulty,
+    extra::ExtraInit,
+    locale::LocalizedName,
+    skill::Skill,
+    terrains::Terrain,
+    types::ArmorType,
+    uid::Uid,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TypedBuilder)]
-pub struct BossStats {
-    pub name: String,
-    pub id: u32,
-    pub base_stats: BaseStats,
-    pub terrain: Terrain,
-    pub groggy_gauge: u64,
-    pub groggy_duration: u8,
-    pub difficulty: Difficulty,
-    pub phase_switching_hp: [u64; 3],
-}
+pub mod file;
+pub mod stats;
 
 #[derive(Debug)]
 pub struct Boss {
@@ -73,6 +72,15 @@ impl Boss {
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct DifficultyEntry {
+    #[serde(flatten)]
+    stats: BaseStats,
+    groggy_gauge: u64,
+    groggy_duration: u8,
+    phase_switching_hp: [u64; 3],
+}
+
 impl PartialEq for Boss {
     fn eq(&self, other: &Self) -> bool {
         self.stats == other.stats
@@ -115,38 +123,10 @@ impl Character for Box<Boss> {
     }
 }
 
-/// Top level of `data/bosses/<boss>.json`.
-///
-/// Armor type keys differ per boss, so every remaining key is swept up. Any top-level key that
-/// is not an armor type, such as `skills`, must therefore be declared as a field here; leaving
-/// one out surfaces as an `ArmorType` parse failure.
-#[derive(Debug, Deserialize)]
-pub struct BossFile {
-    pub id: u32,
-    pub name: LocalizedName,
-    pub skills: serde_json::Value,
-
-    #[serde(flatten)]
-    by_armor: HashMap<ArmorType, HashMap<Difficulty, DifficultyEntry>>,
-}
-
-impl BossFile {
-    pub fn from_file(path: &str) -> Result<Self, Error> {
-        parsing_json::read_json(path)
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct DifficultyEntry {
-    #[serde(flatten)]
-    stats: BaseStats,
-    groggy_gauge: u64,
-    groggy_duration: u8,
-    phase_switching_hp: [u64; 3],
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::boss::file::BossFile;
+
     use super::*;
 
     /// Relative to the crate root, not the workspace root.
