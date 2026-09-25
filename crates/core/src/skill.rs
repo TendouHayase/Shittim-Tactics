@@ -1,7 +1,7 @@
 use crate::character::Character;
 use crate::effect::{Effect, EffectTiming};
 use crate::simulator::Simulator;
-use crate::state::{State, StateData};
+use crate::state::State;
 use crate::uid::{SkillUid, Uid};
 use crate::utils::Position;
 use error::Error;

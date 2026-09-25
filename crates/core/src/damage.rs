@@ -3,11 +3,8 @@ use std::ops::{Div, Mul};
 use stochastic::{dist::Uniform, pmf::Pmf};
 
 use crate::{
-    base::BaseStats,
     character::Character,
-    damage::utils::{apply_def, crit_rate, crit_rate_fraction, stability_coefficient},
-    skill::Skill,
-    state::StateData,
+    damage::utils::{apply_def, crit_rate_fraction, stability_coefficient},
     types::{AttackType, damage_scale, is_weak},
 };
 

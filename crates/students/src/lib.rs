@@ -11,7 +11,8 @@ use core::{
 };
 use error::Error;
 use kei::{
-    skill::{KeiBasicSkill, KeiExSkill, KeiSubSkill, params::RawSkills},
+    params::RawSkills,
+    skill::{BasicSkill, ExSkill, SubSkill},
     state::KeiState,
 };
 use serde::Deserialize;
@@ -65,14 +66,14 @@ fn build_skills(
             let [ex_lvl, basic_lvl, _, sub_lvl] = skill_levels;
 
             vec![
-                Arc::new(KeiExSkill::new(
+                Arc::new(kei::ExSkill::new(
                     owner,
                     raw.ex.name.get(),
                     offset,
                     raw.ex.pick(ex_lvl).ok_or_else(|| missing("ex", ex_lvl))?,
                     sim.clone(),
                 )),
-                Arc::new(KeiBasicSkill::new(
+                Arc::new(kei::BasicSkill::new(
                     owner,
                     raw.basic.name.get(),
                     offset + 1,
@@ -81,7 +82,7 @@ fn build_skills(
                         .ok_or_else(|| missing("basic", basic_lvl))?,
                     sim.clone(),
                 )),
-                Arc::new(KeiSubSkill::new(
+                Arc::new(kei::SubSkill::new(
                     owner,
                     raw.sub.name.get(),
                     offset + 2,

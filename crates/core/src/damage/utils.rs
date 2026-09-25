@@ -13,7 +13,7 @@ pub fn crit_rate_fraction(crit: u16, crit_res: i32) -> (u32, u32) {
 }
 
 pub fn crit_damage_coefficient(crit_dmg: u32, crit_dmg_res: u32) -> f64 {
-    ((crit_dmg - crit_dmg_res) as f64 / 10000.0)
+    (crit_dmg - crit_dmg_res) as f64 / 10000.0 
 }
 
 pub fn stability_coefficient(stability: u16, stability_rate: u16) -> f64 {
