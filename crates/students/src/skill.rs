@@ -1,4 +1,4 @@
-use core::skill::{Skill, SkillParams};
+use core::skill::SkillParams;
 
 pub trait ReadStudentSkill {
     fn ex_params() -> impl SkillParams;

@@ -1,6 +1,4 @@
-use error::Error;
 
-use crate::kei::skill::params::RawExBuff;
 
 use super::state::KeiState;
 use core::{
@@ -416,10 +414,10 @@ impl KeiSubSkill {
 
     /// The effect is declared against [`SkillEffectTarget::Boss`], so the boss is the only
     /// target and the caster is Kei herself.
-    pub fn effect_apply(skill: &dyn Skill, caster: &mut StateData, targets: &mut [&mut StateData]) {
+    pub fn effect_apply(_skill: &dyn Skill, _caster: &mut StateData, targets: &mut [&mut StateData]) {
         // 보스 데미지가 로그가 아니라 분포(DamageDist)가 되어 "기록 시작 이후 구간"을 읽을
         // 방법이 없다. 저장량을 어떻게 셀지는 A-4에서 정한다.
-        let boss_state = for state in targets {};
+        for _state in targets {};
     }
 }
 
