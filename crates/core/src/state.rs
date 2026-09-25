@@ -4,6 +4,7 @@ use error::Error;
 
 use crate::{
     damage::{Damage, DamageDist},
+    effect::Effect,
     extra::ExtraStateData,
     uid::Uid,
     utils::Position,
@@ -156,7 +157,7 @@ pub struct CommonStateData {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RemainedEffects {
     pub ticks: u16,
-    pub effect: u8,
+    pub effect: Effect,
     pub source: u8,
 }
 

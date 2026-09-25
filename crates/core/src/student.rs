@@ -1,4 +1,8 @@
-use std::{fmt::Debug, hash::Hash, sync::Arc};
+use std::{
+    fmt::Debug,
+    hash::Hash,
+    sync::{Arc, Weak},
+};
 
 use error::Error;
 
@@ -6,6 +10,7 @@ use crate::{
     base::BaseStats,
     character::Character,
     extra::ExtraInit,
+    simulator::Simulator,
     skill::Skill,
     student::{
         file::StudentFile,

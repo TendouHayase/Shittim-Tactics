@@ -1,10 +1,14 @@
+use crate::character::Character;
 use crate::effect::{Effect, EffectTiming};
+use crate::simulator::Simulator;
 use crate::state::StateData;
 use crate::uid::{SkillUid, Uid};
 use crate::utils::Position;
+use error::Error;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::Weak;
 
 #[derive(Debug)]
 pub struct SkillHeader {
@@ -17,6 +21,7 @@ pub struct SkillHeader {
     pub cost: u8,
     pub duration: u16, // 시전후 시전 종료까지의 시간
     pub frames: u16,   // 발동후 시전까지 시간
+    sim: Weak<Simulator>,
 }
 
 pub trait Skill: SkillMeta + Debug + Send + Sync {
@@ -30,9 +35,9 @@ pub trait SkillMeta {
         &self.header().name
     }
     fn uid(&self) -> SkillUid {
-        SkillUid::new(self.owner(), self.skill_offset())
+        SkillUid::new(self.owner_uid(), self.skill_offset())
     }
-    fn owner(&self) -> Uid {
+    fn owner_uid(&self) -> Uid {
         self.header().owner
     }
     fn cost(&self) -> u8 {
@@ -52,6 +57,30 @@ pub trait SkillMeta {
     }
     fn skill_effects(&self) -> &[SkillEffect] {
         &self.header().effects
+    }
+    fn boss_uid(&self) -> Result<Uid, Error> {
+        Ok(self
+            .header()
+            .sim
+            .upgrade()
+            .ok_or(Error::ExpiredRefError("referenced value has been dropped"))?
+            .boss
+            .uid())
+    }
+    fn other_students_uid(&self) -> Result<Vec<Uid>, Error> {
+        let mut out = Vec::with_capacity(8);
+        self.header()
+            .sim
+            .upgrade()
+            .ok_or(Error::ExpiredRefError("referenced value has been dropped"))?
+            .students
+            .iter()
+            .for_each(|student| {
+                if student.uid() != self.owner_uid() {
+                    out.push(student.uid());
+                }
+            });
+        Ok(out)
     }
 }
 

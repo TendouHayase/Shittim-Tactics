@@ -1,4 +1,5 @@
 pub mod kei;
+pub mod skill;
 
 use core::{
     extra::ExtraInit,
@@ -136,7 +137,7 @@ mod tests {
         let kei = load_kei();
 
         for skill in kei.skills() {
-            assert_eq!(skill.owner(), kei.uid());
+            assert_eq!(skill.owner_uid(), kei.uid());
         }
     }
 }

@@ -91,7 +91,7 @@ impl Simulator {
     }
 
     fn resolve_targets(&self, state: &State, skill: &dyn Skill) -> Vec<Uid> {
-        let caster_id = skill.owner();
+        let caster_id = skill.owner_uid();
         let caster_coord = state
             .search_uid(caster_id)
             .map(|data| data.coordinate())
