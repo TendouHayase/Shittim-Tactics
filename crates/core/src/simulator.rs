@@ -144,38 +144,19 @@ impl Simulator {
 
     fn apply(&self, mut state: State, action: &ActionContext) -> Result<State, Error> {
         // 타깃은 거리 순서를 보존하도록 action.targets 순서로 담음.
-
-        let (boss, students) = state.split_mut();
-        let caster;
-        let mut targets: Vec<&mut StateData>;
-
-        let caster_uid = action.caster;
-
-        if boss.uid() == caster_uid {
-            caster = boss;
-
-            targets = students
-                .iter_mut()
-                .filter(|s| action.targets.contains(&s.uid()))
-                .collect();
-        } else {
-            let caster_idx = students
-                .iter()
-                .position(|s| s.uid() == caster_uid)
-                .ok_or(Error::NotFound)?;
-
-            let (left, right) = students.split_at_mut(caster_idx);
-            let other;
-            (caster, other) = right.split_first_mut().unwrap(); // 위에서 캐스터 존재여부 검사함
-
-            targets = left
-                .iter_mut()
-                .chain(other.iter_mut())
-                .filter(|s| action.targets.contains(&s.uid()))
-                .collect();
-        }
         let skill = self.lookup_skill(action.skill).ok_or(Error::NotFound)?;
-        skill.apply(caster, &mut targets);
+
+        let targets: Vec<&dyn Character> = action
+            .targets
+            .iter()
+            .map(|&tgt| self.character_by_uid(tgt).ok_or(Error::NotFound))
+            .collect::<Result<Vec<&dyn Character>, Error>>()?;
+
+        let caster = self
+            .character_by_uid(action.caster)
+            .ok_or(Error::NotFound)?;
+
+        state = skill.apply(state, caster, &targets);
 
         Ok(state)
     }

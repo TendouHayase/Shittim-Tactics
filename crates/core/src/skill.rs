@@ -1,7 +1,7 @@
 use crate::character::Character;
 use crate::effect::{Effect, EffectTiming};
 use crate::simulator::Simulator;
-use crate::state::StateData;
+use crate::state::{State, StateData};
 use crate::uid::{SkillUid, Uid};
 use crate::utils::Position;
 use error::Error;
@@ -54,7 +54,7 @@ impl SkillHeader {
 }
 
 pub trait Skill: SkillMeta + Debug + Send + Sync {
-    fn apply(&self, caster: &mut StateData, targets: &mut [&mut StateData]);
+    fn apply(&self, state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State;
 }
 
 pub trait SkillMeta {
