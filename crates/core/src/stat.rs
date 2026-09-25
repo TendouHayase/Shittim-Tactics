@@ -51,7 +51,7 @@ pub enum StatValueKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct Stat {
+pub struct StatValue {
     pub stat: StatKind,
     pub kind: StatValueKind,
     pub value: OrderedFloat<f64>,

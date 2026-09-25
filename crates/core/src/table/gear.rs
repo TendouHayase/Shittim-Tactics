@@ -5,7 +5,7 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    stat::{Stat, StatKind, StatValueKind},
+    stat::{StatKind, StatValue, StatValueKind},
     utils::{Ratio, lerp},
 };
 
@@ -44,7 +44,7 @@ impl GearTable {
         Ok(gear_table)
     }
 
-    pub fn stats(&self, kind: GearKind, tier: usize, lvl: usize) -> Option<Vec<Stat>> {
+    pub fn stats(&self, kind: GearKind, tier: usize, lvl: usize) -> Option<Vec<StatValue>> {
         if tier == 0 || tier > GearTable::MAX_TIER {
             return None;
         }
@@ -61,7 +61,7 @@ impl GearTable {
 
             let v = lerp(stat_min, stat_max, lvl, lvl_len)?; // 위에서 검사해서 항상 Some
 
-            result.push(Stat {
+            result.push(StatValue {
                 stat: s.stat,
                 kind: s.kind,
                 value: OrderedFloat(v),
