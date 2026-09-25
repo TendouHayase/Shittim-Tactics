@@ -177,7 +177,7 @@ pub struct BasicSkill {
 impl BasicSkill {
     pub fn new(
         owner: Uid,
-        name: &'static str,
+        name: &str,
         skill_offset: usize,
         params: params::BasicParams,
         sim: Weak<Simulator>,
@@ -243,7 +243,7 @@ impl SkillMeta for SubSkill {
 impl SubSkill {
     pub fn new(
         owner: Uid,
-        name: &'static str,
+        name: &str,
         skill_offset: usize,
         params: params::SubParams,
         sim: Weak<Simulator>,
