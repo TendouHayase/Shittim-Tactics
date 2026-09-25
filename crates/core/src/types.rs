@@ -81,15 +81,9 @@ pub fn damage_scale(atk_type: AttackType, armor_type: ArmorType) -> u32 {
 }
 
 pub fn is_weak(atk_type: AttackType, armor_type: ArmorType) -> bool {
-    if atk_type == AttackType::Explosive && armor_type == ArmorType::Light {
-        true
-    } else if atk_type == AttackType::Piercing && armor_type == ArmorType::Heavy {
-        true
-    } else if atk_type == AttackType::Mystic && armor_type == ArmorType::Special {
-        true
-    } else if atk_type == AttackType::Corrosive && armor_type == ArmorType::Composite {
-        true
-    } else {
-        atk_type == AttackType::Sonic && armor_type == ArmorType::Elastic
-    }
+    (atk_type == AttackType::Explosive && armor_type == ArmorType::Light)
+        || (atk_type == AttackType::Piercing && armor_type == ArmorType::Heavy)
+        || (atk_type == AttackType::Mystic && armor_type == ArmorType::Special)
+        || (atk_type == AttackType::Corrosive && armor_type == ArmorType::Composite)
+        || (atk_type == AttackType::Sonic && armor_type == ArmorType::Elastic)
 }
