@@ -2,6 +2,7 @@
 use typed_builder::TypedBuilder;
 
 use crate::{
+    effect::Effect,
     stat::StatKind,
     types::{ArmorType, AttackType},
 };
@@ -135,6 +136,28 @@ pub struct BaseStats {
 }
 
 impl BaseStats {
+    /// These stats with every given buff and debuff applied.
+    pub fn with_effects(self, effects: impl IntoIterator<Item = Effect>) -> Self {
+        // 스탯별로 합산한 뒤 한 번만 적용한다. apply_stat의 설명 참고.
+        let mut totals: Vec<(StatKind, f64, f64)> = Vec::new();
+
+        for (stat, amount, scale) in effects.into_iter().filter_map(|e| e.stat_change()) {
+            match totals.iter_mut().find(|total| total.0 == stat) {
+                Some(total) => {
+                    total.1 += amount;
+                    total.2 += scale;
+                }
+                None => totals.push((stat, amount, scale)),
+            }
+        }
+
+        totals
+            .into_iter()
+            .fold(self, |stats, (stat, amount, scale)| {
+                stats.apply_stat(stat, amount, 1.0 + scale)
+            })
+    }
+
     /// Writes `(current + amount) * scale` to the matching field.
     ///
     /// Both arguments must already be summed. The game adds every flat increase, then

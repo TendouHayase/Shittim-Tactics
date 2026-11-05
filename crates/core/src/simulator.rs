@@ -4,6 +4,7 @@ use error::Error;
 
 use crate::{
     actions::ActionContext,
+    base::BaseStats,
     boss::Boss,
     character::Character,
     constants::{COST_UNIT, MAX_COST},
@@ -216,6 +217,8 @@ impl Simulator {
         let caster_coord = coordinate_of(state, caster.uid());
         let boss_coord = state.boss().coordinate();
         let first_frame = state.frames();
+        let caster_stats = current_stats(state, caster);
+        let boss_stats = current_stats(state, &self.boss);
 
         for skill_effect in skill.skill_effects() {
             let Some((coef_num, coef_den)) = boss_hit_coef(skill_effect, boss_coord, caster_coord)
@@ -223,8 +226,9 @@ impl Simulator {
                 continue;
             };
 
+            // 틱뎀도 타격마다 다시 계산하지 않고 시전 완료 시점의 스탯으로 고정한다.
             let damage =
-                Damage::attack_damage(caster, &self.boss, coef_num as u64, coef_den as u64);
+                Damage::attack_damage(&caster_stats, &boss_stats, coef_num as u64, coef_den as u64);
             let damage = self.damage_mode.resolve(damage);
 
             for frame in hit_frames(skill_effect.timing, first_frame) {
@@ -332,6 +336,22 @@ fn tick_down(data: &mut StateData, delta_ticks: u16, end_tick: u16) {
     // 효과 구간이 [적용, 적용 + 지속)이라 남은 틱이 delta와 같으면 이번에 끝난다.
     data.remained_effects_mut()
         .retain(|effect| effect.end_frame > end_tick);
+}
+
+fn current_stats(state: &State, character: &dyn Character) -> BaseStats {
+    let now = state.frames();
+    let effects = state
+        .search_uid(character.uid())
+        .map(|data| data.remained_effects())
+        .unwrap_or_default();
+
+    // 시전 완료는 tick_down 전에 처리되므로 이미 끝난 효과가 목록에 남아 있을 수 있다.
+    character.stats().with_effects(
+        effects
+            .iter()
+            .filter(|remained| remained.end_frame > now)
+            .map(|remained| remained.effect),
+    )
 }
 
 fn coordinate_of(state: &State, uid: Uid) -> Position {

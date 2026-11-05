@@ -25,6 +25,9 @@ pub mod params {
     /// Coefficients are all percentages, so the denominator is fixed.
     pub const PERCENT_DEN: u16 = 100;
 
+    /// Converts a percentage to the per ten thousand scale of a buff or debuff.
+    pub const PERCENT_TO_SCALE: u16 = 100;
+
     /// 3.666 seconds. Written as a reduced fraction because `time_to_ticks(3666, 1000)`
     /// overflows a u16 at `3666 * 30`.
     pub const WHITE_HOT_HEAT_VISION_FRAMES: u16 = time_to_ticks(1833, 500);
@@ -332,7 +335,7 @@ create_boss_skill!(
                     targets: SkillEffectTarget::Land {
                         kind: Effect::Debuff {
                             ty: DebuffKind::Atk,
-                            scale: params.blast_atk_down_scale,
+                            scale: params.blast_atk_down_scale * params::PERCENT_TO_SCALE,
                             amount: 0,
                         },
                         region,
@@ -539,7 +542,7 @@ create_boss_skill!(
     SkillType::Passive,
     5,
     effects(id, params) {
-        let scale = params.mystic_up_percent;
+        let scale = params.mystic_up_percent * params::PERCENT_TO_SCALE;
 
         // Torment 미만에는 이 패시브가 배정되지 않는다.
         if scale == 0 {

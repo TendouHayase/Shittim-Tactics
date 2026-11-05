@@ -20,9 +20,10 @@ pub struct ExParams {
     pub region: Region,
     /// Buff targets excluding the caster.
     pub ally_count: u8,
+    /// Per ten thousand.
     pub atk_buff_scale: u16,
-    /// 83.8, rounded.
-    pub effective_buff_scale: u16,
+    /// Added to the effectiveness stat, per ten thousand.
+    pub effectiveness_buff_amount: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -38,6 +39,7 @@ pub struct SubParams {
     pub duration: u16,
     /// Buff targets excluding the caster.
     pub ally_count: u8,
+    /// Per ten thousand.
     pub crit_buff_scale: u16,
 }
 
@@ -50,6 +52,11 @@ pub struct RawSkills {
     pub basic: RawBasic,
     #[serde(rename = "Sub")]
     pub sub: RawSub,
+}
+
+// json의 26.8은 부동소수점이라 곱한 뒤 반올림해야 2680이 된다.
+fn per_ten_thousand(percent: f64) -> u32 {
+    (percent * 100.0).round() as u32
 }
 
 /// One buffed stat across skill levels. Percentages, so `26.8` means `+26.8%`.
@@ -89,8 +96,10 @@ impl RawEx {
                 end_angle_degree: 360,
             },
             ally_count: ON_FIELD_COUNT - 1,
-            atk_buff_scale: self.buff.atk.scale.get(i)?.round() as u16,
-            effective_buff_scale: self.buff.mystic_effectiveness.scale.get(i)?.round() as u16,
+            atk_buff_scale: per_ten_thousand(*self.buff.atk.scale.get(i)?) as u16,
+            effectiveness_buff_amount: per_ten_thousand(
+                *self.buff.mystic_effectiveness.scale.get(i)?,
+            ),
         })
     }
 }
@@ -140,7 +149,7 @@ impl RawSub {
         Some(SubParams {
             duration: self.duration,
             ally_count: ON_FIELD_COUNT - 1,
-            crit_buff_scale: self.buff.crit.scale.get(i)?.round() as u16,
+            crit_buff_scale: per_ten_thousand(*self.buff.crit.scale.get(i)?) as u16,
         })
     }
 }

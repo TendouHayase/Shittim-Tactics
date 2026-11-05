@@ -76,10 +76,11 @@ impl ExSkill {
     ) -> Self {
         let id = (owner, 0);
 
+        // 특효는 곱하지 않고 가산한다.
         let effective_buff = Effect::Buff {
             ty: BuffKind::MysticEffectiveness,
-            scale: params.effective_buff_scale,
-            amount: 0,
+            scale: 0,
+            amount: params.effectiveness_buff_amount,
         };
 
         let atk_buff = Effect::Buff {

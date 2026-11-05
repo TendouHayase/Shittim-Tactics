@@ -20,6 +20,9 @@ pub mod params {
     /// Coefficients are all percentages, so the denominator is fixed.
     pub const PERCENT_DEN: u16 = 100;
 
+    /// Converts a percentage to the per ten thousand scale of a buff or debuff.
+    pub const PERCENT_TO_SCALE: u16 = 100;
+
     /// On-field capacity for this fight. How many actually stand there is a runtime fact, so
     /// this is only the bound `skill_effects` declares with; `apply` uses the targets it is
     /// given. Not `MAX_STUDENT_COUNT`, which is the party size of 10.
@@ -294,7 +297,7 @@ create_boss_skill!(
                 targets: SkillEffectTarget::Student {
                     kind: Effect::Debuff {
                         ty: DebuffKind::Def,
-                        scale: params.def_down_scale,
+                        scale: params.def_down_scale * params::PERCENT_TO_SCALE,
                         amount: 0,
                     },
                     count: params.count,

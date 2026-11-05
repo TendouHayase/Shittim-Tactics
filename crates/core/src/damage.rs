@@ -3,7 +3,7 @@ use std::ops::{Div, Mul};
 use stochastic::{dist::Uniform, pmf::Pmf};
 
 use crate::{
-    character::Character,
+    base::BaseStats,
     damage::utils::{apply_def, crit_rate_fraction, stability_coefficient},
     types::{AttackType, damage_scale, is_weak},
 };
@@ -80,55 +80,47 @@ impl Damage {
         self.crit_num as f64 / self.crit_den as f64
     }
 
+    /// `src` and `tgt` are expected to already include their buffs and debuffs.
     pub fn attack_damage(
-        src: &dyn Character,
-        tgt: &dyn Character,
+        src: &BaseStats,
+        tgt: &BaseStats,
         scale_num: u64,
         scale_den: u64,
     ) -> Damage {
-        // Since stats are added via multiplication or addition depending on buffs and debuffs,
-        // a `scale` variable is required, so each element is copied rather than copying the entire object.
         let mut effectiveness_dmg_scale: u32 = 0;
-        if is_weak(src.stats().attack_type, tgt.stats().armor_type) {
-            match src.stats().attack_type {
-                AttackType::Explosive => {
-                    effectiveness_dmg_scale = src.stats().explosive_effectiveness
-                }
-                AttackType::Piercing => {
-                    effectiveness_dmg_scale = src.stats().piercing_effectiveness
-                }
-                AttackType::Mystic => effectiveness_dmg_scale = src.stats().mystic_effectiveness,
-                AttackType::Corrosive => {
-                    effectiveness_dmg_scale = src.stats().corrosive_effectiveness
-                }
-                AttackType::Sonic => effectiveness_dmg_scale = src.stats().sonic_effectiveness,
+        if is_weak(src.attack_type, tgt.armor_type) {
+            match src.attack_type {
+                AttackType::Explosive => effectiveness_dmg_scale = src.explosive_effectiveness,
+                AttackType::Piercing => effectiveness_dmg_scale = src.piercing_effectiveness,
+                AttackType::Mystic => effectiveness_dmg_scale = src.mystic_effectiveness,
+                AttackType::Corrosive => effectiveness_dmg_scale = src.corrosive_effectiveness,
+                AttackType::Sonic => effectiveness_dmg_scale = src.sonic_effectiveness,
                 _ => (),
             }
         }
 
-        effectiveness_dmg_scale += damage_scale(src.stats().attack_type, tgt.stats().armor_type);
+        effectiveness_dmg_scale += damage_scale(src.attack_type, tgt.armor_type);
 
-        let mut max_dmg: u64 = src.stats().atk.into();
+        let mut max_dmg: u64 = src.atk.into();
 
         max_dmg *= effectiveness_dmg_scale as u64;
 
-        max_dmg = apply_def(max_dmg, tgt.stats().def, src.stats().defense_piercing);
+        max_dmg = apply_def(max_dmg, tgt.def, src.defense_piercing);
 
         // apply_def가 먼저 나눈 뒤 곱해 절사가 생기므로, 배율의 만분율 환산은 그 뒤에 한다.
         max_dmg /= 10000;
 
-        max_dmg = max_dmg * src.stats().dmg_dealt as u64 / 10000;
+        max_dmg = max_dmg * src.dmg_dealt as u64 / 10000;
         // 10000이 중립값이라 그보다 낮으면 데미지가 늘어난다.
-        max_dmg = max_dmg * 20000u64.saturating_sub(tgt.stats().dmg_resist as u64) / 10000;
+        max_dmg = max_dmg * 20000u64.saturating_sub(tgt.dmg_resist as u64) / 10000;
 
         max_dmg *= scale_num;
         max_dmg /= scale_den;
 
-        let min_dmg: u64 = (max_dmg as f64
-            * stability_coefficient(src.stats().stability, src.stats().stability_rate))
-            as u64;
+        let min_dmg: u64 =
+            (max_dmg as f64 * stability_coefficient(src.stability, src.stability_rate)) as u64;
 
-        let crit = crit_rate_fraction(src.stats().crit, tgt.stats().crit_res);
+        let crit = crit_rate_fraction(src.crit, tgt.crit_res);
 
         Damage {
             normal: Uniform {
@@ -136,8 +128,8 @@ impl Damage {
                 max: max_dmg,
             },
             crit: Uniform {
-                min: (min_dmg as f64 * (src.stats().crit_dmg as f64 / 10000.0)) as u64,
-                max: (max_dmg as f64 * (src.stats().crit_dmg as f64 / 10000.0)) as u64,
+                min: (min_dmg as f64 * (src.crit_dmg as f64 / 10000.0)) as u64,
+                max: (max_dmg as f64 * (src.crit_dmg as f64 / 10000.0)) as u64,
             },
             crit_num: crit.0,
             crit_den: crit.1,
