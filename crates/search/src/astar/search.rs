@@ -1,145 +1,37 @@
+use core::{agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skill};
 use error::Error;
 
-use crate::astar::node::Node;
-use core::{
-    actions::ActionContext, agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skill,
-    state::State,
-};
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap},
-    sync::Arc,
-};
+use crate::best_first::{Solution, best_first};
 
-pub struct Astar<'a, Sim, A: Agent<Value = u64>> {
-    sim: &'a Sim,
+pub struct Astar<'a, A: Agent<Value = u64>> {
+    sim: &'a Simulator,
     agent: A,
 }
 
-impl<'a, Sim, A: Agent<Value = u64>> Astar<'a, Sim, A> {
-    pub fn new(sim: &'a Sim, agent: A) -> Self {
+impl<'a, A: Agent<Value = u64>> Astar<'a, A> {
+    pub fn new(sim: &'a Simulator, agent: A) -> Self {
         Astar { sim, agent }
     }
-}
 
-/// Whether the boss is down with probability at least `threshold`.
-fn is_goal(sim: &impl Simulator, state: &State, threshold: f64) -> bool {
-    let Some(boss) = sim.character_by_uid(state.boss().uid()) else {
-        return false;
-    };
-
-    state.boss().accumulated_damage().tail(boss.stats().hp) >= threshold
-}
-
-impl<'a, Sim, A: Agent<Value = u64>> Algorithm<'a> for Astar<'a, Sim, A>
-where
-    Sim: Simulator,
-{
-    fn search(&self, threshold: f64) -> Result<Vec<(&'a dyn Skill, u16)>, Error> {
-        let initial = self.sim.initial_state();
-
-        // 결과 노드
-        let mut result_node = None;
-
-        // open 리스트, close 리스트 생성
-        let mut open: BinaryHeap<Reverse<Arc<Node>>> = BinaryHeap::new();
-        let mut closed: HashMap<State, u64> = HashMap::new();
-
-        // 초기 state의 h 값
-        let init_h = self.agent.value(self.sim, &initial);
-
-        // 최초 node
-        let init_node = Node::new(initial, 0, init_h);
-
-        open.push(Reverse(Arc::new(init_node)));
-
-        // 탐색 시작
-        while let Some(Reverse(node)) = open.pop() {
-            // 보스 처치시 종료
-            if is_goal(self.sim, &node.state, threshold) {
-                result_node = Some(node);
-                break;
-            }
-
-            // 현재 비용이 과거 기록된 같은 state의 g값보다 크다면 스킵
-            if let Some(&best_g) = closed.get(&node.state)
-                && best_g <= node.g
-            {
-                continue;
-            }
-
-            // 현재 노드로 g값 갱신
-            closed.insert(node.state.clone(), node.g);
-
-            // 다음 이벤트 발생까지 ticks
-            let dt = self.sim.next_event_frames(&node.state);
-
-            // dt만큼 상황 진행
-            let Ok(advanced) = self.sim.advance(&node.state, dt) else {
-                continue;
-            };
-
-            if self.sim.is_time_over(advanced.frames()) {
-                continue;
-            }
-
-            // 무엇을 할 수 있는지는 에이전트에게 묻는다. 합법성은 에이전트가 거치는
-            // `Simulator::legal_actions`가 책임지므로 여기서 다시 검사하지 않음.
-            for (action, _) in self.agent.policy(self.sim, &advanced) {
-                // 행동마다 같은 진행 상태에서 갈라진다.
-                let next_state = if let Ok(state) = self.sim.apply(advanced.clone(), &action) {
-                    state
-                } else {
-                    continue;
-                };
-
-                // g, h값 계산
-                let g = next_state.frames().into();
-                let h = self.agent.value(self.sim, &next_state);
-
-                // 우선순위 큐에 추가
-                open.push(Reverse(Arc::new(Node::from_parent_node(
-                    next_state,
-                    g,
-                    h,
-                    node.clone(),
-                    action,
-                ))));
-            }
-        }
-
-        // 역추적으로 스킬 순서 계산
-        let Some(reverse_node) = result_node else {
-            return Err(Error::SearchFail("there is no final node".to_string()));
-        };
-
-        let mut node = reverse_node;
-        let mut result = vec![];
-
-        if let Some(action) = node.get_action() {
-            result = push_skill(action, node.state.frames(), result, self.sim)?;
-        }
-
-        while let Some(next_node) = node.get_parent() {
-            if let Some(action) = next_node.get_action() {
-                result = push_skill(action, next_node.state.frames(), result, self.sim)?;
-            }
-
-            node = next_node;
-        }
-
-        result.reverse();
-        Ok(result)
+    pub fn solve(&self, threshold: f64) -> Result<Solution<'a>, Error> {
+        best_first(
+            self.sim,
+            threshold,
+            |state| self.agent.value(self.sim, state),
+            // 합법성은 에이전트가 거치는 `Simulator::legal_actions`가 책임진다.
+            |state| {
+                self.agent
+                    .policy(self.sim, state)
+                    .into_iter()
+                    .map(|(action, _)| action)
+                    .collect()
+            },
+        )
     }
 }
 
-fn push_skill<'a, 'b: 'a>(
-    action: ActionContext,
-    time: u16,
-    mut arr: Vec<(&'a dyn Skill, u16)>,
-    sim: &'b impl Simulator,
-) -> Result<Vec<(&'a dyn Skill, u16)>, Error> {
-    let skill = sim.lookup_skill(action.skill).ok_or(Error::NotFound)?;
-    arr.push((skill, time));
-    Ok(arr)
+impl<'a, A: Agent<Value = u64>> Algorithm<'a> for Astar<'a, A> {
+    fn search(&self, threshold: f64) -> Result<Vec<(&'a dyn Skill, u16)>, Error> {
+        Ok(self.solve(threshold)?.timeline)
+    }
 }

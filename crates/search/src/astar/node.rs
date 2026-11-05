@@ -12,7 +12,8 @@ pub struct Node {
 #[derive(Debug, Clone)]
 pub struct Edge {
     record: Arc<Node>,
-    action: ActionContext,
+    /// `None` when the edge only waits.
+    action: Option<ActionContext>,
 }
 
 impl Node {
@@ -30,7 +31,7 @@ impl Node {
         g: u64,
         h: u64,
         parent_node: Arc<Node>,
-        action: ActionContext,
+        action: Option<ActionContext>,
     ) -> Self {
         Node {
             state,
@@ -48,7 +49,7 @@ impl Node {
     }
 
     pub fn get_action(&self) -> Option<ActionContext> {
-        Some(self.edge.clone()?.action)
+        self.edge.clone()?.action
     }
 }
 
