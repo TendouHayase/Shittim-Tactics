@@ -1,4 +1,9 @@
-use crate::uid::Uid;
+use std::collections::VecDeque;
+
+use crate::{
+    constants::{FINAL_RESTRICTION_RELEASE_HAND_SIZE, TOTAL_ASSAULT_HAND_SIZE},
+    uid::{SkillUid, Uid},
+};
 
 pub mod data;
 pub use data::*;
@@ -7,17 +12,33 @@ pub struct State {
     pub students: StudentState,
     pub boss: StateData,
     pub frames: u16,
-    pub cost: i8,
+    /// Fixed point, see [`COST_UNIT`](crate::constants::COST_UNIT).
+    pub cost: u32,
+    /// Ex skills in play order. Only the front [`State::hand`] entries are usable.
+    pub skill_queue: VecDeque<SkillUid>,
+    /// Sorted by frame, ties in scheduling order.
+    pub pending_hits: Vec<PendingHit>,
+    /// The first frame the player can use another Ex skill.
+    pub next_input_frame: u16,
 }
 
 impl State {
-    pub fn new(students: &[StateData], boss: StateData, frames: u16, cost: i8) -> Self {
+    pub fn new(
+        students: &[StateData],
+        boss: StateData,
+        frames: u16,
+        cost: u32,
+        skill_queue: VecDeque<SkillUid>,
+    ) -> Self {
         match students.len() {
             6 => Self {
                 students: StudentState::TotalAssault(std::array::from_fn(|i| students[i].clone())),
                 boss,
                 frames,
                 cost,
+                skill_queue,
+                pending_hits: Vec::new(),
+                next_input_frame: frames,
             },
             10 => Self {
                 students: StudentState::FinalRestrictionRelease(std::array::from_fn(|i| {
@@ -26,6 +47,9 @@ impl State {
                 boss,
                 frames,
                 cost,
+                skill_queue,
+                pending_hits: Vec::new(),
+                next_input_frame: frames,
             },
             _ => panic!("unsupported students party size: {}", students.len()),
         }
@@ -75,8 +99,51 @@ impl State {
         }
     }
 
-    pub const fn cost(&self) -> i8 {
+    pub const fn cost(&self) -> u32 {
         self.cost
+    }
+
+    pub const fn hand_size(&self) -> usize {
+        match self.students {
+            StudentState::TotalAssault(_) => TOTAL_ASSAULT_HAND_SIZE,
+            StudentState::FinalRestrictionRelease(_) => FINAL_RESTRICTION_RELEASE_HAND_SIZE,
+        }
+    }
+
+    pub fn hand(&self) -> impl Iterator<Item = SkillUid> + '_ {
+        self.skill_queue.iter().copied().take(self.hand_size())
+    }
+
+    /// Sends a skill from the hand to the back of the queue. Returns whether it was in the hand.
+    pub fn cycle_skill(&mut self, skill: SkillUid) -> bool {
+        let Some(slot) = self.hand().position(|queued| queued == skill) else {
+            return false;
+        };
+
+        self.skill_queue.remove(slot);
+        self.skill_queue.push_back(skill);
+        true
+    }
+
+    pub fn schedule_hit(&mut self, hit: PendingHit) {
+        let slot = self
+            .pending_hits
+            .partition_point(|queued| queued.frame <= hit.frame);
+        self.pending_hits.insert(slot, hit);
+    }
+
+    /// Moves every hit due by the current frame onto the boss's damage distribution.
+    pub fn settle_hits(&mut self) {
+        let now = self.frames;
+        let due = self.pending_hits.partition_point(|hit| hit.frame <= now);
+
+        for hit in self.pending_hits.drain(..due) {
+            self.boss.damage_taken_mut().push(hit.damage);
+        }
+    }
+
+    pub fn next_hit_frame(&self) -> Option<u16> {
+        self.pending_hits.first().map(|hit| hit.frame)
     }
 
     pub const fn frames(&self) -> u16 {

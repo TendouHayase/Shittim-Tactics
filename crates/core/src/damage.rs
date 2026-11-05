@@ -53,6 +53,21 @@ impl Damage {
         }
     }
 
+    /// A hit that always deals exactly `value`.
+    pub fn point(value: u64) -> Self {
+        let roll = Uniform {
+            min: value,
+            max: value,
+        };
+
+        Self {
+            normal: roll,
+            crit: roll,
+            crit_num: 0,
+            crit_den: 1,
+        }
+    }
+
     pub fn expected_value(&self) -> u64 {
         let normal_avg = (self.normal.max + self.normal.min) / 2;
         let crit_avg = (self.crit.max + self.crit.min) / 2;
@@ -100,8 +115,12 @@ impl Damage {
 
         max_dmg = apply_def(max_dmg, tgt.stats().def, src.stats().defense_piercing);
 
-        max_dmg *= src.stats().dmg_dealt as u64 / 10000;
-        max_dmg -= max_dmg * (tgt.stats().dmg_resist as u64 - 10000) / 10000;
+        // apply_def가 먼저 나눈 뒤 곱해 절사가 생기므로, 배율의 퍼센트 환산은 그 뒤에 한다.
+        max_dmg /= 100;
+
+        max_dmg = max_dmg * src.stats().dmg_dealt as u64 / 10000;
+        // 10000이 중립값이라 그보다 낮으면 데미지가 늘어난다.
+        max_dmg = max_dmg * 20000u64.saturating_sub(tgt.stats().dmg_resist as u64) / 10000;
 
         max_dmg *= scale_num;
         max_dmg /= scale_den;
@@ -159,6 +178,25 @@ impl Div<u64> for Damage {
             },
             crit_num: self.crit_num,
             crit_den: self.crit_den,
+        }
+    }
+}
+
+/// How a hit's rolls are turned into what accumulates on its target.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum DamageMode {
+    /// Keep the full range and crit split of every hit.
+    #[default]
+    Distribution,
+    /// Collapse every hit to its expected value.
+    Deterministic,
+}
+
+impl DamageMode {
+    pub fn resolve(self, damage: Damage) -> Damage {
+        match self {
+            DamageMode::Distribution => damage,
+            DamageMode::Deterministic => Damage::point(damage.expected_value()),
         }
     }
 }

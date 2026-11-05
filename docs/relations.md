@@ -20,7 +20,7 @@ class Stateful {
     students_mut() mut_slice
     boss() ref
     boss_mut() mut_ref
-    cost() i8
+    cost() u32
     frames() u16
     is_goal() bool
     is_terminated() bool

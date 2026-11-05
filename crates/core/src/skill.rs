@@ -78,6 +78,11 @@ pub trait SkillMeta {
     fn frames(&self) -> u16 {
         self.header().frames
     }
+    /// Ticks before the same skill can be used again.
+    // 실측값이 아니라 시전 시간 + 모션 시간이라는 가정이다.
+    fn cooldown(&self) -> u16 {
+        self.frames().saturating_add(self.duration())
+    }
     fn skill_offset(&self) -> usize {
         self.header().skill_offset
     }

@@ -2,7 +2,20 @@ use std::hash::{Hash, Hasher};
 
 use error::Error;
 
-use crate::{effect::Effect, extra::ExtraStateData, uid::Uid, utils::Position};
+use crate::{
+    damage::{Damage, DamageDist},
+    effect::Effect,
+    extra::ExtraStateData,
+    uid::Uid,
+    utils::Position,
+};
+
+/// A hit on the boss that has been cast but has not landed yet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PendingHit {
+    pub frame: u16,
+    pub damage: Damage,
+}
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommonStateData {
@@ -12,6 +25,8 @@ pub struct CommonStateData {
     pub remained_effects: Vec<RemainedEffects>,
     pub hp: u64,
     pub shield: u64,
+    // 현재 체력을 분포로 두면 0 클램프 때문에 합성곱이 깨지므로 누적 데미지를 저장한다.
+    pub damage_taken: DamageDist,
 
     pub coordinate: Position,
 }
@@ -41,6 +56,7 @@ impl StateData {
                 uid,
                 hp,
                 shield: 0,
+                damage_taken: DamageDist::default(),
                 coordinate: Default::default(),
                 cooldowns: vec![0; skill_count],
                 remained_effects: Vec::new(),
@@ -64,6 +80,7 @@ impl StateData {
                 coordinate,
                 hp,
                 shield,
+                damage_taken: DamageDist::default(),
                 cooldowns: cooldowns.to_vec(),
                 remained_effects: remained_effects.clone(),
             },
@@ -101,6 +118,14 @@ impl StateData {
 
     pub fn remained_effects_mut(&mut self) -> &mut Vec<RemainedEffects> {
         &mut self.common.remained_effects
+    }
+
+    pub const fn damage_taken(&self) -> &DamageDist {
+        &self.common.damage_taken
+    }
+
+    pub const fn damage_taken_mut(&mut self) -> &mut DamageDist {
+        &mut self.common.damage_taken
     }
 
     pub fn extra(&self) -> Option<&dyn ExtraStateData> {

@@ -17,7 +17,8 @@ pub fn crit_damage_coefficient(crit_dmg: u32, crit_dmg_res: u32) -> f64 {
 }
 
 pub fn stability_coefficient(stability: u16, stability_rate: u16) -> f64 {
-    (stability as f64 / (stability as f64 + 1000.0)) + (stability_rate as f64 * 0.2)
+    // 안정 수치가 커도 최소 데미지가 최대 데미지를 넘으면 Uniform이 깨지므로 1로 제한.
+    ((stability as f64 / (stability as f64 + 1000.0)) + (stability_rate as f64 / 10000.0)).min(1.0)
 }
 
 pub fn delta_cc_time(default_prob: f64, cc_power: u16, cc_res: u16) -> f64 {
