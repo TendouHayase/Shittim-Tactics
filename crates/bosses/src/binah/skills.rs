@@ -3,9 +3,10 @@
 
 use crate::create_boss_skill;
 use core::{
+    character::Character,
     effect::{DebuffKind, Effect, EffectTiming},
     skill::{SkillEffect, SkillEffectTarget, SkillType},
-    state::StateData,
+    state::State,
 };
 
 /// The `Raw*` types that deserialize the json `skills` object, and the `*Params` that result
@@ -230,9 +231,10 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            _state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
             todo!()
         }
     }
@@ -267,9 +269,11 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
+            state
         }
     }
 );
@@ -309,9 +313,11 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
+            state
         }
     }
 );

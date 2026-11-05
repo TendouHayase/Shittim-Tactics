@@ -1,7 +1,8 @@
 use crate::create_boss_skill;
 use core::{
+    character::Character,
     skill::{Skill, SkillType},
-    state::StateData,
+    state::{State, StateData},
 };
 
 /// Numbers not yet in json.
@@ -21,9 +22,10 @@ create_boss_skill!(GozNowYouSeeUs, params: (), SkillType::Ex, 0, effects(_id, _p
 }, {
     fn apply(
         &self,
-        _caster: &mut StateData,
-        _targets: &mut [&mut StateData],
-    ) {
+        _state: State,
+        _caster: &dyn Character,
+        _targets: &[&dyn Character],
+    ) -> State {
         todo!()
     }
 });
@@ -49,9 +51,10 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            _state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
             todo!()
         }
     }
@@ -176,9 +179,10 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            _state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
             todo!()
         }
     }

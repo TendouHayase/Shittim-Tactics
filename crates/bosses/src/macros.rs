@@ -71,6 +71,7 @@ macro_rules! create_boss_skill {
                 name: String,
                 numbers: $crate::macros::SkillNumbers,
                 params: $params,
+                sim: ::std::sync::Weak<::core::simulator::Simulator>,
             ) -> Self {
                 let effects = (|$id: (::core::uid::Uid, usize),
                                 $p: &$params|
@@ -80,17 +81,18 @@ macro_rules! create_boss_skill {
                 );
 
                 Self {
-                    header: core::skill::SkillHeader {
+                    header: ::core::skill::SkillHeader::new(
                         owner,
-                        owner_offset: $skill_id,
-                        name,
+                        $skill_id,
+                        &name,
                         skill_offset,
-                        skill_type: $skill_type,
+                        $skill_type,
                         effects,
-                        cost: numbers.cost,
-                        duration: numbers.duration,
-                        frames: numbers.frames,
-                    },
+                        numbers.cost,
+                        numbers.duration,
+                        numbers.frames,
+                        sim,
+                    ),
                     params,
                 }
             }

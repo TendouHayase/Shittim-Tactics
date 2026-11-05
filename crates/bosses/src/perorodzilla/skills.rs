@@ -4,10 +4,11 @@
 use crate::create_boss_skill;
 use crate::perorodzilla::state::PerorodzillaState;
 use core::{
+    character::Character,
     constants::MAX_STUDENT_COUNT,
     effect::{BuffKind, DebuffKind, Effect, EffectTiming},
     skill::{Skill, SkillEffect, SkillEffectTarget, SkillType},
-    state::StateData,
+    state::{State, StateData},
 };
 
 use error::Error::{self};
@@ -179,7 +180,7 @@ fn damage_since_wave_start(boss: &StateData) -> Result<u64, Error> {
         .ok_or(Error::Empty)?
         .downcast_as::<PerorodzillaState>()?;
 
-    let result = boss.accumulated_damage().max();
+    let result = boss.damage_taken().max();
 
     Ok(result)
 }
@@ -345,9 +346,11 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
+            state
         }
     }
 );
@@ -394,9 +397,11 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            _caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
+            state
         }
     }
 );
@@ -418,10 +423,13 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
-            summon_minion_wave(caster, self.params);
+            mut state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
+            summon_minion_wave(state.boss_mut(), self.params)
+                .expect("perorodzilla boss must carry its state");
+            state
         }
     }
 );
@@ -466,14 +474,17 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            mut state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
             let params = self.params;
-            let is_groggy = absorb_minion_wave(caster, params).is_ok();
+            let is_groggy = absorb_minion_wave(state.boss_mut(), params).is_ok();
 
             // 넉백 거리 데이터가 없어 좌표 변경은 보류한다.
             let _ = is_groggy && params.knockback_on_groggy;
+
+            state
         }
     }
 );
@@ -506,15 +517,18 @@ create_boss_skill!(
     {
         fn apply(
             &self,
-            caster: &mut StateData,
-            _targets: &mut [&mut StateData],
-        ) {
+            mut state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
+            let boss = state.boss_mut();
+
             // 게이지를 소모하는 쪽이 여기이므로 시전 조건을 직접 확인한다.
-            if caster.extra_as::<PerorodzillaState>().atg_percent < 100 {
-                return;
+            if boss.extra_as::<PerorodzillaState>().atg_percent >= 100 {
+                boss.extra_as_mut::<PerorodzillaState>().atg_percent = 0;
             }
 
-            caster.extra_as_mut::<PerorodzillaState>().atg_percent = 0;
+            state
         }
     }
 );
@@ -548,11 +562,13 @@ create_boss_skill!(
         }
     },
     {
-    fn apply(
-        &self,
-        _caster: &mut StateData,
-        _targets: &mut [&mut StateData],
-    ) {
-    }
+        fn apply(
+            &self,
+            state: State,
+            _caster: &dyn Character,
+            _targets: &[&dyn Character],
+        ) -> State {
+            state
+        }
     }
 );

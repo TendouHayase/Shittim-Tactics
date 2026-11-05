@@ -8,9 +8,10 @@ use binah::skills::{
     BinahAtsilutsLight, BinahFiresofSeverity, BinahPurifyingStorm, params::RawSkills,
 };
 use core::{
-    boss::{Boss, BossFile},
+    boss::{Boss, file::BossFile},
     difficulty::Difficulty,
     extra::ExtraInit,
+    simulator::Simulator,
     skill::Skill,
     terrains::Terrain,
     types::ArmorType,
@@ -25,7 +26,7 @@ use perorodzilla::skills::{
 };
 use perorodzilla::state::PerorodzillaState;
 use serde::Deserialize;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BossKind {
@@ -41,9 +42,10 @@ pub fn load(
     difficulty: Difficulty,
     terrain: Terrain,
     skill_offset: usize,
+    sim: Weak<Simulator>,
 ) -> Result<Boss, Error> {
     let file = BossFile::from_file(path)?;
-    let skills = build_skills(kind, &file, difficulty, skill_offset)?;
+    let skills = build_skills(kind, &file, difficulty, skill_offset, sim)?;
     let extra: Option<ExtraInit> = match kind {
         BossKind::Perorodzilla => Some(core::extra::init::<PerorodzillaState>),
         BossKind::Binah | BossKind::Goz => None,
@@ -57,6 +59,7 @@ fn build_skills(
     file: &BossFile,
     difficulty: Difficulty,
     offset: usize,
+    sim: Weak<Simulator>,
 ) -> Result<Vec<Arc<dyn Skill>>, Error> {
     let owner = Uid::new(file.id as u64);
     let name = || file.name.get().to_string();
@@ -76,6 +79,7 @@ fn build_skills(
                     raw.atsiluts_light.name.get().to_string(),
                     SkillNumbers::of(&atsiluts_light),
                     atsiluts_light,
+                    sim.clone(),
                 )),
                 Arc::new(BinahFiresofSeverity::new(
                     owner,
@@ -83,6 +87,7 @@ fn build_skills(
                     raw.fires_of_severity.name.get().to_string(),
                     SkillNumbers::of(&fires_of_severity),
                     fires_of_severity,
+                    sim.clone(),
                 )),
                 Arc::new(BinahPurifyingStorm::new(
                     owner,
@@ -90,6 +95,7 @@ fn build_skills(
                     raw.purifying_storm.name.get().to_string(),
                     SkillNumbers::of(&purifying_storm),
                     purifying_storm,
+                    sim,
                 )),
             ]
         }
@@ -105,6 +111,7 @@ fn build_skills(
                     ..SkillNumbers::default()
                 },
                 (),
+                sim.clone(),
             )),
             Arc::new(GozNowYouSeeUs::new(
                 owner,
@@ -112,6 +119,7 @@ fn build_skills(
                 name(),
                 SkillNumbers::default(),
                 (),
+                sim.clone(),
             )),
             Arc::new(GozThreeLightMonte::new(
                 owner,
@@ -123,6 +131,7 @@ fn build_skills(
                     frames: goz_params::THREE_LIGHT_MONTE_FRAMES,
                 },
                 (),
+                sim,
             )),
         ],
 
@@ -140,6 +149,7 @@ fn build_skills(
                         ..SkillNumbers::default()
                     },
                     params,
+                    sim.clone(),
                 )),
                 Arc::new(PerorodzillaAquaBall::new(
                     owner,
@@ -150,6 +160,7 @@ fn build_skills(
                         ..SkillNumbers::default()
                     },
                     params,
+                    sim.clone(),
                 )),
                 Arc::new(PerorodzillaSummonMinion::new(
                     owner,
@@ -160,6 +171,7 @@ fn build_skills(
                         ..SkillNumbers::default()
                     },
                     params,
+                    sim.clone(),
                 )),
                 Arc::new(PerorodzillaAbsorbMinion::new(
                     owner,
@@ -170,6 +182,7 @@ fn build_skills(
                         ..SkillNumbers::default()
                     },
                     params,
+                    sim.clone(),
                 )),
                 Arc::new(PerorodzillaHyperSpiralGlareBeam::new(
                     owner,
@@ -180,6 +193,7 @@ fn build_skills(
                         ..SkillNumbers::default()
                     },
                     params,
+                    sim.clone(),
                 )),
                 Arc::new(PerorodzillaBurningPerorodzilla::new(
                     owner,
@@ -187,6 +201,7 @@ fn build_skills(
                     name(),
                     SkillNumbers::default(),
                     params,
+                    sim,
                 )),
             ]
         }
@@ -208,6 +223,7 @@ mod tests {
             difficulty,
             Terrain::Outdoor,
             0,
+            Weak::new(),
         )
         .expect("failed to load binah")
     }
