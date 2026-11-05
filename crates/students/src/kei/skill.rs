@@ -2,20 +2,61 @@ use crate::kei::state::KeiExtraState;
 
 use super::params;
 use core::{
+    actions::ActionContext,
     character::Character,
-    effect::{
-        BuffKind::{self, Atk, MysticEffectiveness},
-        Effect, EffectTiming,
-    },
+    damage::Damage,
+    effect::{BuffKind, Effect, EffectTiming},
     simulator::Simulator,
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
-    state::{RemainedEffects, State, StateData},
+    state::{PendingCast, PendingHit, RemainedEffects, State},
     uid::Uid,
     utils::is_inside,
 };
 use std::sync::Weak;
+
+const BASIC_SLOT: usize = 1;
+const SUB_SLOT: usize = 2;
+
+/// Sums what `allies` have dealt so far.
+///
+/// The amplifier stores a share of a damage window that is correlated with the boss's total, which
+/// the boss's distribution cannot express. Expected values are exact when damage is deterministic
+/// and a mean-field approximation otherwise.
+fn dealt_by(state: &State, allies: &[Uid]) -> u64 {
+    allies
+        .iter()
+        .filter_map(|&ally| state.search_uid(ally))
+        .map(|data| data.damage_dealt())
+        .sum()
+}
+
+/// Stores the share of what `allies` dealt while the amplifier ran, then fires the basic skill.
+fn end_device(mut state: State, caster: &dyn Character, allies: &[Uid]) -> State {
+    let dealt = dealt_by(&state, allies);
+    let cap = caster.stats().atk as u64 * params::ACC_DAMAGE_CAP_PERCENT as u64 / 100;
+
+    let extra = state
+        .search_uid_mut(caster.uid())
+        .expect("kei uid is not found in state")
+        .extra_as_mut::<KeiExtraState>();
+    let window = dealt.saturating_sub(extra.recording_start);
+    extra.acc_damage = (window * params::STORED_DAMAGE_PERCENT as u64 / 100).min(cap);
+
+    let basic = caster.skills()[BASIC_SLOT].as_ref();
+    let boss = state.boss().uid();
+    state.schedule_cast(PendingCast {
+        frame: state.frames().saturating_add(basic.frames()),
+        action: ActionContext {
+            caster: caster.uid(),
+            targets: vec![boss],
+            skill: basic.uid(),
+        },
+    });
+
+    state
+}
 
 /// 증폭 장치를 설치하여 원형범위 내에 있는 아군의 공격력 26.8 → 51% 증가,
 /// 신비 특효 44.1 → 83.8% 가산 (25초간)
@@ -52,19 +93,8 @@ impl ExSkill {
             duration_frames: params.duration(),
         };
 
+        // 케이 본인은 버프 대상이 아니다.
         let effects = vec![
-            SkillEffect {
-                id,
-                timing,
-                targets: SkillEffectTarget::Oneself {
-                    kind: effective_buff,
-                },
-            },
-            SkillEffect {
-                id,
-                timing,
-                targets: SkillEffectTarget::Oneself { kind: atk_buff },
-            },
             SkillEffect {
                 id,
                 timing,
@@ -109,58 +139,69 @@ impl SkillMeta for ExSkill {
 
 impl Skill for ExSkill {
     fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
-        let caster_coord;
-        {
-            let caster_state = state
-                .search_uid_mut(caster.uid())
-                .expect("kei uid is not found in state");
+        let sub = caster.skills()[SUB_SLOT].as_ref();
 
-            caster_coord = caster_state.coordinate();
+        // 재사용하면 작동 중인 이전 장치는 종료 처리된다. 저장 구간이 새로 시작되기 전에 끝낸다.
+        if let Some(device_end) = state.remove_cast(sub.uid()) {
+            state = end_device(state, caster, &device_end.action.targets);
         }
+
+        let caster_coord = state
+            .search_uid(caster.uid())
+            .expect("kei uid is not found in state")
+            .coordinate();
+        let end_frame = state.frames().saturating_add(self.duration());
         let source = self.skill_offset() as u8;
 
-        let active = |data: &StateData| {
-            data.remained_effects()
-                .iter()
-                .any(|remained| remained.source == source)
-        };
+        // 서브 스킬의 치명 버프는 장치 작동 시작에 함께 걸린다.
+        let buffs: Vec<Effect> = self
+            .skill_effects()
+            .iter()
+            .chain(sub.skill_effects())
+            .filter_map(|skill_effect| match skill_effect.targets {
+                SkillEffectTarget::Student { kind, .. } => Some(kind),
+                _ => None,
+            })
+            .collect();
 
-        let current_frame = state.frames();
-
-        let remained = |effect: Effect| RemainedEffects {
-            end_frame: current_frame + self.duration(),
-            effect,
-            source,
-        };
-
-        // 공버프와 신비특효 버프 추가
+        // targets에는 효과 개수만큼 같은 대상이 반복되어 들어온다.
+        let mut allies: Vec<Uid> = Vec::new();
         for target in targets {
             let target_state = state
                 .search_uid_mut(target.uid())
                 .expect("target uid is not found in state");
-            if is_inside(target_state.coordinate(), self.params.region, caster_coord)
-                && !active(target_state)
+
+            if allies.contains(&target.uid())
+                || !is_inside(target_state.coordinate(), self.params.region, caster_coord)
             {
-                for skill_effect in self.skill_effects().iter() {
-                    if let SkillEffectTarget::Student { .. } = skill_effect.targets {
-                        target_state
-                            .remained_effects_mut()
-                            .push(remained(Effect::Buff {
-                                ty: Atk,
-                                scale: self.params.atk_buff_scale,
-                                amount: 0,
-                            }));
-                        target_state
-                            .remained_effects_mut()
-                            .push(remained(Effect::Buff {
-                                ty: MysticEffectiveness,
-                                scale: self.params.effective_buff_scale,
-                                amount: 0,
-                            }));
-                    }
-                }
+                continue;
             }
+
+            let effects = target_state.remained_effects_mut();
+            effects.retain(|effect| effect.source != source);
+            effects.extend(buffs.iter().map(|&effect| RemainedEffects {
+                end_frame,
+                effect,
+                source,
+            }));
+            allies.push(target.uid());
         }
+
+        let recording_start = dealt_by(&state, &allies);
+        state
+            .search_uid_mut(caster.uid())
+            .expect("kei uid is not found in state")
+            .extra_as_mut::<KeiExtraState>()
+            .recording_start = recording_start;
+
+        state.schedule_cast(PendingCast {
+            frame: end_frame,
+            action: ActionContext {
+                caster: caster.uid(),
+                targets: allies,
+                skill: sub.uid(),
+            },
+        });
 
         state
     }
@@ -221,8 +262,26 @@ impl SkillMeta for BasicSkill {
 }
 
 impl Skill for BasicSkill {
-    fn apply(&self, _state: State, _caster: &dyn Character, _targets: &[&dyn Character]) -> State {
-        todo!()
+    fn apply(
+        &self,
+        mut state: State,
+        caster: &dyn Character,
+        _targets: &[&dyn Character],
+    ) -> State {
+        let stored = state
+            .search_uid(caster.uid())
+            .expect("kei uid is not found in state")
+            .extra_as::<KeiExtraState>()
+            .acc_damage;
+        let damage = stored * self.params.acc_coef_percent as u64 / params::PERCENT_DEN as u64;
+
+        state.schedule_hit(PendingHit {
+            frame: state.frames(),
+            damage: Damage::point(damage),
+            source: self.uid(),
+        });
+
+        state
     }
 }
 
@@ -230,6 +289,8 @@ impl Skill for BasicSkill {
 /// 증폭 장치 작동 종료 시, 자신을 제외한 아군이 해당 증폭 장치 범위 내에서
 /// 적에게 가한 대미지의 10%를 저장 (케이 기본 공격력의 5000%까지)
 /// (저장량은 덮어씌워집니다)
+///
+/// The start is applied by [`ExSkill`]; landing this skill is the amplifier ending.
 #[derive(Debug)]
 pub struct SubSkill {
     header: SkillHeader,
@@ -257,8 +318,13 @@ impl SubSkill {
                 interval_frames: 0,
                 duration_frames: params.duration(),
             },
-            targets: SkillEffectTarget::Boss {
-                kind: Effect::new_other(Self::effect_apply),
+            targets: SkillEffectTarget::Student {
+                kind: Effect::Buff {
+                    ty: BuffKind::Crit,
+                    scale: params.crit_buff_scale,
+                    amount: 0,
+                },
+                count: params.ally_count,
             },
         }];
 
@@ -277,31 +343,12 @@ impl SubSkill {
             ),
         }
     }
-
-    /// The effect is declared against [`SkillEffectTarget::Boss`], so the boss is the only
-    /// target and the caster is Kei herself.
-    pub fn effect_apply(
-        _skill: &dyn Skill,
-        _caster: &mut StateData,
-        targets: &mut [&mut StateData],
-    ) {
-        // 보스 데미지가 로그가 아니라 분포(DamageDist)가 되어 "기록 시작 이후 구간"을 읽을
-        // 방법이 없다. 저장량을 어떻게 셀지는 A-4에서 정한다.
-        for _state in targets {}
-    }
 }
 
 impl Skill for SubSkill {
-    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
-        let kei_uid = self.owner_uid();
-        let kei_state = state
-            .search_uid_mut(kei_uid)
-            .expect("kei state does not exist in the state");
+    fn apply(&self, state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
+        let allies: Vec<Uid> = targets.iter().map(|target| target.uid()).collect();
 
-        let mut kei_extra_state = kei_state
-            .try_extra_as::<KeiExtraState>()
-            .expect("failed to convert ExtraState to KeiExtraState");
-
-        state
+        end_device(state, caster, &allies)
     }
 }

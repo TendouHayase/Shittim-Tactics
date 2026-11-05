@@ -7,6 +7,7 @@ use serde::Deserialize;
 /// Coefficients are all percentages, so the denominator is fixed.
 pub const PERCENT_DEN: u16 = 100;
 pub const ACC_DAMAGE_CAP_PERCENT: u16 = 5000;
+pub const STORED_DAMAGE_PERCENT: u16 = 10;
 
 /// On-field capacity, which bounds how many allies the EX buff reaches.
 pub const ON_FIELD_COUNT: u8 = 4;
@@ -28,11 +29,16 @@ pub struct ExParams {
 pub struct BasicParams {
     pub frames: u16,
     pub coef_percent: u16,
+    /// Share of the stored damage dealt on top of `coef_percent`.
+    pub acc_coef_percent: u16,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct SubParams {
     pub duration: u16,
+    /// Buff targets excluding the caster.
+    pub ally_count: u8,
+    pub crit_buff_scale: u16,
 }
 
 /// The `skills` object of `data/students/tendou_kei.json`, before a skill level is chosen.
@@ -99,6 +105,8 @@ pub struct RawBasic {
 #[derive(Debug, Deserialize)]
 pub struct RawBasicDamage {
     pub coefficient: Vec<u16>,
+    #[serde(rename = "acculmulated_damage_coefficient")]
+    pub accumulated_coefficient: Vec<u16>,
 }
 
 impl RawBasic {
@@ -108,6 +116,7 @@ impl RawBasic {
         Some(BasicParams {
             frames: self.frames,
             coef_percent: *self.damage.coefficient.get(i)?,
+            acc_coef_percent: *self.damage.accumulated_coefficient.get(i)?,
         })
     }
 }
@@ -116,12 +125,22 @@ impl RawBasic {
 pub struct RawSub {
     pub name: LocalizedName,
     pub duration: u16,
+    pub buff: RawSubBuff,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RawSubBuff {
+    pub crit: RawBuff,
 }
 
 impl RawSub {
     pub fn pick(&self, level: u8) -> Option<SubParams> {
-        (level > 0).then_some(SubParams {
+        let i = (level as usize).checked_sub(1)?;
+
+        Some(SubParams {
             duration: self.duration,
+            ally_count: ON_FIELD_COUNT - 1,
+            crit_buff_scale: self.buff.crit.scale.get(i)?.round() as u16,
         })
     }
 }
