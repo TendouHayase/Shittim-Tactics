@@ -105,7 +105,7 @@ mod tests {
     use crate::terrains::{Terrain, TerrainCombatPowerState};
     use crate::types::AttackType;
 
-    const KEI: &str = "../../data/students/kei.json";
+    const KEI: &str = "../../data/students/tendou_kei.json";
     const GEARS: &str = "../../data/tables/gears.json";
 
     fn spec(level: u8, star: u8) -> StudentSpec {
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn load_kei() {
-        let file = StudentFile::from_file("../../data/students/kei.json").expect("failed to load");
+        let file = StudentFile::from_file("../../data/students/tendou_kei.json").expect("failed to load");
 
         assert_eq!(file.id, 10135);
         assert_eq!(file.lvl1_stats.attack_type, AttackType::Mystic);
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn unique_weapon_promotes_the_top_terrain() {
-        let file = StudentFile::from_file("../../data/students/kei.json").expect("failed to load");
+        let file = StudentFile::from_file("../../data/students/tendou_kei.json").expect("failed to load");
         let mut adaptation = file.terrain_adaptation;
 
         assert_eq!(adaptation.get(Terrain::Street), TerrainCombatPowerState::S);

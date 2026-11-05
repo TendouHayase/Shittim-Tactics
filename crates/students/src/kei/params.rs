@@ -35,7 +35,7 @@ pub struct SubParams {
     pub duration: u16,
 }
 
-/// The `skills` object of `data/students/kei.json`, before a skill level is chosen.
+/// The `skills` object of `data/students/tendou_kei.json`, before a skill level is chosen.
 #[derive(Debug, Deserialize)]
 pub struct RawSkills {
     #[serde(rename = "Ex")]
