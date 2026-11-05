@@ -83,14 +83,14 @@ fn wait(sim: &Simulator, state: &State, threshold: f64) -> Result<Option<State>,
     let delta = sim.next_event_frames(state);
     let event_frame = (delta != u16::MAX).then(|| state.frames().saturating_add(delta));
 
-    // 처치는 이벤트가 아니라 타격 시각에 일어나므로 타격마다 판정한다. 이벤트가 더 없어도
+    // 처치는 이벤트가 아니라 타격 시각에 일어나므로 예약된 시각마다 판정한다. 이벤트가 더 없어도
     // 예약된 타격으로 처치할 수 있어 끝까지 확인한다.
     let mut current = state.clone();
-    while let Some(hit) = current.next_hit_frame()
-        && event_frame.is_none_or(|frame| hit <= frame)
-        && !sim.is_time_over(hit)
+    while let Some(scheduled) = current.next_scheduled_frame()
+        && event_frame.is_none_or(|frame| scheduled <= frame)
+        && !sim.is_time_over(scheduled)
     {
-        current = sim.advance(&current, hit - current.frames())?;
+        current = sim.advance(&current, scheduled - current.frames())?;
 
         if is_goal(sim, &current, threshold) {
             return Ok(Some(current));

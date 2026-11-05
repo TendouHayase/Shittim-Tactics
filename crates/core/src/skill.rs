@@ -19,7 +19,7 @@ pub struct SkillHeader {
     pub skill_type: SkillType,
     pub effects: Vec<SkillEffect>,
     pub cost: u8,
-    pub duration: u16, // 시전후 시전 종료까지의 시간
+    pub duration: u16, // 효과 지속 시간. 재사용하면 갱신된다.
     pub frames: u16,   // 발동후 시전까지 시간
     sim: Weak<Simulator>,
 }
@@ -78,10 +78,12 @@ pub trait SkillMeta {
     fn frames(&self) -> u16 {
         self.header().frames
     }
-    /// Ticks before the same skill can be used again.
-    // 실측값이 아니라 시전 시간 + 모션 시간이라는 가정이다.
+    /// Ticks before the same skill can be used again: its cast time.
+    ///
+    /// `duration` plays no part here. It is how long the effect lasts, and using the skill again
+    /// refreshes it.
     fn cooldown(&self) -> u16 {
-        self.frames().saturating_add(self.duration())
+        self.frames()
     }
     fn skill_offset(&self) -> usize {
         self.header().skill_offset

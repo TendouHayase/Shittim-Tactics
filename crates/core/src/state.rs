@@ -18,6 +18,8 @@ pub struct State {
     pub skill_queue: VecDeque<SkillUid>,
     /// Sorted by frame, ties in scheduling order.
     pub pending_hits: Vec<PendingHit>,
+    /// Sorted by frame, ties in scheduling order.
+    pub pending_casts: Vec<PendingCast>,
     /// The first frame the player can use another Ex skill.
     pub next_input_frame: u16,
 }
@@ -38,6 +40,7 @@ impl State {
                 cost,
                 skill_queue,
                 pending_hits: Vec::new(),
+                pending_casts: Vec::new(),
                 next_input_frame: frames,
             },
             10 => Self {
@@ -49,6 +52,7 @@ impl State {
                 cost,
                 skill_queue,
                 pending_hits: Vec::new(),
+                pending_casts: Vec::new(),
                 next_input_frame: frames,
             },
             _ => panic!("unsupported students party size: {}", students.len()),
@@ -132,6 +136,34 @@ impl State {
         self.pending_hits.insert(slot, hit);
     }
 
+    pub fn schedule_cast(&mut self, cast: PendingCast) {
+        let slot = self
+            .pending_casts
+            .partition_point(|queued| queued.frame <= cast.frame);
+        self.pending_casts.insert(slot, cast);
+    }
+
+    /// Removes and returns the earliest cast if it is due by `frame`.
+    pub fn pop_cast_due(&mut self, frame: u16) -> Option<PendingCast> {
+        let first = self.pending_casts.first()?;
+        (first.frame <= frame).then(|| self.pending_casts.remove(0))
+    }
+
+    /// Removes and returns the first pending cast of `skill`.
+    pub fn remove_cast(&mut self, skill: SkillUid) -> Option<PendingCast> {
+        let slot = self
+            .pending_casts
+            .iter()
+            .position(|cast| cast.action.skill == skill)?;
+        Some(self.pending_casts.remove(slot))
+    }
+
+    /// Drops the hits of `source` due from `frame` on, for skills whose reuse replaces them.
+    pub fn cancel_hits_from(&mut self, source: SkillUid, frame: u16) {
+        self.pending_hits
+            .retain(|hit| hit.source != source || hit.frame < frame);
+    }
+
     /// Moves every hit due by the current frame onto the boss's damage distribution.
     pub fn settle_hits(&mut self) {
         let now = self.frames;
@@ -139,11 +171,20 @@ impl State {
 
         for hit in self.pending_hits.drain(..due) {
             self.boss.damage_taken_mut().push(hit.damage);
+
+            if let Some(student) = self.students.search_uid_mut(hit.source.owner()) {
+                *student.damage_dealt_mut() += hit.damage.expected_value();
+            }
         }
     }
 
-    pub fn next_hit_frame(&self) -> Option<u16> {
-        self.pending_hits.first().map(|hit| hit.frame)
+    /// The next frame a hit lands or a cast finishes. Hits are only known once their cast finishes,
+    /// so both have to be stepped through to catch the frame the boss dies on.
+    pub fn next_scheduled_frame(&self) -> Option<u16> {
+        let hit = self.pending_hits.first().map(|hit| hit.frame);
+        let cast = self.pending_casts.first().map(|cast| cast.frame);
+
+        hit.into_iter().chain(cast).min()
     }
 
     pub const fn frames(&self) -> u16 {

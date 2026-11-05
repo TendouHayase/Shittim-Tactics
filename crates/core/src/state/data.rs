@@ -3,10 +3,11 @@ use std::hash::{Hash, Hasher};
 use error::Error;
 
 use crate::{
+    actions::ActionContext,
     damage::{Damage, DamageDist},
     effect::Effect,
     extra::ExtraStateData,
-    uid::Uid,
+    uid::{SkillUid, Uid},
     utils::Position,
 };
 
@@ -15,6 +16,14 @@ use crate::{
 pub struct PendingHit {
     pub frame: u16,
     pub damage: Damage,
+    pub source: SkillUid,
+}
+
+/// A skill that has been used but whose cast time has not passed yet.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PendingCast {
+    pub frame: u16,
+    pub action: ActionContext,
 }
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -27,6 +36,8 @@ pub struct CommonStateData {
     pub shield: u64,
     // 현재 체력을 분포로 두면 0 클램프 때문에 합성곱이 깨지므로 누적 데미지를 저장한다.
     pub damage_taken: DamageDist,
+    // 분포가 아니라 기댓값의 합이다. 데미지 구간을 읽는 스킬용이며 결정론 모드에서는 정확하다.
+    pub damage_dealt: u64,
 
     pub coordinate: Position,
 }
@@ -57,6 +68,7 @@ impl StateData {
                 hp,
                 shield: 0,
                 damage_taken: DamageDist::default(),
+                damage_dealt: 0,
                 coordinate: Default::default(),
                 cooldowns: vec![0; skill_count],
                 remained_effects: Vec::new(),
@@ -81,6 +93,7 @@ impl StateData {
                 hp,
                 shield,
                 damage_taken: DamageDist::default(),
+                damage_dealt: 0,
                 cooldowns: cooldowns.to_vec(),
                 remained_effects: remained_effects.clone(),
             },
@@ -126,6 +139,14 @@ impl StateData {
 
     pub const fn damage_taken_mut(&mut self) -> &mut DamageDist {
         &mut self.common.damage_taken
+    }
+
+    pub const fn damage_dealt(&self) -> u64 {
+        self.common.damage_dealt
+    }
+
+    pub const fn damage_dealt_mut(&mut self) -> &mut u64 {
+        &mut self.common.damage_dealt
     }
 
     pub fn extra(&self) -> Option<&dyn ExtraStateData> {

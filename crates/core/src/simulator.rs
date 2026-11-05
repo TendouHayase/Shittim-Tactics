@@ -10,7 +10,7 @@ use crate::{
     damage::{Damage, DamageMode},
     effect::{Effect, EffectTiming},
     skill::{Region, Skill, SkillEffect, SkillEffectTarget, SkillType},
-    state::{PendingHit, State, StateData},
+    state::{PendingCast, PendingHit, State, StateData},
     student::Student,
     uid::{SkillUid, Uid},
     utils::{Position, euclidean_distance, is_inside},
@@ -102,15 +102,7 @@ impl Simulator {
     }
 
     pub fn apply(&self, mut state: State, action: &ActionContext) -> Result<State, Error> {
-        // 타깃은 거리 순서를 보존하도록 action.targets 순서로 담음.
         let skill = self.lookup_skill(action.skill).ok_or(Error::NotFound)?;
-
-        let targets: Vec<&dyn Character> = action
-            .targets
-            .iter()
-            .map(|&tgt| self.character_by_uid(tgt).ok_or(Error::NotFound))
-            .collect::<Result<Vec<&dyn Character>, Error>>()?;
-
         let caster = self
             .character_by_uid(action.caster)
             .ok_or(Error::NotFound)?;
@@ -118,18 +110,61 @@ impl Simulator {
         if skill.skill_type() == SkillType::Ex && caster.uid() != self.boss.uid() {
             play_ex_skill(&mut state, skill, caster, self.min_input_interval)?;
         }
-        state = skill.apply(state, caster, &targets);
-        self.schedule_boss_hits(&mut state, skill, caster);
-        // 시전 지연이 0인 타격은 다음 advance를 기다리지 않는다.
+
+        // 효과와 데미지는 시전 시간이 지나야 들어간다.
+        state.schedule_cast(PendingCast {
+            frame: state.frames().saturating_add(skill.frames()),
+            action: action.clone(),
+        });
+
+        // 시전 시간이 0이면 다음 advance를 기다리지 않는다.
+        let now = state.frames();
+        state = self.land_casts(state, now)?;
         state.settle_hits();
 
         Ok(state)
     }
 
+    fn land_casts(&self, mut state: State, until: u16) -> Result<State, Error> {
+        let now = state.frames();
+
+        // 시전 완료가 새 시전을 예약할 수 있어 하나씩 꺼낸다.
+        while let Some(cast) = state.pop_cast_due(until) {
+            // 효과의 시각이 시전 완료 기준으로 잡히고, 그 전 타격을 볼 수 있도록 시각을 맞춘다.
+            state.frames = cast.frame;
+            state.settle_hits();
+            state = self.land_cast(state, &cast.action)?;
+        }
+
+        state.frames = now;
+        Ok(state)
+    }
+
+    fn land_cast(&self, state: State, action: &ActionContext) -> Result<State, Error> {
+        let skill = self.lookup_skill(action.skill).ok_or(Error::NotFound)?;
+        let caster = self
+            .character_by_uid(action.caster)
+            .ok_or(Error::NotFound)?;
+
+        // 타깃은 거리 순서를 보존하도록 action.targets 순서로 담음.
+        let targets: Vec<&dyn Character> = action
+            .targets
+            .iter()
+            .map(|&tgt| self.character_by_uid(tgt).ok_or(Error::NotFound))
+            .collect::<Result<Vec<&dyn Character>, Error>>()?;
+
+        let mut state = skill.apply(state, caster, &targets);
+        self.schedule_boss_hits(&mut state, skill, caster);
+
+        Ok(state)
+    }
+
     pub fn advance(&self, state: &State, delta_ticks: u16) -> Result<State, Error> {
-        let mut next = state.clone();
         // next_event_frames가 u16::MAX를 돌려줄 수 있어 그냥 더하면 넘침.
         let end_tick = state.frames.saturating_add(delta_ticks);
+
+        // 구간 안에 시작하고 끝나는 효과도 만료되도록 tick_down보다 먼저 적용한다.
+        let mut next = self.land_casts(state.clone(), end_tick)?;
 
         let (boss, students) = next.split_mut();
         for data in std::iter::once(boss).chain(students.iter_mut()) {
@@ -180,7 +215,7 @@ impl Simulator {
 
         let caster_coord = coordinate_of(state, caster.uid());
         let boss_coord = state.boss().coordinate();
-        let first_frame = state.frames().saturating_add(skill.frames());
+        let first_frame = state.frames();
 
         for skill_effect in skill.skill_effects() {
             let Some((coef_num, coef_den)) = boss_hit_coef(skill_effect, boss_coord, caster_coord)
@@ -193,7 +228,11 @@ impl Simulator {
             let damage = self.damage_mode.resolve(damage);
 
             for frame in hit_frames(skill_effect.timing, first_frame) {
-                state.schedule_hit(PendingHit { frame, damage });
+                state.schedule_hit(PendingHit {
+                    frame,
+                    damage,
+                    source: skill.uid(),
+                });
             }
         }
     }
