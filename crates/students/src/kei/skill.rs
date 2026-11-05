@@ -1,3 +1,5 @@
+use crate::kei::state::KeiExtraState;
+
 use super::params;
 use core::{
     character::Character,
@@ -290,7 +292,16 @@ impl SubSkill {
 }
 
 impl Skill for SubSkill {
-    fn apply(&self, _state: State, _caster: &dyn Character, _targets: &[&dyn Character]) -> State {
-        todo!()
+    fn apply(&self, mut state: State, caster: &dyn Character, targets: &[&dyn Character]) -> State {
+        let kei_uid = self.owner_uid();
+        let kei_state = state
+            .search_uid_mut(kei_uid)
+            .expect("kei state does not exist in the state");
+
+        let mut kei_extra_state = kei_state
+            .try_extra_as::<KeiExtraState>()
+            .expect("failed to convert ExtraState to KeiExtraState");
+
+        state
     }
 }

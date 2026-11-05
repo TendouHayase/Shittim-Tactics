@@ -1,7 +1,7 @@
 use core::extra::ExtraState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-pub struct KeiState {
+pub struct KeiExtraState {
     /// Damage stored by the sub skill.
     pub acc_damage: u64,
 
@@ -9,4 +9,4 @@ pub struct KeiState {
     pub recording_start_len: usize,
 }
 
-impl ExtraState for KeiState {}
+impl ExtraState for KeiExtraState {}

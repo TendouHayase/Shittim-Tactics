@@ -10,10 +10,7 @@ use core::{
     uid::Uid,
 };
 use error::Error;
-use kei::{
-    params::RawSkills,
-    state::KeiState,
-};
+use kei::{params::RawSkills, state::KeiExtraState};
 use serde::Deserialize;
 use std::sync::{Arc, Weak};
 
@@ -41,7 +38,7 @@ pub fn load(
     )?;
 
     let extra: Option<ExtraInit> = match kind {
-        StudentKind::Kei => Some(core::extra::init::<KeiState>),
+        StudentKind::Kei => Some(core::extra::init::<KeiExtraState>),
     };
 
     Student::new(spec, &file, gears, skills, extra)
@@ -100,7 +97,7 @@ mod tests {
     use super::*;
     use core::{character::Character, table::gear::GearKind};
 
-    const KEI: &str = "../../data/students/kei.json";
+    const KEI: &str = "../../data/students/tendou_kei.json";
     const GEARS: &str = "../../data/tables/gears.json";
 
     fn load_kei() -> Student {
