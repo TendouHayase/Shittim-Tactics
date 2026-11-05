@@ -106,8 +106,7 @@ impl Damage {
             }
         }
 
-        effectiveness_dmg_scale = effectiveness_dmg_scale / 10000
-            + damage_scale(src.stats().attack_type, tgt.stats().armor_type);
+        effectiveness_dmg_scale += damage_scale(src.stats().attack_type, tgt.stats().armor_type);
 
         let mut max_dmg: u64 = src.stats().atk.into();
 
@@ -115,8 +114,8 @@ impl Damage {
 
         max_dmg = apply_def(max_dmg, tgt.stats().def, src.stats().defense_piercing);
 
-        // apply_def가 먼저 나눈 뒤 곱해 절사가 생기므로, 배율의 퍼센트 환산은 그 뒤에 한다.
-        max_dmg /= 100;
+        // apply_def가 먼저 나눈 뒤 곱해 절사가 생기므로, 배율의 만분율 환산은 그 뒤에 한다.
+        max_dmg /= 10000;
 
         max_dmg = max_dmg * src.stats().dmg_dealt as u64 / 10000;
         // 10000이 중립값이라 그보다 낮으면 데미지가 늘어난다.

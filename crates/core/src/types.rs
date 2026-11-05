@@ -47,35 +47,34 @@ pub enum ArmorType {
     Structure,
 }
 
+/// The type matchup multiplier, per ten thousand.
+///
+/// A weak matchup is neutral here: its bonus is the attacker's effectiveness, added on top, which
+/// makes 20000 at the default effectiveness of 10000.
 pub fn damage_scale(atk_type: AttackType, armor_type: ArmorType) -> u32 {
     match atk_type {
-        AttackType::Normal => 100,
+        AttackType::Normal => 10000,
         AttackType::Explosive => match armor_type {
-            ArmorType::Light => 200,
-            ArmorType::Normal | ArmorType::Heavy | ArmorType::Composite => 100,
-            ArmorType::Special | ArmorType::Elastic | ArmorType::Structure => 50,
+            ArmorType::Light | ArmorType::Normal | ArmorType::Heavy | ArmorType::Composite => 10000,
+            ArmorType::Special | ArmorType::Elastic | ArmorType::Structure => 5000,
         },
         AttackType::Piercing => match armor_type {
-            ArmorType::Heavy => 200,
-            ArmorType::Light | ArmorType::Structure => 50,
-            _ => 100,
+            ArmorType::Light | ArmorType::Structure => 5000,
+            _ => 10000,
         },
         AttackType::Corrosive => match armor_type {
-            ArmorType::Composite => 200,
-            ArmorType::Heavy => 150,
-            ArmorType::Light | ArmorType::Structure => 50,
-            _ => 100,
+            ArmorType::Heavy => 15000,
+            ArmorType::Light | ArmorType::Structure => 5000,
+            _ => 10000,
         },
         AttackType::Mystic => match armor_type {
-            ArmorType::Special => 200,
-            ArmorType::Heavy | ArmorType::Composite | ArmorType::Structure => 50,
-            _ => 100,
+            ArmorType::Heavy | ArmorType::Composite | ArmorType::Structure => 5000,
+            _ => 10000,
         },
         AttackType::Sonic => match armor_type {
-            ArmorType::Elastic => 200,
-            ArmorType::Special => 150,
-            ArmorType::Normal | ArmorType::Light => 100,
-            _ => 50,
+            ArmorType::Special => 15000,
+            ArmorType::Elastic | ArmorType::Normal | ArmorType::Light => 10000,
+            _ => 5000,
         },
     }
 }
