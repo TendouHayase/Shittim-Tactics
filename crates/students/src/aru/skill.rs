@@ -1,12 +1,10 @@
 use core::{
     character::Character,
     effect::{Effect, EffectTiming},
-    simulator::Simulator,
     skill::{Region, Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillType},
     state::State,
     uid::Uid,
 };
-use std::sync::Weak;
 
 use crate::aru::params::{self};
 
@@ -25,7 +23,6 @@ impl ExSkill {
         name: &'static str,
         skill_offset: usize,
         params: params::ExParams,
-        sim: Weak<Simulator>,
     ) -> Self {
         let id = (owner, Self::OWNER_OFFSET);
         let effects = vec![
@@ -65,7 +62,6 @@ impl ExSkill {
             params.cost,
             params.duration,
             params.frames,
-            sim,
         );
 
         Self { header }

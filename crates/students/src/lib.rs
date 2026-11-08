@@ -3,7 +3,6 @@ pub mod kei;
 
 use core::{
     extra::ExtraInit,
-    simulator::Simulator,
     skill::Skill,
     student::{Student, file::StudentFile, spec::StudentSpec},
     table::gear::GearTable,
@@ -12,7 +11,7 @@ use core::{
 use error::Error;
 use kei::{params::RawSkills, state::KeiExtraState};
 use serde::Deserialize;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StudentKind {
@@ -25,7 +24,6 @@ pub fn load(
     spec: StudentSpec,
     gears: &GearTable,
     skill_offset: usize,
-    sim: Weak<Simulator>,
 ) -> Result<Student, Error> {
     let file = StudentFile::from_file(path)?;
     let skills = build_skills(
@@ -34,7 +32,6 @@ pub fn load(
         &file.skills,
         spec.skill_levels,
         skill_offset,
-        sim,
     )?;
 
     let extra: Option<ExtraInit> = match kind {
@@ -50,7 +47,6 @@ fn build_skills(
     skills: &serde_json::Value,
     skill_levels: [u8; 4],
     offset: usize,
-    sim: Weak<Simulator>,
 ) -> Result<Vec<Arc<dyn Skill>>, Error> {
     let missing = |skill: &str, level: u8| {
         Error::InvalidData(format!("no data for {skill} skill at level {level}"))
@@ -67,7 +63,6 @@ fn build_skills(
                     raw.ex.name.get(),
                     offset,
                     raw.ex.pick(ex_lvl).ok_or_else(|| missing("ex", ex_lvl))?,
-                    sim.clone(),
                 )),
                 Arc::new(kei::BasicSkill::new(
                     owner,
@@ -76,7 +71,6 @@ fn build_skills(
                     raw.basic
                         .pick(basic_lvl)
                         .ok_or_else(|| missing("basic", basic_lvl))?,
-                    sim.clone(),
                 )),
                 Arc::new(kei::SubSkill::new(
                     owner,
@@ -85,7 +79,6 @@ fn build_skills(
                     raw.sub
                         .pick(sub_lvl)
                         .ok_or_else(|| missing("sub", sub_lvl))?,
-                    sim.clone(),
                 )),
             ]
         }
@@ -119,7 +112,7 @@ mod tests {
             .build();
         let gears = GearTable::from_file(GEARS).expect("failed to load gears");
 
-        load(StudentKind::Kei, KEI, spec, &gears, 3, Weak::default()).expect("failed to load kei")
+        load(StudentKind::Kei, KEI, spec, &gears, 3).expect("failed to load kei")
     }
 
     #[test]

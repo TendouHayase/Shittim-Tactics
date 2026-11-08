@@ -6,7 +6,6 @@ use core::{
     character::Character,
     damage::Damage,
     effect::{BuffKind, Effect, EffectTiming},
-    simulator::Simulator,
     skill::{
         Skill, SkillEffect, SkillEffectTarget, SkillHeader, SkillMeta, SkillParams, SkillType,
     },
@@ -14,7 +13,6 @@ use core::{
     uid::Uid,
     utils::is_inside,
 };
-use std::sync::Weak;
 
 const BASIC_SLOT: usize = 1;
 const SUB_SLOT: usize = 2;
@@ -67,13 +65,7 @@ pub struct ExSkill {
 }
 
 impl ExSkill {
-    pub fn new(
-        owner: Uid,
-        name: &str,
-        skill_offset: usize,
-        params: params::ExParams,
-        sim: Weak<Simulator>,
-    ) -> Self {
+    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::ExParams) -> Self {
         let id = (owner, 0);
 
         // 특효는 곱하지 않고 가산한다.
@@ -125,7 +117,6 @@ impl ExSkill {
                 params.cost(),
                 params.duration(),
                 params.frames(),
-                sim,
             ),
             params,
         }
@@ -218,13 +209,7 @@ pub struct BasicSkill {
 }
 
 impl BasicSkill {
-    pub fn new(
-        owner: Uid,
-        name: &str,
-        skill_offset: usize,
-        params: params::BasicParams,
-        sim: Weak<Simulator>,
-    ) -> Self {
+    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::BasicParams) -> Self {
         let id = (owner, 1);
 
         let effects = vec![SkillEffect {
@@ -249,7 +234,6 @@ impl BasicSkill {
                 params.cost(),
                 params.duration(),
                 params.frames(),
-                sim,
             ),
             params,
         }
@@ -304,13 +288,7 @@ impl SkillMeta for SubSkill {
 }
 
 impl SubSkill {
-    pub fn new(
-        owner: Uid,
-        name: &str,
-        skill_offset: usize,
-        params: params::SubParams,
-        sim: Weak<Simulator>,
-    ) -> Self {
+    pub fn new(owner: Uid, name: &str, skill_offset: usize, params: params::SubParams) -> Self {
         let id = (owner, 2);
 
         let effects = vec![SkillEffect {
@@ -340,7 +318,6 @@ impl SubSkill {
                 params.cost(),
                 params.duration(),
                 params.frames(),
-                sim,
             ),
         }
     }
