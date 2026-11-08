@@ -151,6 +151,8 @@ pub enum SkillType {
     Basic,
     Enhanced,
     Sub,
+    // 데미지는 공격 시간 직후 피탄될 때 들어가지만 피탄까지의 시간은 무시한다.
+    // 공격 속도 변화는 다음 탄창부터 적용한다.
     NormalAttack,
     /// A boss passive, applied at the start of a fight and held for its duration.
     Passive,
