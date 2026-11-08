@@ -3,11 +3,9 @@ use crate::effect::{Effect, EffectTiming};
 use crate::state::State;
 use crate::uid::{SkillUid, Uid};
 use crate::utils::Position;
-use error::Error;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::sync::Weak;
 
 #[derive(Debug)]
 pub struct SkillHeader {

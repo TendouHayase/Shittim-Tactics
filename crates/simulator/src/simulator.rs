@@ -37,12 +37,6 @@ pub struct Simulator {
 }
 
 impl Simulator {
-    /// Skills hold a `Weak<Simulator>`, so build through [`Arc::new_cyclic`] and hand the weak
-    /// reference to the skills from inside its closure.
-    ///
-    /// `initial_skill_queue` is the player's chosen Ex skill order, front of the queue first.
-    /// `min_input_interval` is the fewest ticks a player needs between two Ex skills; 0 disables
-    /// the limit and yields frame-perfect timelines.
     pub fn new(params: Scenario) -> Self {
         let cost_per_second = params
             .students
