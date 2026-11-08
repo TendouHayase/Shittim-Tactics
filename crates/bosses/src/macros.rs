@@ -71,7 +71,6 @@ macro_rules! create_boss_skill {
                 name: String,
                 numbers: $crate::macros::SkillNumbers,
                 params: $params,
-                sim: ::std::sync::Weak<::core::simulator::Simulator>,
             ) -> Self {
                 let effects = (|$id: (::core::uid::Uid, usize),
                                 $p: &$params|
@@ -91,7 +90,6 @@ macro_rules! create_boss_skill {
                         numbers.cost,
                         numbers.duration,
                         numbers.frames,
-                        sim,
                     ),
                     params,
                 }
