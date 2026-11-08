@@ -12,5 +12,3 @@ ordered-float = "5.5.0"
 parsing-json = {path = "../parsing-json"}
 stochastic = {path = "../stochastic"}
 error = {path="../error"}
-paste = "1.0.15"
-seq-macro = "0.3.6"
