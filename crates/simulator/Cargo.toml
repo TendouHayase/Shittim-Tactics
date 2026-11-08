@@ -1,0 +1,9 @@
+[package]
+name = "simulator"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+core = {path="../core"}
+error = {path = "../error"}

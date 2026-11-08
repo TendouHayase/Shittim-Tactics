@@ -6,7 +6,6 @@
 //! it up is O(1).
 
 pub mod actions;
-pub mod agent;
 pub mod algorithm;
 pub mod base;
 pub mod boss;
@@ -17,7 +16,6 @@ pub mod difficulty;
 pub mod effect;
 pub mod extra;
 pub mod locale;
-pub mod simulator;
 pub mod skill;
 pub mod stat;
 pub mod state;

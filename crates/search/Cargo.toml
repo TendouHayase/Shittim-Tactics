@@ -6,4 +6,5 @@ edition.workspace = true
 
 [dependencies]
 core = {path="../core"}
+simulator = {path = "../simulator"}
 error = {path = "../error"}
