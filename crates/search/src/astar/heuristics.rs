@@ -1,4 +1,5 @@
-use core::{actions::ActionContext, agent::Agent, simulator::Simulator, state::State};
+use core::{actions::ActionContext, state::State};
+use simulator::{Agent, Simulator};
 
 /// The default agent for A\*.
 ///

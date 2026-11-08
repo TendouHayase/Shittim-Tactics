@@ -1,5 +1,6 @@
-use core::{agent::Agent, algorithm::Algorithm, simulator::Simulator, skill::Skill};
+use core::{algorithm::Algorithm, skill::Skill};
 use error::Error;
+use simulator::{Agent, Simulator};
 
 use crate::best_first::{Solution, best_first};
 

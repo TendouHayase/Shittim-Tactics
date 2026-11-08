@@ -4,10 +4,9 @@ use std::{
     sync::Arc,
 };
 
-use core::{
-    actions::ActionContext, character::Character, simulator::Simulator, skill::Skill, state::State,
-};
+use core::{actions::ActionContext, character::Character, skill::Skill, state::State};
 use error::Error;
+use simulator::Simulator;
 
 use crate::astar::node::Node;
 

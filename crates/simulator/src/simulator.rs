@@ -2,12 +2,12 @@ use std::{collections::VecDeque, sync::Arc};
 
 use error::Error;
 
-use crate::{
+use core::{
     actions::ActionContext,
     base::BaseStats,
     boss::Boss,
     character::Character,
-    constants::{COST_UNIT, MAX_COST},
+    constants::{COST_UNIT, MAX_COST, STUDENT_SKILL_COUNT},
     damage::{Damage, DamageMode},
     effect::{Effect, EffectTiming},
     skill::{Region, Skill, SkillEffect, SkillEffectTarget, SkillType},
@@ -16,6 +16,8 @@ use crate::{
     uid::{SkillUid, Uid},
     utils::{Position, euclidean_distance, is_inside},
 };
+
+use crate::scenario::Scenario;
 
 pub struct Simulator {
     pub students: Vec<Student>,
@@ -41,29 +43,22 @@ impl Simulator {
     /// `initial_skill_queue` is the player's chosen Ex skill order, front of the queue first.
     /// `min_input_interval` is the fewest ticks a player needs between two Ex skills; 0 disables
     /// the limit and yields frame-perfect timelines.
-    pub fn new(
-        students: Vec<Student>,
-        boss: Boss,
-        skills: Vec<Arc<dyn Skill>>,
-        limit_ticks: u16,
-        damage_mode: DamageMode,
-        initial_skill_queue: Vec<SkillUid>,
-        min_input_interval: u16,
-    ) -> Self {
-        let cost_per_second = students
+    pub fn new(params: Scenario) -> Self {
+        let cost_per_second = params
+            .students
             .iter()
             .map(|student| student.stats().cost_recovery as u32)
             .sum();
 
         Self {
-            students,
-            boss,
-            skills,
-            limit_ticks,
+            students: params.students,
+            boss: params.boss,
+            skills: params.skills,
+            limit_ticks: params.limit_ticks,
             cost_per_second,
-            damage_mode,
-            initial_skill_queue: initial_skill_queue.into(),
-            min_input_interval,
+            damage_mode: params.damage_mode,
+            initial_skill_queue: params.initial_skill_queue.into(),
+            min_input_interval: params.min_input_interval,
         }
     }
 
@@ -76,7 +71,7 @@ impl Simulator {
                 StateData::new(
                     student.uid(),
                     student.stats().hp,
-                    3,
+                    STUDENT_SKILL_COUNT,
                     student.extra.map(|init| init()),
                 )
             })

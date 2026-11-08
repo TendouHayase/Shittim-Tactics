@@ -1,6 +1,5 @@
 use crate::character::Character;
 use crate::effect::{Effect, EffectTiming};
-use crate::simulator::Simulator;
 use crate::state::State;
 use crate::uid::{SkillUid, Uid};
 use crate::utils::Position;
@@ -21,7 +20,6 @@ pub struct SkillHeader {
     pub cost: u8,
     pub duration: u16, // 효과 지속 시간. 재사용하면 갱신된다.
     pub frames: u16,   // 발동후 시전까지 시간
-    sim: Weak<Simulator>,
 }
 
 impl SkillHeader {
@@ -36,7 +34,6 @@ impl SkillHeader {
         cost: u8,
         duration: u16,
         frames: u16,
-        sim: Weak<Simulator>,
     ) -> Self {
         Self {
             owner,
@@ -48,7 +45,6 @@ impl SkillHeader {
             cost,
             duration,
             frames,
-            sim,
         }
     }
 }
@@ -93,30 +89,6 @@ pub trait SkillMeta {
     }
     fn skill_effects(&self) -> &[SkillEffect] {
         &self.header().effects
-    }
-    fn boss_uid(&self) -> Result<Uid, Error> {
-        Ok(self
-            .header()
-            .sim
-            .upgrade()
-            .ok_or(Error::ExpiredRefError("referenced value has been dropped"))?
-            .boss
-            .uid())
-    }
-    fn other_students_uid(&self) -> Result<Vec<Uid>, Error> {
-        let mut out = Vec::with_capacity(8);
-        self.header()
-            .sim
-            .upgrade()
-            .ok_or(Error::ExpiredRefError("referenced value has been dropped"))?
-            .students
-            .iter()
-            .for_each(|student| {
-                if student.uid() != self.owner_uid() {
-                    out.push(student.uid());
-                }
-            });
-        Ok(out)
     }
 }
 

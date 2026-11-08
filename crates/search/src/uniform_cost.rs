@@ -1,5 +1,6 @@
-use core::{algorithm::Algorithm, simulator::Simulator, skill::Skill};
+use core::{algorithm::Algorithm, skill::Skill};
 use error::Error;
+use simulator::Simulator;
 
 use crate::best_first::{Solution, best_first};
 

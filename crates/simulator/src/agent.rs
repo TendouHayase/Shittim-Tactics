@@ -1,4 +1,5 @@
-use crate::{actions::ActionContext, simulator::Simulator, state::State};
+use crate::simulator::Simulator;
+use core::{actions::ActionContext, state::State};
 
 pub trait Agent {
     type Value;

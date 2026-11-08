@@ -10,3 +10,4 @@ pub const FINAL_RESTRICTION_RELEASE_HAND_SIZE: usize = 5;
 pub const MAX_STUDENT_COUNT: usize = 10;
 pub const MAX_SKILL_LEVEL: usize = 10;
 pub const MAX_EX_SKILL_LEVEL: usize = 5;
+pub const STUDENT_SKILL_COUNT: usize = 3;
