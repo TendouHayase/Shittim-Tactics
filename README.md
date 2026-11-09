@@ -4,6 +4,8 @@
 
 블루아카이브 총력전/대결전/제약해제결전 최적화 택틱 파인더
 
+개발중
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
